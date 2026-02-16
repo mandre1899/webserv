@@ -26,7 +26,8 @@ class TcpSocket {
 
 	public:
 	/* Constructors & Destructors */
-		TcpSocket(uint16_t port, in_addr_t serverAddress);
+		TcpSocket() = delete;
+		TcpSocket(in_addr_t serverAddress, uint16_t port);
 		TcpSocket(const TcpSocket& src);
 		~TcpSocket();
 
@@ -34,6 +35,7 @@ class TcpSocket {
 		void sBind();
 		void sListen(int maxConnections);
 		int sAccept();
+		void sRecv(int clientFd, char *buf, size_t size);
 		void sSend(int clientFd, const void *buf, size_t size, int flags);
 		void sClose();
 

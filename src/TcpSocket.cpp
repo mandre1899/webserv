@@ -10,21 +10,21 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "TcpSocket.hpp"
+#include <TcpSocket.hpp>
 
 /* Constructors & Destructors */
-TcpSocket::TcpSocket(uint16_t port, in_addr_t serverAddress)
+TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port)
 {
 	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (_socket == -1)
 		throw SocketCreationError();
 	_sockAddr.sin_family = AF_INET;
-	_sockAddr.sin_port = htons(port);
 	_sockAddr.sin_addr.s_addr = serverAddress;
+	_sockAddr.sin_port = htons(port);
 	isActive = true;
 }
 
-TcpSocket::TcpSocket(const TcpSocket& src) : TcpSocket(ntohs(src._sockAddr.sin_port), _sockAddr.sin_addr.s_addr)
+TcpSocket::TcpSocket(const TcpSocket& src) : TcpSocket(src._sockAddr.sin_addr.s_addr, ntohs(src._sockAddr.sin_port))
 {
 }
 
@@ -56,8 +56,12 @@ int TcpSocket::sAccept()
 	return(accept(_socket, nullptr, nullptr));
 }
 
+void TcpSocket::sRecv(int clientFd, char *buf, size_t size)
+{
+	recv(clientFd, buf, size, 0);	
+}
 
-void sSend(int clientFd, const void *buf, size_t size, int flags)
+void TcpSocket::sSend(int clientFd, const void *buf, size_t size, int flags)
 {
 	send(clientFd, buf, size, flags);
 }
