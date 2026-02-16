@@ -36,6 +36,10 @@
 *.exe
 *.out
 *.app
+webserv
 
 # debug information files
 *.dwo
+
+# vscode files
+.vscode/
