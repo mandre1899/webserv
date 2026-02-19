@@ -17,74 +17,58 @@ TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port)
 {
 	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (_socket == -1)
-		throw SocketCreationError();
+		throw SocketError();
 	_sockAddr.sin_family = AF_INET;
 	_sockAddr.sin_addr.s_addr = serverAddress;
 	_sockAddr.sin_port = htons(port);
-	isActive = true;
-}
-
-TcpSocket::TcpSocket(const TcpSocket& src) : TcpSocket(src._sockAddr.sin_addr.s_addr, ntohs(src._sockAddr.sin_port))
-{
+	int opt = 1;
+	setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); 	// | SO_KEEPALIVE // protecten?
+	if (bind(_socket, reinterpret_cast<sockaddr*>(&_sockAddr), sizeof(_sockAddr)) == -1)
+		throw SocketError();
+	if (listen(_socket, _maxRequests) == -1)
+		throw SocketError();
 }
 
 TcpSocket::~TcpSocket()
 {
-	if (isActive)
+	if (_socket != -1)
 		close(_socket);
 }
 
 /* Member Functions */
-void TcpSocket::sBind()
+int TcpSocket::acceptClient()
 {
-	if (!isActive)
-		throw SocketIsClosedError();
-	bind(_socket, reinterpret_cast<sockaddr *>(&_sockAddr), sizeof(_sockAddr));
-}
-
-void TcpSocket::sListen(int maxConnections)
-{
-	if (!isActive)
-		throw SocketIsClosedError();
-	listen(_socket, maxConnections);
-}
-
-int TcpSocket::sAccept()
-{
-	if (!isActive)
-		throw SocketIsClosedError();
-	return(accept(_socket, nullptr, nullptr));
-}
-
-void TcpSocket::sRecv(int clientFd, char *buf, size_t size)
-{
-	recv(clientFd, buf, size, 0);	
-}
-
-void TcpSocket::sSend(int clientFd, const void *buf, size_t size, int flags)
-{
-	send(clientFd, buf, size, flags);
-}
-
-void TcpSocket::sClose()
-{
-	if (!isActive)
-		throw SocketIsClosedError();
-	close(_socket);
-	isActive = false;
+	int fd = accept(_socket, nullptr, nullptr);
+	if (fd == -1)
+		throw AcceptFaild();
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		close(fd);
+		throw AcceptFaild();
+	}
+	return (fd);
 }
 
 /* Basic Operators */
 
 /* Getters & Setters */
-
-/* Member Class */
-const char *TcpSocket::SocketCreationError::what() const noexcept
+int TcpSocket::getSocketFd() const
 {
-	return ("Socket creation failed.");
+	return (_socket);
 }
 
-const char *TcpSocket::SocketIsClosedError::what() const noexcept
+sockaddr_in TcpSocket::getSocketAddr() const
 {
-	return ("Socket is closed, the action cannot be performed.");
+	return (_sockAddr);
+}
+
+/* Member Class */
+const char* TcpSocket::SocketError::what() const noexcept
+{
+	return (strerror(errno));
+}
+
+const char* TcpSocket::AcceptFaild::what() const noexcept
+{
+	return ("An error occurred while accepting the client.");
 }
