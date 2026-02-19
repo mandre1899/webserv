@@ -29,6 +29,13 @@ TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port)
 		throw SocketError();
 }
 
+TcpSocket::TcpSocket(TcpSocket&& src)
+{
+	_socket = src._socket;
+	_sockAddr = src._sockAddr;
+	src._socket = -1;
+}
+
 TcpSocket::~TcpSocket()
 {
 	if (_socket != -1)

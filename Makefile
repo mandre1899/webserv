@@ -4,7 +4,7 @@ CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR)
 SOURCE_DIR = src
 OBJECT_DIR = obj
 INCLUDE_DIR = inc
-SOURCES = main.cpp TcpSocket.cpp
+SOURCES = main.cpp TcpSocket.cpp HttpServer.cpp Client.cpp
 OBJS:= $(addprefix $(OBJECT_DIR)/, $(SOURCES:.cpp=.o))
 
 all: $(NAME)

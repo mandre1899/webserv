@@ -32,6 +32,7 @@ public:
 	TcpSocket() = delete;
 	TcpSocket(in_addr_t serverAddress, uint16_t port);
 	TcpSocket(const TcpSocket& src) = delete;
+	TcpSocket(TcpSocket&& src);
 	~TcpSocket();
 
 	/* Member Functions */
