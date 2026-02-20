@@ -24,7 +24,7 @@
 class TcpSocket {
 private:
 	int _socket;
-	sockaddr_in _sockAddr;
+	sockaddr_in _sockAddr{};
 	static const u_int16_t _maxRequests = 10;
 
 public:
@@ -32,14 +32,15 @@ public:
 	TcpSocket() = delete;
 	TcpSocket(in_addr_t serverAddress, uint16_t port);
 	TcpSocket(const TcpSocket& src) = delete;
-	TcpSocket(TcpSocket&& src);
+	TcpSocket(TcpSocket&& src) noexcept;
 	~TcpSocket();
 
 	/* Member Functions */
 	int acceptClient();
 
 	/* Basic Operators */
-	TcpSocket& operator=(const TcpSocket& rhs) = delete;
+	TcpSocket& operator=(const TcpSocket& src) = delete;
+	TcpSocket& operator=(TcpSocket&& src) noexcept = delete;
 
 	/* Getters & Setters */
 	int getSocketFd() const;

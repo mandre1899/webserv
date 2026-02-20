@@ -22,14 +22,14 @@ TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port)
 	_sockAddr.sin_addr.s_addr = serverAddress;
 	_sockAddr.sin_port = htons(port);
 	int opt = 1;
-	setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); 	// | SO_KEEPALIVE // protecten?
+	setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); // | SO_KEEPALIVE // protecten?
 	if (bind(_socket, reinterpret_cast<sockaddr*>(&_sockAddr), sizeof(_sockAddr)) == -1)
 		throw SocketError();
 	if (listen(_socket, _maxRequests) == -1)
 		throw SocketError();
 }
 
-TcpSocket::TcpSocket(TcpSocket&& src)
+TcpSocket::TcpSocket(TcpSocket&& src) noexcept
 {
 	_socket = src._socket;
 	_sockAddr = src._sockAddr;
@@ -49,7 +49,8 @@ int TcpSocket::acceptClient()
 	if (fd == -1)
 		throw AcceptFaild();
 	int flags = fcntl(fd, F_GETFL, 0);
-	if (flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+	if (flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+	{
 		close(fd);
 		throw AcceptFaild();
 	}

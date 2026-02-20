@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:43:18 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/20 10:04:26 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/20 16:11:43 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,9 +22,9 @@
 
 class HttpServer {
 private:
-	std::vector<TcpSocket> _socket;
-	std::map<int, Client> _clientMap;
-	std::vector<struct pollfd> _pfd;
+	std::vector<TcpSocket> _socket{};
+	std::map<int, Client> _clientMap{};
+	std::vector<struct pollfd> _pfd{};
 
 	/* Member Functions */
 	void addClient(int serverFd, int clientFd);
@@ -34,7 +34,7 @@ public:
 	/* Constructors & Destructors */
 	HttpServer();
 	HttpServer(const HttpServer& src) = delete;
-	HttpServer(HttpServer&& src) = delete;
+	HttpServer(HttpServer&& src) noexcept = delete;
 	~HttpServer();
 
 	/* Member Functions */
@@ -43,7 +43,8 @@ public:
 	void run();
 
 	/* Basic Operators */
-	HttpServer& operator=(const HttpServer& rhs) = delete;
+	HttpServer& operator=(const HttpServer& src) = delete;
+	HttpServer& operator=(HttpServer&& src) noexcept = delete;
 
 	/* Getters & Setters */
 

@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:59 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/20 11:16:13 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/20 16:49:09 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clie
 	_msg = "";
 }
 
-Client::Client(Client&& src)
+Client::Client(Client&& src) noexcept
 {
 	_serverFd = src._serverFd;
 	_clientFd = src._clientFd;
@@ -40,14 +40,20 @@ Client::~Client()
 /* Member Functions */
 short Client::handleConnection(short revents)
 {
-	char buffer[20] = { 0 };
+	char buffer[20] = {};
 	int ret;
 
 	if (revents & POLLIN)
 	{
-		ret = recv(_clientFd, buffer, sizeof(buffer), 0);
+		ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
 		std::cout << "ret from recv: " << ret << std::endl;
-		std::cout << "Message from client: " << buffer << std::endl;
+		buffer[ret] = '\0';
+		_msg.append(buffer);
+		if (_msg.find_last_of("\r\n\r\n") != std::string::npos)
+		{
+			std::cout << "Message from client: " << _msg << std::endl;
+			return (POLLOUT);
+		}
 		if (ret == 0)
 			return (POLLHUP);
 		return (POLLIN);
@@ -58,7 +64,9 @@ short Client::handleConnection(short revents)
 	}
 	else if (revents & POLLOUT)
 	{
-		throw "Unexpectet call";
+		const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nHello!";
+		send(_clientFd, message, 46, 0);
+		//throw "Unexpectet call";
 	}
 	else if (revents & POLLRDHUP)
 	{
