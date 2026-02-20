@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:43:34 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/19 16:43:38 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/20 11:13:08 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,28 @@ HttpServer::~HttpServer()
 }
 
 /* Member Functions */
+void HttpServer::addClient(int serverFd, int clientFd)
+{
+	struct pollfd pollFd;
+
+	_clientMap.insert({ clientFd, Client(serverFd, clientFd) });
+	pollFd.fd = clientFd;
+	pollFd.events = POLLIN;
+	_pfd.push_back(pollFd);
+}
+
+void HttpServer::removeClient(int clientFd)
+{
+	_clientMap.erase(clientFd);
+	for (size_t i = 0; i < _pfd.size(); i++)
+	{
+		if (_pfd[i].fd == clientFd)
+		{
+			_pfd.erase(_pfd.begin() + i);
+		}
+	}
+}
+
 void HttpServer::createSockets()
 {
 	size_t socketCout = 2;
@@ -41,20 +63,21 @@ void HttpServer::createSockets()
 void HttpServer::run()
 {
 	int ret = poll(_pfd.data(), _pfd.size(), -1);
-	(void)ret;
+	(void)ret; // optimise speed 
 	for (size_t i = 0; i < _pfd.size(); i++)
 	{
 		if (_pfd[i].revents & POLLIN)
 		{
-			if (_pfd[i].fd == _socket[i].getSocketFd())
+			if (i < _socket.size() && _pfd[i].fd == _socket[i].getSocketFd()) // if (serverSocket)...
 			{
-				Client c(_pfd[i].fd, _socket[i].acceptClient());
-				_clientMap.insert({ c.getFd(), c }); // implment getFD()
-
+				addClient(_pfd[i].fd, _socket[i].acceptClient());
 			}
-			else
+			else // if (clientSocket)...
 			{
-				_clientMap[_pfd[i].fd].read();
+				Client& c = (_clientMap.find(_pfd[i].fd))->second;
+				_pfd[i].events = c.handleConnection(_pfd[i].revents);
+				if (_pfd[i].events & POLLHUP)
+					removeClient(_pfd[i].fd);
 			}
 		}
 	}

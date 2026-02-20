@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:59 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/19 16:37:03 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/20 11:16:13 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,30 +21,68 @@ Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clie
 	_msg = "";
 }
 
+Client::Client(Client&& src)
+{
+	_serverFd = src._serverFd;
+	_clientFd = src._clientFd;
+	_status = src._status;
+	_msg = src._msg;
+	src._serverFd = -1;
+	src._clientFd = -1;
+	src._msg = "";
+	src._status = CLOSE;
+}
+
 Client::~Client()
 {
 }
 
 /* Member Functions */
-void Client::read()
+short Client::handleConnection(short revents)
 {
 	char buffer[20] = { 0 };
+	int ret;
 
-	int ret = recv(_clientFd, buffer, sizeof(buffer), 0);
-	// if (ret == 0)
-	// {
-	// 	//close(pfds[i].fd);
-	// 	// pfds[i].fd = 0;
-	// 	// pfds[i].events = 0;
-	// 	// pfds[i].revents = 0;
-	// 	// fdCount--;
-	// 	continue;
-	// }
-	std::cout << "ret from recv: " << ret << std::endl;
-	std::cout << "Message from client: " << buffer << std::endl;
-
+	if (revents & POLLIN)
+	{
+		ret = recv(_clientFd, buffer, sizeof(buffer), 0);
+		std::cout << "ret from recv: " << ret << std::endl;
+		std::cout << "Message from client: " << buffer << std::endl;
+		if (ret == 0)
+			return (POLLHUP);
+		return (POLLIN);
+	}
+	else if (revents & POLLPRI)
+	{
+		throw "Unexpectet call";
+	}
+	else if (revents & POLLOUT)
+	{
+		throw "Unexpectet call";
+	}
+	else if (revents & POLLRDHUP)
+	{
+		throw "Unexpectet call";
+	}
+	else if (revents & POLLERR)
+	{
+		throw "Unexpectet call";
+	}
+	else if (revents & POLLHUP)
+	{
+		return (POLLHUP);
+	}
+	else if (revents & POLLNVAL)
+	{
+		throw "Unexpectet call";
+	}
+	return (POLLHUP);
 }
 
 /* Basic Operators */
 
 /* Getters & Setters */
+int Client::getFd() const
+{
+	return (_clientFd);
+}

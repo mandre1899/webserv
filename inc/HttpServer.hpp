@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:43:18 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/19 15:03:50 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/20 10:04:26 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,8 +23,12 @@
 class HttpServer {
 private:
 	std::vector<TcpSocket> _socket;
-	std::map<int, Client&> _clientMap;
+	std::map<int, Client> _clientMap;
 	std::vector<struct pollfd> _pfd;
+
+	/* Member Functions */
+	void addClient(int serverFd, int clientFd);
+	void removeClient(int clientFd);
 
 public:
 	/* Constructors & Destructors */
