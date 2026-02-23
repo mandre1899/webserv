@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:59 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/23 11:58:29 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/23 17:36:01 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@ Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clie
 	(void)_clientFd;
 	_status = RECIVE;
 	_msg = "";
+	_parsingState = REQUEST_LINE;
 }
 
 Client::Client(Client&& src) noexcept
@@ -27,6 +28,7 @@ Client::Client(Client&& src) noexcept
 	_clientFd = src._clientFd;
 	_status = src._status;
 	_msg = src._msg;
+	//_parsingState ??
 	src._serverFd = -1;
 	src._clientFd = -1;
 	src._msg = "";
@@ -47,10 +49,17 @@ short Client::recvData()
 	if (ret == -1)
 		return (POLLHUP); // evt. throw exception
 	_msg.append(buffer, ret);
+	if (_msg.find("\r\n") != std::string::npos)
+	{
+		if (_parsingState = REQUEST_LINE)
+			_parsedHttp.parse_request_mothod(_msg);
+	}
 	std::string end = _msg.substr((_msg.length() - 4));
 	if (end == "\r\n\r\n")
 	{
 		std::cout << "Message from client: " << _msg << std::endl;
+		//_parsedHttp = HttpParser(_msg);
+		std::cout << _parsedHttp << std::endl;
 		sendData();
 	}
 	if (ret == 0)
