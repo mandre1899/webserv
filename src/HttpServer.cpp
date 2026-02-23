@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpServer.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:43:34 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/23 10:06:58 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/23 11:51:01 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,10 +46,10 @@ void HttpServer::removeClient(int clientFd)
 
 void HttpServer::createSockets()
 {
-	size_t socketCout = 2;
+	size_t socketCount = 2;
 	int socketPort[2] = { 8085, 8081 };
 
-	for (size_t i = 0; i < socketCout; i++)
+	for (size_t i = 0; i < socketCount; i++)
 	{
 		struct pollfd pollFd;
 
@@ -63,22 +63,19 @@ void HttpServer::createSockets()
 void HttpServer::run()
 {
 	int ret = poll(_pfd.data(), _pfd.size(), -1);
-	(void)ret; // optimise speed 
+	(void)ret; // TODO: optimise speed
 	for (size_t i = 0; i < _pfd.size(); i++)
 	{
-		if (_pfd[i].revents & POLLIN)
+		if (_pfd[i].revents & POLLIN && i < _socket.size() && _pfd[i].fd == _socket[i].getSocketFd()) // if (serverSocket)...
 		{
-			if (i < _socket.size() && _pfd[i].fd == _socket[i].getSocketFd()) // if (serverSocket)...
-			{
-				addClient(_pfd[i].fd, _socket[i].acceptClient());
-			}
-			else // if (clientSocket)...
-			{
-				Client& c = (_clientMap.find(_pfd[i].fd))->second;
-				_pfd[i].events = c.handleConnection(_pfd[i].revents);
-				if (_pfd[i].events & POLLHUP)
-					removeClient(_pfd[i].fd);
-			}
+			addClient(_pfd[i].fd, _socket[i].acceptClient());
+		}
+		else // if (clientSocket)...
+		{
+			Client& c = (_clientMap.find(_pfd[i].fd))->second;
+			_pfd[i].events = c.handleConnection(_pfd[i].revents);
+			if (_pfd[i].events & POLLHUP)
+				removeClient(_pfd[i].fd);
 		}
 	}
 }
