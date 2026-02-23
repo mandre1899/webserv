@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:59 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/20 16:49:09 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/23 10:50:37 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,52 +38,50 @@ Client::~Client()
 }
 
 /* Member Functions */
-short Client::handleConnection(short revents)
+short Client::recvData()
 {
 	char buffer[20] = {};
 	int ret;
 
-	if (revents & POLLIN)
+	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
+	if (ret == -1)
+		return (POLLHUP); // evt. throw exception
+	_msg.append(buffer, ret);
+	std::string end = _msg.substr((_msg.length() - 4));
+	if (end == "\r\n\r\n")
 	{
-		ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
-		std::cout << "ret from recv: " << ret << std::endl;
-		buffer[ret] = '\0';
-		_msg.append(buffer);
-		if (_msg.find_last_of("\r\n\r\n") != std::string::npos)
-		{
-			std::cout << "Message from client: " << _msg << std::endl;
-			return (POLLOUT);
-		}
-		if (ret == 0)
-			return (POLLHUP);
-		return (POLLIN);
+		std::cout << "Message from client: " << _msg << std::endl;
+		sendData();
 	}
-	else if (revents & POLLPRI)
-	{
-		throw "Unexpectet call";
-	}
-	else if (revents & POLLOUT)
-	{
-		const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nHello!";
-		send(_clientFd, message, 46, 0);
-		//throw "Unexpectet call";
-	}
-	else if (revents & POLLRDHUP)
-	{
-		throw "Unexpectet call";
-	}
-	else if (revents & POLLERR)
-	{
-		throw "Unexpectet call";
-	}
-	else if (revents & POLLHUP)
-	{
+	if (ret == 0)
 		return (POLLHUP);
-	}
-	else if (revents & POLLNVAL)
-	{
+	return (POLLIN);
+}
+
+short Client::sendData()
+{
+	const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n<html><h1>Hello from WebServ!</h1></html>";
+	int ret = send(_clientFd, message, 81, 0);
+	std::cout << "Send ret = " << ret << std::endl;
+	return (POLLHUP);
+}
+
+short Client::handleConnection(short revents)
+{
+	if (revents & POLLIN)
+		return (recvData());
+	if (revents & POLLPRI)
 		throw "Unexpectet call";
-	}
+	if (revents & POLLOUT)
+		return (sendData());
+	if (revents & POLLRDHUP)
+		throw "Unexpectet call";
+	if (revents & POLLERR)
+		throw "Unexpectet call";
+	if (revents & POLLHUP)
+		return (POLLHUP);
+	if (revents & POLLNVAL)
+		throw "Unexpectet call";
 	return (POLLHUP);
 }
 

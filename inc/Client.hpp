@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:57 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/20 16:12:41 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/23 10:00:52 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,10 @@ private:
 	int _clientFd;
 	e_status _status;
 	std::string _msg;
+
+	/* Member Functions */
+	short recvData();
+	short sendData();
 
 public:
 	/* Constructors & Destructors */

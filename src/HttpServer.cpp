@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:43:34 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/20 11:13:08 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/23 10:06:58 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,7 @@ void HttpServer::removeClient(int clientFd)
 void HttpServer::createSockets()
 {
 	size_t socketCout = 2;
-	int socketPort[2] = { 8080, 8081 };
+	int socketPort[2] = { 8085, 8081 };
 
 	for (size_t i = 0; i < socketCout; i++)
 	{
