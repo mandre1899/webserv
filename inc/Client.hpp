@@ -8,18 +8,18 @@
 #include <Logger.hpp>
 #include <unistd.h>
 
-enum e_status {
-	RECIVE,
-	SEND,
-	WAIT,
-	CLOSE
+enum class Status {
+	recive,
+	send,
+	wait,
+	close
 };
 
 class Client {
 private:
 	int _serverFd;
 	int _clientFd;
-	e_status _status;
+	Status _status;
 	std::string _msg;
 
 	/* Member Functions */

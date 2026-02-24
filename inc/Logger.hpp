@@ -6,15 +6,15 @@
 #include <iomanip>
 
 enum class LogLevel {
-	TRACE,
-	DEBUG,
-	INFO,
-	WARN,
-	ERROR,
-	OFF
+	trace,
+	debug,
+	info,
+	warn,
+	error,
+	off
 };
 
-constexpr LogLevel GlobalLogLevel = LogLevel::TRACE;
+constexpr LogLevel GlobalLogLevel = LogLevel::trace;
 
 class Logger {
 private:
@@ -34,11 +34,11 @@ public:
 		{
 			const char* levelStr;
 			switch (level) {
-				case LogLevel::TRACE: levelStr = "\033[1;35mTRACE\033[0m"; break;
-				case LogLevel::DEBUG: levelStr = "\033[1;34mDEBUG\033[0m"; break;
-				case LogLevel::INFO:  levelStr = "\033[1;37mINFO\033[0m"; break;
-				case LogLevel::WARN:  levelStr = "\033[1;33mWARN\033[0m"; break;
-				case LogLevel::ERROR: levelStr = "\033[1;31mERROR\033[0m"; break;
+				case LogLevel::trace: levelStr = "\033[1;35mTRACE\033[0m"; break;
+				case LogLevel::debug: levelStr = "\033[1;34mDEBUG\033[0m"; break;
+				case LogLevel::info:  levelStr = "\033[1;37mINFO\033[0m"; break;
+				case LogLevel::warn:  levelStr = "\033[1;33mWARN\033[0m"; break;
+				case LogLevel::error: levelStr = "\033[1;31mERROR\033[0m"; break;
 				default:              levelStr = "\033[1;33mUNKNOWN\033[0m"; break;
 			}
 			time_t timestamp = std::time(&timestamp);
