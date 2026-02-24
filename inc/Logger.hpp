@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   Logger.hpp                                        :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/02/23 13:28:28 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/23 13:56:34 by mausperg         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 
@@ -46,12 +34,12 @@ public:
 		{
 			const char* levelStr;
 			switch (level) {
-			case LogLevel::TRACE: levelStr = "\033[1;35mTRACE\033[0m"; break;
-			case LogLevel::DEBUG: levelStr = "\033[1;34mDEBUG\033[0m"; break;
-			case LogLevel::INFO:  levelStr = "\033[1;37mINFO\033[0m"; break;
-			case LogLevel::WARN:  levelStr = "\033[1;33mWARN\033[0m"; break;
-			case LogLevel::ERROR: levelStr = "\033[1;31mERROR\033[0m"; break;
-			default:              levelStr = "\033[1;33mUNKNOWN\033[0m"; break;
+				case LogLevel::TRACE: levelStr = "\033[1;35mTRACE\033[0m"; break;
+				case LogLevel::DEBUG: levelStr = "\033[1;34mDEBUG\033[0m"; break;
+				case LogLevel::INFO:  levelStr = "\033[1;37mINFO\033[0m"; break;
+				case LogLevel::WARN:  levelStr = "\033[1;33mWARN\033[0m"; break;
+				case LogLevel::ERROR: levelStr = "\033[1;31mERROR\033[0m"; break;
+				default:              levelStr = "\033[1;33mUNKNOWN\033[0m"; break;
 			}
 			time_t timestamp = std::time(&timestamp);
 			std::cout << std::put_time(std::localtime(&timestamp), "%Y-%m-%d %H:%M:%S") << " [" << levelStr << "] ";
