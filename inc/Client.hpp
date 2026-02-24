@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:57 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/23 10:00:52 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/24 10:54:06 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@
 #include <sys/socket.h> 
 #include <iostream>
 #include <sys/poll.h>
+#include <Logger.hpp>
+#include <unistd.h>
 
 enum e_status {
 	RECIVE,

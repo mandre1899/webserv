@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:43:18 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/20 16:11:43 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/23 15:35:30 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include <Client.hpp>
 #include <TcpSocket.hpp>
 #include <sys/poll.h>
+#include <Logger.hpp>
 
 class HttpServer {
 private:
