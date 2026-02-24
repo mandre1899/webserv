@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpServer.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:43:34 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/24 10:51:32 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/02/24 13:48:46 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,6 +79,8 @@ void HttpServer::run()
 		}
 		else // if (clientSocket)...
 		{
+			if (_pfd[i].revents == 0)
+				continue;
 			Client& c = (_clientMap.find(_pfd[i].fd))->second;
 			_pfd[i].events = c.handleConnection(_pfd[i].revents);
 			if (_pfd[i].events & POLLHUP)

@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/02/23 17:41:47 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/24 13:37:01 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,10 +27,10 @@ HttpParser::HttpParser(HttpParser&& src)
 	(void)src;
 }
 
-HttpParser::HttpParser(std::string plaintext)
-{
-	(void)plaintext;
-}
+// HttpParser::HttpParser(std::string plaintext)
+// {
+// 	(void)plaintext;
+// }
 
 HttpParser::~HttpParser()
 {
@@ -39,7 +39,8 @@ HttpParser::~HttpParser()
 /* Member Functions */
 void HttpParser::parse_request_mothod(std::string& msg) const
 {
-	if ()
+	// if ()
+	(void)msg;
 }
 
 

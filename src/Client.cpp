@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:59 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/24 13:43:05 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/24 13:48:28 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,16 +50,19 @@ short Client::recvData()
 	if (ret == -1)
 		return (POLLHUP); // evt. throw exception
 	_msg.append(buffer, ret);
-	if (_msg.find("\r\n") != std::string::npos)
-	{
-		if (_parsingState = REQUEST_LINE)
-			_parsedHttp.parse_request_mothod(_msg);
-	}
+	// if (_msg.find("\r\n") != std::string::npos)
+	// {
+	// 	if (_parsingState = REQUEST_LINE)
+	// 		_parsedHttp.parse_request_mothod(_msg);
+	// 	//if (_parsingState = HEADERS)
+
+	// }
 	std::string end = _msg.substr((_msg.length() - 4));
 	if (end == "\r\n\r\n")
 	{
 		Logger::log<LogLevel::TRACE>("Client::recvData() - received client msg: \n---\n", _msg, "---");
-		sendData();
+		//sendData();
+		return (POLLOUT);
 	}
 	if (ret == 0)
 		return (POLLHUP);

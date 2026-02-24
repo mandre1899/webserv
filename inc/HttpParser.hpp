@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/02/23 17:37:25 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/24 11:11:36 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ public:
 	HttpParser();
 	HttpParser(const HttpParser& src);
 	HttpParser(HttpParser&& src);
-	HttpParser(std::string plaintext);
+	//HttpParser(std::string plaintext);
 	~HttpParser();
 
 	/* Member Functions */
