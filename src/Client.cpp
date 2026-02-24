@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:59 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/23 17:36:01 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/24 13:43:05 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@ Client::Client(Client&& src) noexcept
 
 Client::~Client()
 {
+	close(_clientFd);
 }
 
 /* Member Functions */
@@ -57,9 +58,7 @@ short Client::recvData()
 	std::string end = _msg.substr((_msg.length() - 4));
 	if (end == "\r\n\r\n")
 	{
-		std::cout << "Message from client: " << _msg << std::endl;
-		//_parsedHttp = HttpParser(_msg);
-		std::cout << _parsedHttp << std::endl;
+		Logger::log<LogLevel::TRACE>("Client::recvData() - received client msg: \n---\n", _msg, "---");
 		sendData();
 	}
 	if (ret == 0)
@@ -71,7 +70,7 @@ short Client::sendData()
 {
 	const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n<html><h1>Hello from WebServ!</h1></html>";
 	int ret = send(_clientFd, message, 81, 0);
-	std::cout << "Send ret = " << ret << std::endl;
+	Logger::log<LogLevel::TRACE>("Client::sendData() - send return value ist: ", ret);
 	return (POLLHUP);
 }
 

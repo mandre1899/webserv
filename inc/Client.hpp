@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:44:57 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/23 17:24:39 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/24 13:45:27 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@
 #include <sys/socket.h> 
 #include <iostream>
 #include <sys/poll.h>
+#include <Logger.hpp>
+#include <unistd.h>
 #include "HttpParser.hpp"
 
 enum e_status {

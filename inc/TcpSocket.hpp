@@ -20,6 +20,7 @@
 #include <exception>
 #include <string.h>
 #include <errno.h>
+#include <Logger.hpp>
 
 class TcpSocket {
 private:

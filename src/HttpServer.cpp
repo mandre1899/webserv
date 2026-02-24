@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpServer.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
+/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/19 13:43:34 by mausperg          #+#    #+#             */
-/*   Updated: 2026/02/23 11:51:01 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/24 10:51:32 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,7 @@ void HttpServer::addClient(int serverFd, int clientFd)
 	pollFd.fd = clientFd;
 	pollFd.events = POLLIN;
 	_pfd.push_back(pollFd);
+	Logger::log<LogLevel::DEBUG>("HttpServer::addClient() - Client added with FD ", clientFd);
 }
 
 void HttpServer::removeClient(int clientFd)
@@ -42,6 +43,7 @@ void HttpServer::removeClient(int clientFd)
 			_pfd.erase(_pfd.begin() + i);
 		}
 	}
+	Logger::log<LogLevel::DEBUG>("HttpServer::removeClient - Removed client with FD ", clientFd);
 }
 
 void HttpServer::createSockets()
@@ -57,18 +59,23 @@ void HttpServer::createSockets()
 		pollFd.fd = _socket[i].getSocketFd();
 		pollFd.events = POLLIN;
 		_pfd.push_back(pollFd);
+		Logger::log<LogLevel::TRACE>("HttpServer::createSockets() - Socket created with FD ", pollFd.fd);
 	}
 }
 
 void HttpServer::run()
 {
-	int ret = poll(_pfd.data(), _pfd.size(), -1);
+	size_t pfdSize = _pfd.size();
+	int ret = poll(_pfd.data(), pfdSize, -1);
 	(void)ret; // TODO: optimise speed
-	for (size_t i = 0; i < _pfd.size(); i++)
+	for (size_t i = 0; i < pfdSize; i++)
 	{
-		if (_pfd[i].revents & POLLIN && i < _socket.size() && _pfd[i].fd == _socket[i].getSocketFd()) // if (serverSocket)...
+		if (i < _socket.size()) // if (serverSocket)...
 		{
-			addClient(_pfd[i].fd, _socket[i].acceptClient());
+			if (_pfd[i].revents & POLLIN)
+			{
+				addClient(_pfd[i].fd, _socket[i].acceptClient());
+			}
 		}
 		else // if (clientSocket)...
 		{
