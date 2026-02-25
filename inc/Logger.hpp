@@ -28,7 +28,7 @@ public:
 
 	/* Member Functions */
 	template<LogLevel level, typename... Args>
-	static void log(Args... args)
+	static void log(const Args&... args)
 	{
 		if constexpr (level >= GlobalLogLevel)
 		{

@@ -16,12 +16,12 @@ enum e_status {
 	CLOSE
 };
 
-enum parsing_state {
-	REQUEST_LINE = 0,
-	HEADERS,
-	BODY,
-	DONE,
-	ERROR
+enum class parsing_state {
+	request_line = 0,
+	headers,
+	body,
+	done,
+	error
 };
 
 class Client {

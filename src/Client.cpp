@@ -7,7 +7,7 @@ Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clie
 	(void)_clientFd;
 	_status = RECIVE;
 	_msg = "";
-	_parsingState = REQUEST_LINE;
+	_parsingState = parsing_state::request_line;
 }
 
 Client::Client(Client&& src) noexcept
@@ -16,16 +16,20 @@ Client::Client(Client&& src) noexcept
 	_clientFd = src._clientFd;
 	_status = src._status;
 	_msg = src._msg;
-	//_parsingState ??
+	_parsingState = src._parsingState;
+	_parsedHttp = std::move(src._parsedHttp);
 	src._serverFd = -1;
 	src._clientFd = -1;
 	src._msg = "";
 	src._status = CLOSE;
+	src._parsingState = parsing_state::error;
+
 }
 
 Client::~Client()
 {
-	close(_clientFd);
+	if (_clientFd != -1)
+		close(_clientFd);
 }
 
 /* Member Functions */
@@ -37,16 +41,40 @@ short Client::recvData()
 	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
 	if (ret == -1)
 		return (POLLHUP); // evt. throw exception
+	std::cout << "recevied" << buffer << std::endl;
 	_msg.append(buffer, ret);
-	// if (_msg.find("\r\n") != std::string::npos)
-	// {
-	// 	if (_parsingState = REQUEST_LINE)
-	// 		_parsedHttp.parse_request_mothod(_msg);
-	// 	//if (_parsingState = HEADERS)
-
-	// }
-	std::string end = _msg.substr((_msg.length() - 4));
-	if (end == "\r\n\r\n")
+	while (_parsingState == parsing_state::request_line || _parsingState == parsing_state::headers)
+	{
+		auto pos = _msg.find("\r\n");
+		if (pos == std::string::npos)
+			break;
+		std::string line = _msg.substr(0, pos);
+		if (_parsingState == parsing_state::request_line)
+		{
+			_parsedHttp.parseRequestLine(line);
+			_parsingState = parsing_state::headers;
+		}
+		else if (_parsingState == parsing_state::headers)
+		{
+			if (line.empty())
+			{
+				Logger::log<LogLevel::TRACE>(this->_parsedHttp);
+				_msg.erase(0, pos + 2);
+				_parsingState = parsing_state::body;
+				std::cout << "reached body parsing" << std::endl;
+				break;
+			}
+			_parsedHttp.parseHeaders(line);
+		}
+		_msg.erase(0, pos + 2);
+	}
+	if (_parsedHttp.getMethod() == method_type::DELETE || _parsedHttp.getMethod() == method_type::GET)
+		_parsingState = parsing_state::done;
+	else
+	{
+		_parsedHttp.parseBody(_msg);
+	}
+	if (_parsingState == parsing_state::done)
 	{
 		Logger::log<LogLevel::TRACE>("Client::recvData() - received client msg: \n---\n", _msg, "---");
 		//sendData();

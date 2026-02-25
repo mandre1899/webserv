@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/02/24 11:11:36 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/25 16:50:06 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,17 +17,19 @@
 #include <sstream>
 #include <map>
 #include <iostream>
+#include "Logger.hpp"
 
-enum METHOD_TYPE
+enum class method_type
 {
 	GET = 0,
 	POST,
-	DELETE,
+	DELETE, //lower case delete is keyword
+	undefined
 };
 
 class HttpParser {
 private:
-	METHOD_TYPE _method;
+	method_type _method;
 	std::string _request_URI;
 	std::string _http_version;
 	std::map<std::string, std::string> _headers_map;
@@ -36,25 +38,31 @@ private:
 public:
 	/* Constructors & Destructors */
 	HttpParser();
-	HttpParser(const HttpParser& src);
+	HttpParser(const HttpParser& src) = delete;
 	HttpParser(HttpParser&& src);
-	//HttpParser(std::string plaintext);
 	~HttpParser();
 
 	/* Member Functions */
-	void parse_request_mothod(std::string& msg) const;
+	void parseRequestLine(std::string& line);
+	void parseHeaders(std::string& line);
+	void parseBody(std::string& data);
+	class HttpParsingError : public std::exception {
+	public:
+		const char* what() const noexcept override;
+	};
 
 	/* Basic Operators */
 	HttpParser& operator=(const HttpParser& src);
-	HttpParser& operator=(HttpParser&& src);
+	HttpParser& operator=(HttpParser&& src) noexcept;
 
 	/* Getters & Setters */
-	METHOD_TYPE get_method() const;
-	std::string get_request_uri() const;
-	std::string get_http_version() const;
-	auto get_headers_map() const;
+	method_type getMethod() const;
+	std::string getMethodAsString() const;
+	std::string getRequestUri() const;
+	std::string getHttpVersion() const;
+	auto getHeadersMap() const;
 };
 
-std::ostream& operator<<(std::ostream& o, HttpParser& out);
+std::ostream& operator<<(std::ostream& o, const HttpParser& out);
 
 #endif // HTTPPARSER_HPP

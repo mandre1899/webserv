@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/02/24 13:37:01 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/02/25 16:59:39 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,35 +14,93 @@
 
 /* Constructors & Destructors */
 HttpParser::HttpParser()
+	: _method(method_type::undefined)
 {
-}
-
-HttpParser::HttpParser(const HttpParser& src)
-{
-	(void)src;
 }
 
 HttpParser::HttpParser(HttpParser&& src)
+	: _method(src._method), _request_URI(std::move(src._request_URI)), \
+	_http_version(std::move(src._http_version)), _headers_map(std::move(src._headers_map))
 {
-	(void)src;
+	// TODO body information
 }
-
-// HttpParser::HttpParser(std::string plaintext)
-// {
-// 	(void)plaintext;
-// }
 
 HttpParser::~HttpParser()
 {
 }
 
 /* Member Functions */
-void HttpParser::parse_request_mothod(std::string& msg) const
+void HttpParser::parseRequestLine(std::string& line)
 {
-	// if ()
-	(void)msg;
+	std::stringstream ss(line);
+	std::string temp;
+	char del = ' ';
+	getline(ss, temp, del);
+	if (temp == "GET")
+		_method = method_type::GET;
+	else if (temp == "POST")
+		_method = method_type::POST;
+	else if (temp == "DELETE")
+		_method = method_type::DELETE;
+	else
+		throw HttpParsingError();
+
+	getline(ss, temp, del);
+	_request_URI = temp;
+	if (temp[0] != '/')
+		throw HttpParsingError();
+
+	getline(ss, temp, del);
+	if (temp != "HTTP/1.1")
+		throw HttpParsingError();
+	_http_version = temp;
+
+	if (!ss.eof()) //extra space seems okay tho ...
+	{
+		throw HttpParsingError();
+	}
 }
 
+inline void trim(std::string& s)
+{
+	auto start = s.find_first_not_of(" \t\r\n");
+	auto end = s.find_last_not_of(" \t\r\n");
+
+	if (start == std::string::npos) {
+		s.clear();
+		return;
+	}
+
+	s = s.substr(start, end - start + 1);
+}
+
+
+void HttpParser::parseHeaders(std::string& line)
+{
+	auto pos = line.find(':');
+	if (pos == std::string::npos)
+		throw HttpParsingError();
+	std::string key = line.substr(0, pos);
+	if (key.empty())
+		throw HttpParsingError();
+	if (key.find_first_of(" \t\r\n") != std::string::npos)
+		throw HttpParsingError();
+	//TODO maybe do more validation on header names
+	std::string value = line.substr(pos + 1);
+	trim(value);
+	_headers_map.insert(std::pair<std::string, std::string>{key, value});
+}
+
+void HttpParser::parseBody(std::string& line)
+{
+	(void)line;
+}
+
+
+const char* HttpParser::HttpParsingError::what() const noexcept
+{
+	return ("Http parsing error\n");
+}
 
 /* Basic Operators */
 HttpParser& HttpParser::operator=(const HttpParser& src)
@@ -53,49 +111,66 @@ HttpParser& HttpParser::operator=(const HttpParser& src)
 		this->_request_URI = src._request_URI;
 		this->_http_version = src._http_version;
 		this->_headers_map = src._headers_map;
-		//body information
+		// TODO body information
 	}
 	return *this;
 }
 
-HttpParser& HttpParser::operator=(HttpParser&& src)
+HttpParser& HttpParser::operator=(HttpParser&& src) noexcept
 {
 	if (this != &src)
 	{
-
+		_method = src._method;
+		_request_URI = std::move(src._request_URI);
+		_http_version = std::move(src._http_version);
+		_headers_map = std::move(src._headers_map);
 	}
 	return *this;
 }
 
 /* Getters & Setters */
 
-METHOD_TYPE HttpParser::get_method() const
+method_type HttpParser::getMethod() const
 {
 	return (_method);
 }
-std::string HttpParser::get_request_uri() const
+
+std::string HttpParser::getMethodAsString() const
+{
+	switch (_method)
+	{
+		case method_type::GET: return ("GET");
+		case method_type::DELETE: return ("DELETE");
+		case method_type::POST: return ("POST");
+		case method_type::undefined: return ("undefined");
+		default: return ("undefined");
+	}
+}
+
+std::string HttpParser::getRequestUri() const
 {
 	return (_request_URI);
 }
 
-std::string HttpParser::get_http_version() const
+std::string HttpParser::getHttpVersion() const
 {
 	return (_http_version);
 }
-auto HttpParser::get_headers_map() const
+auto HttpParser::getHeadersMap() const
 {
 	return (_headers_map);
 }
 
 
-std::ostream& operator<<(std::ostream& o, HttpParser& out)
+std::ostream& operator<<(std::ostream& o, const HttpParser& out)
 {
-	std::cout << "Method type is: " << out.get_method()
-		<< "request URI is: " << out.get_request_uri()
-		<< "http version is: " << out.get_http_version();
-	for (const auto& [key, value] : out.get_headers_map())
+	std::cout << "\nMethod type is: " << out.getMethodAsString()
+		<< "\nrequest URI is: " << out.getRequestUri()
+		<< "\nhttp version is: " << out.getHttpVersion();
+	for (const auto& [key, value] : out.getHeadersMap())
 	{
-		std::cout << "[" << key << "]" << value << std::endl;
+		std::cout << "\n[" << key << "]" << value;
 	}
+	std::cout << std::endl;
 	return (o);
 }
