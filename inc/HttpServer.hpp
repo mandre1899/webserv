@@ -11,7 +11,7 @@
 
 class HttpServer {
 private:
-	std::vector<TcpSocket> _socket{};
+	std::vector<TcpSocket> _serverSockets{};
 	std::map<int, Client> _clientMap{};
 	std::vector<struct pollfd> _pfd{};
 

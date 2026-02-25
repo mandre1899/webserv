@@ -43,8 +43,8 @@ void HttpServer::createSockets()
 	{
 		struct pollfd pollFd;
 
-		_socket.push_back(TcpSocket(INADDR_ANY, socketPort[i]));
-		pollFd.fd = _socket[i].getSocketFd();
+		_serverSockets.push_back(TcpSocket(INADDR_ANY, socketPort[i]));
+		pollFd.fd = _serverSockets[i].getSocketFd();
 		pollFd.events = POLLIN;
 		_pfd.push_back(pollFd);
 		Logger::log<LogLevel::trace>("HttpServer::createSockets() - Socket created with FD ", pollFd.fd);
@@ -58,11 +58,11 @@ void HttpServer::run()
 	(void)ret; // TODO: optimise speed
 	for (size_t i = 0; i < pfdSize; i++)
 	{
-		if (i < _socket.size()) // if (serverSocket)...
+		if (i < _serverSockets.size()) // if (serverSocket)...
 		{
 			if (_pfd[i].revents & POLLIN)
 			{
-				addClient(_pfd[i].fd, _socket[i].acceptClient());
+				addClient(_pfd[i].fd, _serverSockets[i].acceptClient());
 			}
 		}
 		else // if (clientSocket)...
