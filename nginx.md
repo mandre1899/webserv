@@ -28,6 +28,45 @@ listen 8000;
 ```
 
 ---
+## server_name
+
+
+**Syntax:** `server_name name;`  
+**Default:** `server_name "";`  
+**Context:** `server`  
+
+**Beschreibung:**  
+Legt die Namen eines virtuellen Servers fest. Zum Beispiel:
+
+```nginx
+server {
+    server_name example.com;
+}
+```
+
+---
+
+## / root
+
+The `root` directive defines the **root directory for requests**. It specifies the folder from which static files will be served.
+
+**Syntax:**
+
+```
+root path;
+```
+
+**Default:**
+
+```
+root ./html;
+```
+
+**Context:** `http`, `server`, `location`
+
+---
+
+
 
 ## 📄 index
 
@@ -53,11 +92,11 @@ index index.html;
 
 ---
 
-## 🚫 limit_except
+## 🚫 allow_methods
 
 Limits allowed HTTP methods inside a `location`.
 
-The `method` parameter can be one of the following:
+The `allow_methods` parameter can be one of the following:
 
 - `GET`
 - `POST`
@@ -66,7 +105,7 @@ The `method` parameter can be one of the following:
 **Syntax:**
 
 ```
-limit_except method ... { ... }
+allow_methods method;
 ```
 
 **Default:** —  
@@ -75,9 +114,7 @@ limit_except method ... { ... }
 ### Example
 
 ```nginx
-limit_except GET {
-    deny all;
-}
+allow_methods GET POST;
 ```
 
 ---
@@ -87,6 +124,10 @@ limit_except GET {
 Some website URIs require immediate return of a response with a specific error or redirect code, for example when a page has been moved temporarily or permanently.
 
 The easiest way to do this is to use the `return` directive.
+
+**Default:** —  
+**Context:** `server`, `location`
+
 
 ### Example
 
@@ -109,8 +150,6 @@ location /permanently/moved/url {
     return 301 http://www.example.com/moved/here;
 }
 ```
-
-The `return` directive can be included in both the `location` and `server` contexts.
 
 ---
 
@@ -184,17 +223,14 @@ autoindex off;
 
 Specifies where uploaded files will be saved.
 
-You can use hashed subdirectories to prevent filesystem performance issues with many files.  
-The `level` parameters define how many characters from the generated filename are used for each subdirectory level.
-
 **Syntax:**
 
 ```
-upload_store directory [level1 [level2 [level3]]]
+upload_store directory
 ```
 
 **Default:** —  
-**Context:** `server`, `location`
+**Context:** `location`
 
 ### Example (Simple Flat Directory)
 
@@ -217,7 +253,7 @@ error_page code ... [=[response]] uri;
 ```
 
 
-**Context:** `http`, `server`, `location`, `if in location`
+**Context:** `http`, `server`, `location`
 
 ### Example
 
@@ -231,27 +267,24 @@ This causes an internal redirect to the specified `uri` with the client request 
 
 ---
 
-## ⚡ FastCGI Configuration for WordPress
-This `location` block configures Nginx to serve WordPress PHP files using **FastCGI** with PHP-FPM.
+## ⚡ FastCGI Configuration
 
 This `location` block configures Nginx to serve **PHP files** using **FastCGI** with PHP-FPM.
+
+**Context:** `http`, `server`, `location`
 
 **Syntax:**
 
 ```nginx
 location /wordpress/ {
-    include fastcgi_params;
-    fastcgi_pass unix:/run/php/php8.2-fpm.sock;
-    fastcgi_param SCRIPT_FILENAME /var/www/$fastcgi_script_name;
-    fastcgi_index index.php;
+    fastcgi_path unix:/run/php/php8.2-fpm.sock; # custom
+	fastcgi_index index.php;
 }
 ```
 
 ### Explanation
 
-- `include fastcgi_params;` – Loads default FastCGI parameters.  
-- `fastcgi_pass unix:/run/php/php8.2-fpm.sock;` – Passes PHP requests to the PHP-FPM socket.  
-- `fastcgi_param SCRIPT_FILENAME /var/www/$fastcgi_script_name;` – Sets the path of the PHP script to execute.  
+- `fastcgi_path unix:/run/php/php8.2-fpm.sock;` – Passes PHP requests to the PHP-FPM socket.  
 - `fastcgi_index index.php;` – Specifies the default index file for FastCGI requests.  
 
 This setup allows Nginx to process PHP files in `/wordpress/` correctly.

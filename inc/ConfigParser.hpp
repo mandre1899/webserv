@@ -6,71 +6,70 @@
 #include <map>
 #include <vector>
 #include "webserv.hpp"
+#include <iostream>
+#include <fstream>
+#include <optional>
+#include <sstream>
 
-struct httpConf
-{
-	int clientBodyBufferSize; // todo: overflow protection
-	int clientMaxBodySize;	// todo: oveerflow protection
-	bool autoIndex;
-	std::string index;
-	std::string errorPage;
-};
-
-struct webSocket
+struct socketConf
 {
 	in_addr_t address;
 	uint16_t port;
 };
 
-struct webRetrun
+struct returnConf
 {
 	http_code code;
 	std::string param;
 };
 
-struct webLimitExcept
+struct allowMethodsConf
 {
 	bool isGet;
 	bool isPost;
 	bool isDelete;
 };
 
-struct webFastcgiParam
+struct errorPageConf
 {
-	std::string option;
-	std::string param;
+	http_code code;
+	std::string path;
 };
 
-struct locationConf
+// corresponds to the http{} scope in the conf file
+struct httpConf
 {
-	bool autoIndex;
-	std::string index;
-	webLimitExcept limitExcept;
-	webRetrun webReturn;
-	int clientBodyBufferSize; // todo: overflow protection
-	int clientMaxBodySize;	// todo: oveerflow protection
-	std::string uploadStore;
-	std::string errorPage;
-	bool includeFastcgiParams;
-	std::string fastcgiPass;
-	webFastcgiParam fastcgiParam;
-	std::string fastcgiIndex;
-};
-
-struct serverConfig {
-	webSocket listen;
-	std::string serverName;
-	bool autoIndex;
 	std::string root;
 	std::string index;
+	bool autoIndex;
 	int clientBodyBufferSize; // todo: overflow protection
 	int clientMaxBodySize;	// todo: oveerflow protection
-	webRetrun webReturn;
-	std::string uploadStore;
-	std::string errorPage;
-	std::map<std::string, locationConf> location;
-	httpConf& httpConf;
+	std::optional<errorPageConf>  errorPage;
 };
+
+// 
+struct sharedConfig : public httpConf
+{
+	std::optional<returnConf> webReturn;
+};
+
+// corresponds to the location{} scope in the conf file
+struct locationConf : public sharedConfig
+{
+	std::string uploadStore;
+	std::string fastcgiPath;
+	std::string fastcgiIndex;
+	allowMethodsConf allowMethods;
+};
+
+// corresponds to the server{} scope in the conf file
+struct serverConfig : public sharedConfig
+{
+	socketConf listen;
+	std::string serverName;
+	std::map<std::string, locationConf> location;
+};
+
 
 class ConfigParser {
 private:
@@ -81,7 +80,7 @@ private:
 public:
 	/* Constructors & Destructors */
 	ConfigParser() = delete;
-	ConfigParser(const char& path);
+	ConfigParser(const char* path);
 	ConfigParser(const ConfigParser& src) = delete;
 	ConfigParser(ConfigParser&& src) = delete;
 	~ConfigParser();
@@ -93,7 +92,7 @@ public:
 	ConfigParser& operator=(ConfigParser&& src) = delete;
 
 	/* Getters & Setters */
-	size_t getServerVector();
+	size_t getServerConfs();
 
 };
 
