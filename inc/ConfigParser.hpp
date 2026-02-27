@@ -76,6 +76,7 @@ private:
 	httpConf httpConf;
 	std::vector<serverConfig> serverConfs;
 	/* Member Functions */
+	std::vector<std::string> extractTokens(std::ifstream& configFile);
 
 public:
 	/* Constructors & Destructors */
