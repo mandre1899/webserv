@@ -153,49 +153,75 @@ location /permanently/moved/url {
 
 ---
 
-## ⚙️ client_body_buffer_size
+### ⚙️ client_body_timeout  
+Defines a timeout for reading the client request body.  
+The timeout applies only to the period between two successive read operations, not to the transmission of the entire request body.
 
-Disables chunked transfer encoding in HTTP/1.1 when needed.  
-Useful when working with software that fails to support chunked encoding.
+If a client does not transmit any data within this time, the request is terminated with a **408 (Request Time-out)** error.
 
 **Syntax:**
 
-```
-client_body_buffer_size size;
-```
+client_body_timeout time;
 
 **Default:**
 
-```
-client_body_buffer_size 8k|16k;
-```
+client_body_timeout 60s;
 
-**Context:** `http`, `server`, `location`
+**Context:** http, server, location
 
 ---
+### ⚙️ client_header_buffer_size  
+Sets the buffer size for reading the client request header.
 
-## ⏳ client_body_timeout
+For most requests, a **1K buffer** is sufficient. However, requests containing **long cookies** or requests from **WAP clients** may exceed this size.  
+If the request line or a header field does not fit into this buffer, larger buffers configured with **large_client_header_buffers** are allocated.
 
-Defines a timeout for reading the client request body.
-
-The timeout is set only for the period between two successive read operations —  
-not for the transmission of the whole request body.
-
-If a client does not transmit anything within this time, the request is terminated with a **408 (Request Time-out)** error.
+If specified at the **server level**, the value from the **default server** may be used.
 
 **Syntax:**
 
-```
-client_body_timeout time;
-```
+client_header_buffer_size size;
 
 **Default:**
 
-```
-client_body_timeout 60s;
-```
+client_header_buffer_size 1k;
 
-**Context:** `http`, `server`, `location`
+**Context:** http, server
+
+---
+### ⚙️ client_header_timeout  
+Defines a timeout for reading the client request header.
+
+If the client does not transmit the entire header within the specified time, the request is terminated with a **408 (Request Time-out)** error.
+
+**Syntax:**
+
+client_header_timeout time;
+
+**Default:**
+
+client_header_timeout 60s;
+
+**Context:** http, server
+
+---
+### ⚙️ client_max_body_size  
+Sets the maximum allowed size of the client request body.
+
+If the request body exceeds the configured value, NGINX returns a **413 (Request Entity Too Large)** error.  
+Note that browsers often cannot correctly display this error.
+
+Setting the value to **0** disables the request body size check.
+
+**Syntax:**
+
+client_max_body_size size;
+
+**Default:**
+
+client_max_body_size 1m;
+
+**Context:** http, server, location
 
 ---
 

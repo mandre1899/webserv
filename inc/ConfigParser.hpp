@@ -42,12 +42,13 @@ struct httpConf
 	std::string root;
 	std::string index;
 	bool autoIndex;
-	int clientBodyBufferSize; // todo: overflow protection
-	int clientMaxBodySize;	// todo: oveerflow protection
 	std::optional<errorPageConf>  errorPage;
+	size_t clientHeaderBufferSize; // todo: overflow protection
+	size_t clientHeaderTimeout;	// todo: oveerflow protection
+	size_t clientMaxBodySize; // todo: overflow protection
+	size_t clientBodyTimeout;	// todo: oveerflow protection
 };
 
-// 
 struct sharedConfig : public httpConf
 {
 	std::optional<returnConf> webReturn;
@@ -70,13 +71,16 @@ struct serverConfig : public sharedConfig
 	std::map<std::string, locationConf> location;
 };
 
-
 class ConfigParser {
 private:
 	httpConf httpConf;
 	std::vector<serverConfig> serverConfs;
 	/* Member Functions */
-	std::vector<std::string> extractTokens(std::ifstream& configFile);
+	bool isDelimiter(char c) const;
+	void removeComment(std::string& line);
+	void splitLineInTokens(std::vector<std::string>& tokens, std::string& line);
+	std::vector<std::string> extractTokens(const char* path);
+
 
 public:
 	/* Constructors & Destructors */

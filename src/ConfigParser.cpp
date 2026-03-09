@@ -3,10 +3,8 @@
 /* Constructors & Destructors */
 ConfigParser::ConfigParser(const char* path)
 {
-	std::ifstream configFile(path);
-	if (configFile.fail())
-		throw; // todo: exception
-	std::vector<std::string> tokens = extractTokens(configFile);
+	std::vector<std::string> tokens = extractTokens(path);
+
 }
 
 ConfigParser::~ConfigParser()
@@ -14,50 +12,66 @@ ConfigParser::~ConfigParser()
 }
 
 /* Member Functions */
-std::vector<std::string> ConfigParser::extractTokens(std::ifstream& configFile)
+bool ConfigParser::isDelimiter(char c) const
 {
+	if (c == '{' || c == '}' || c == ';')
+		return true;
+	return false;
+}
+
+void ConfigParser::removeComment(std::string& line)
+{
+	size_t pos = line.find('#');
+	if (pos != line.npos)
+	{
+		line.erase(pos);
+	}
+}
+
+void ConfigParser::splitLineInTokens(std::vector<std::string>& tokens, std::string& line)
+{
+	std::stringstream ss(line);
+	std::string tokenStr;
+
+	while (ss >> tokenStr)
+	{
+		size_t lastSplit = 0;
+		for (size_t i = 0; i < tokenStr.size(); i++)
+		{
+			if (isDelimiter(tokenStr[i]))
+			{
+				std::string tmp = tokenStr.substr(lastSplit, (i - lastSplit));
+				if (tmp != "")
+					tokens.push_back(tmp);
+				tokens.push_back(tokenStr.substr(i, 1));
+				lastSplit = i + 1;
+			}
+		}
+		if (tokenStr == "")
+			continue;
+		if (lastSplit == 0)
+			tokens.push_back(tokenStr);
+		if (lastSplit != 0)
+		{
+			std::string tmp = tokenStr.substr(lastSplit);
+			if (tmp != "")
+				tokens.push_back(tmp);
+		}
+	}
+}
+
+std::vector<std::string> ConfigParser::extractTokens(const char* path)
+{
+	std::ifstream configFile(path);
 	std::string line;
 	std::vector<std::string> tokens;
 
+	if (configFile.fail())
+		throw; // todo: exception
 	while (std::getline(configFile, line, '\n'))
 	{
-		for (size_t i = 0; i < line.size(); i++)
-		{
-			if (line[i] == '#')
-				line = line.substr(0, i);
-		}
-		std::stringstream ssLine(line);
-		std::string splitBySpace;
-		while (std::getline(ssLine, splitBySpace, ' '))
-		{
-			std::stringstream ssSplitBySpace(splitBySpace);
-			std::string splitByTab;
-			while (std::getline(ssSplitBySpace, splitByTab, '\t'))
-			{
-				size_t lastSplit = 0;
-				for (size_t i = 0; i < splitByTab.size(); i++)
-				{
-					if (splitByTab[i] == '{' || splitByTab[i] == '}' || splitByTab[i] == ';')
-					{
-						std::string tmp = splitByTab.substr(lastSplit, (i - lastSplit));
-						if (tmp != "")
-							tokens.push_back(tmp);
-						tokens.push_back(splitByTab.substr(i, 1));
-						lastSplit = i + 1;
-					}
-				}
-				if (splitByTab == "")
-					continue;
-				if (lastSplit == 0)
-					tokens.push_back(splitByTab);
-				if (lastSplit != 0)
-				{
-					std::string tmp = splitByTab.substr(lastSplit);
-					if (tmp != "")
-						tokens.push_back(tmp);
-				}
-			}
-		}
+		removeComment(line);
+		splitLineInTokens(tokens, line);
 	}
 	if (!configFile.eof())
 		throw; // todo: exception

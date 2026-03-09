@@ -1,6 +1,6 @@
 NAME = webserv
 CXX = c++
-CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR)
+CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR) -fsanitize=address -g 
 SOURCE_DIR = src
 OBJECT_DIR = obj
 INCLUDE_DIR = inc
