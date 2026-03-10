@@ -314,3 +314,14 @@ location /wordpress/ {
 - `fastcgi_index index.php;` – Specifies the default index file for FastCGI requests.  
 
 This setup allows Nginx to process PHP files in `/wordpress/` correctly.
+
+---
+
+### SI Standard
+
+| Symbol | Meaning | Value |
+| --- | --- | --- |
+| k | kilo | 1,000 |
+| M | mega | 1,000,000 |
+| G | giga | 1,000,000,000 |
+| s | second | unit of time |

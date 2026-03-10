@@ -10,76 +10,27 @@
 #include <fstream>
 #include <optional>
 #include <sstream>
+#include "Logger.hpp"
 
-struct socketConf
-{
-	in_addr_t address;
-	uint16_t port;
-};
+#define KILO 1000
+#define MEGA 1000000
+#define GIGA 100000000
 
-struct returnConf
-{
-	http_code code;
-	std::string param;
-};
-
-struct allowMethodsConf
-{
-	bool isGet;
-	bool isPost;
-	bool isDelete;
-};
-
-struct errorPageConf
-{
-	http_code code;
-	std::string path;
-};
-
-// corresponds to the http{} scope in the conf file
-struct httpConf
-{
-	std::string root;
-	std::string index;
-	bool autoIndex;
-	std::optional<errorPageConf>  errorPage;
-	size_t clientHeaderBufferSize; // todo: overflow protection
-	size_t clientHeaderTimeout;	// todo: oveerflow protection
-	size_t clientMaxBodySize; // todo: overflow protection
-	size_t clientBodyTimeout;	// todo: oveerflow protection
-};
-
-struct sharedConfig : public httpConf
-{
-	std::optional<returnConf> webReturn;
-};
-
-// corresponds to the location{} scope in the conf file
-struct locationConf : public sharedConfig
-{
-	std::string uploadStore;
-	std::string fastcgiPath;
-	std::string fastcgiIndex;
-	allowMethodsConf allowMethods;
-};
-
-// corresponds to the server{} scope in the conf file
-struct serverConfig : public sharedConfig
-{
-	socketConf listen;
-	std::string serverName;
-	std::map<std::string, locationConf> location;
-};
 
 class ConfigParser {
 private:
-	httpConf httpConf;
-	std::vector<serverConfig> serverConfs;
+	httpConf _httpConf;
+	std::vector<serverConfig> _serverConfs;
 	/* Member Functions */
+
 	bool isDelimiter(char c) const;
 	void removeComment(std::string& line);
 	void splitLineInTokens(std::vector<std::string>& tokens, std::string& line);
 	std::vector<std::string> extractTokens(const char* path);
+
+	bool isAutoIndex(const std::string& token) const;
+	size_t siUnitToValue(const std::string& value, bool isTime) const;
+	void extractHttpConf(std::vector<std::string>& tokens);
 
 
 public:
@@ -98,6 +49,13 @@ public:
 
 	/* Getters & Setters */
 	size_t getServerConfs();
+
+	/* Member Class */
+	class SyntaxError : public std::runtime_error
+	{
+	public:
+		SyntaxError(const std::string& message);
+	};
 
 };
 

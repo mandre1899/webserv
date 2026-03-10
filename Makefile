@@ -1,11 +1,13 @@
 NAME = webserv
 CXX = c++
-CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR) -fsanitize=address -g 
+CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR) -g
 SOURCE_DIR = src
 OBJECT_DIR = obj
 INCLUDE_DIR = inc
-SOURCES = main.cpp TcpSocket.cpp HttpServer.cpp Client.cpp ConfigParser.cpp
+SOURCES = main.cpp TcpSocket.cpp HttpServer.cpp Client.cpp ConfigParser.cpp webserv.cpp
 OBJS:= $(addprefix $(OBJECT_DIR)/, $(SOURCES:.cpp=.o))
+
+#   -fsanitize=address
 
 all: $(NAME)
 

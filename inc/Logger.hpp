@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include "webserv.hpp"
 
 enum class LogLevel {
 	trace,
@@ -28,7 +29,7 @@ public:
 
 	/* Member Functions */
 	template<LogLevel level, typename... Args>
-	static void log(Args... args)
+	static void log(const Args&... args)
 	{
 		if constexpr (level >= GlobalLogLevel)
 		{
