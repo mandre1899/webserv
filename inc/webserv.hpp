@@ -49,7 +49,7 @@ struct httpConf
 
 struct sharedConfig : public httpConf
 {
-	std::optional<returnConf> returnConf;
+	std::optional<returnConf> retConf;
 };
 
 // corresponds to the location{} scope in the conf file
