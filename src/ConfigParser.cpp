@@ -1,18 +1,21 @@
 #include "ConfigParser.hpp"
 
 /* Constructors & Destructors */
-ConfigParser::ConfigParser(const char* path)
+ConfigParser::ConfigParser(ConfigLexer& lexer)
 {
-	std::vector<std::string> tokens = extractTokens(path);
 	try
 	{
-		extractHttpConf(tokens);
+		createCtx(lexer);
 	}
 	catch (const std::exception& e)
 	{
 		std::cerr << e.what() << '\n';
 	}
-	Logger::log<LogLevel::trace>("ConfigParser::ConfigParser()\n", _httpConf);
+	catch (const char* msg) {
+		std::cout << "Caught error: " << msg << std::endl;
+	}
+	Logger::log<LogLevel::trace>("ConfigParser::ConfigParser()\n", _httpCtx);
+
 }
 
 ConfigParser::~ConfigParser()
@@ -20,184 +23,117 @@ ConfigParser::~ConfigParser()
 }
 
 /* Member Functions */
-bool ConfigParser::isDelimiter(char c) const
+void ConfigParser::expectToken(ConfigLexer& lexer, tokenType type)
 {
-	if (c == '{' || c == '}' || c == ';')
-		return true;
-	return false;
-}
-
-void ConfigParser::removeComment(std::string& line)
-{
-	size_t pos = line.find('#');
-	if (pos != line.npos)
+	token token = lexer.getNextToken();
+	if (token.type != type)
 	{
-		line.erase(pos);
+		throw "unexpectet token!";
 	}
 }
 
-void ConfigParser::splitLineInTokens(std::vector<std::string>& tokens, std::string& line)
+void ConfigParser::fillCtx(ConfigLexer& lexer, context ctx)
 {
-	std::stringstream ss(line);
-	std::string tokenStr;
+	token token = lexer.getNextToken();
 
-	while (ss >> tokenStr)
+	while (token.type != tokenType::end)
 	{
-		size_t lastSplit = 0;
-		for (size_t i = 0; i < tokenStr.size(); i++)
+		token = lexer.getNextToken();
+		if (token.type == tokenType::value)
 		{
-			if (isDelimiter(tokenStr[i]))
+			if (token.value == "server")
 			{
-				std::string tmp = tokenStr.substr(lastSplit, (i - lastSplit));
-				if (tmp != "")
-					tokens.push_back(tmp);
-				tokens.push_back(tokenStr.substr(i, 1));
-				lastSplit = i + 1;
+				context next = ctx.child.emplace_back();
+				next.conIdent = contextIdent::server;
+				expectToken(lexer, tokenType::lBrace);
+				fillCtx(lexer, next);
+			}
+			else if (token.value == "location")
+			{
+				context next = ctx.child.emplace_back();
+				next.conIdent = contextIdent::location;
+				next.param.push_back(lexer.getNextToken());
+				expectToken(lexer, tokenType::lBrace);
+				fillCtx(lexer, next);
+			}
+			else
+			{
+				ctx.param.push_back(token);
 			}
 		}
-		if (tokenStr == "")
-			continue;
-		if (lastSplit == 0)
-			tokens.push_back(tokenStr);
-		if (lastSplit != 0)
+		if (token.type == tokenType::rBrace)
 		{
-			std::string tmp = tokenStr.substr(lastSplit);
-			if (tmp != "")
-				tokens.push_back(tmp);
+			return;
 		}
 	}
+	throw "unexpectet end of file expectet }"; // todo
 }
 
-std::vector<std::string> ConfigParser::extractTokens(const char* path)
-{
-	std::ifstream configFile(path);
-	std::string line;
-	std::vector<std::string> tokens;
 
-	if (configFile.fail())
-		throw; // todo: exception
-	while (std::getline(configFile, line, '\n'))
+void ConfigParser::createCtx(ConfigLexer& lexer)
+{
+	token token;
+	token = lexer.getNextToken();
+
+	if (token.value != "http")
 	{
-		removeComment(line);
-		splitLineInTokens(tokens, line);
+		throw "expectet http"; // todo
 	}
-	if (!configFile.eof())
-		throw; // todo: exception
-	Logger::log<LogLevel::trace>("ConfigParser::extractTokens()\n", tokens);
-	return (tokens);
-}
-
-bool ConfigParser::isAutoIndex(const std::string& token) const
-{
-	if (token == "on")
-		return true;
-	else if (token == "off")
-		return false;
-	else
-		throw SyntaxError("not valid AutoIndex"); //todo
-}
-
-size_t ConfigParser::siUnitToValue(const std::string& str, bool isTime) const
-{
-	if (str.size() < 2)
-		throw SyntaxError("Unit is to small"); // todo
-	char unit = str[str.size() - 1];
-	size_t value = std::stoi(str.substr(0, str.size() - 1));
-	if (isTime && unit == 's')
-		return value;
-	switch (unit)
-	{
-		case 'k':
-			value *= KILO;
-			break;
-		case 'M':
-			value *= MEGA;
-			break;
-		case 'G':
-			value *= GIGA;
-			break;
-		default:
-			throw SyntaxError("not a valid unit"); // todo
-			break;
-	}
-	return value;
-}
-
-void ConfigParser::extractHttpConf(std::vector<std::string>& tokens)
-{
-	// tokens.size() != 3 || 
-	if (tokens.at(0) != "http" || tokens.at(1) != "{")
-		throw SyntaxError("expectet http {"); // ToDo
-	for (size_t i = 2; i < (tokens.size() - 1); i++)
-	{
-		if (tokens[i] == "root")
-		{
-			_httpConf.root = tokens.at(++i);
-		}
-		else if (tokens[i] == "index")
-		{
-			_httpConf.index = tokens.at(++i);
-		}
-		else if (tokens[i] == "autoindex")
-		{
-			_httpConf.autoIndex = isAutoIndex(tokens[++i]);
-		}
-		else if (tokens[i] == "error_page")
-		{
-			int code = std::stoi(tokens.at(++i));
-			if (code > __SHRT_MAX__ || code < 0)
-				throw std::range_error("http code out of range");
-			_httpConf.errorPage->code = static_cast<short>(code);
-			_httpConf.errorPage->path = tokens.at(++i);
-		}
-		else if (tokens[i] == "client_header_buffer_size")
-		{
-			_httpConf.clientHeaderBufferSize = siUnitToValue(tokens.at(++i), false);
-		}
-		else if (tokens[i] == "client_header_timeout")
-		{
-			_httpConf.clientHeaderTimeout = siUnitToValue(tokens.at(++i), true);
-		}
-		else if (tokens[i] == "client_max_body_size")
-		{
-			_httpConf.clientMaxBodySize = siUnitToValue(tokens.at(++i), false);
-		}
-		else if (tokens[i] == "client_body_timeout")
-		{
-			_httpConf.clientBodyTimeout = siUnitToValue(tokens.at(++i), true);
-		}
-		else if (tokens[i] == "server")
-		{
-			size_t qoutState = 1;
-			if (tokens[++i] != "{")
-				throw SyntaxError("expectet {"); //todo
-			while (qoutState != 0)
-			{
-				if (tokens[i] == "{")
-					qoutState++;
-				if (tokens[i] == "}")
-					qoutState--;
-				i++;
-			}
-			continue;
-		}
-		else
-		{
-			throw SyntaxError("error!"); // todo
-		}
-		if (++i; tokens[i] != ";")
-			throw SyntaxError("no ;"); // todo
-
-	}
-	if (tokens.at(tokens.size() - 1) != "}")
-		throw SyntaxError("error!"); // todo
+	_httpCtx.conIdent = contextIdent::http;
+	expectToken(lexer, tokenType::lBrace);
+	fillCtx(lexer, _httpCtx);
 }
 
 /* Basic Operators */
 
 /* Getters & Setters */
+const context& ConfigParser::getHttpCtx() const
+{
+	return (_httpCtx);
+}
 
 /* Member Class */
-ConfigParser::SyntaxError::SyntaxError(const std::string& message) : std::runtime_error(message)
+
+std::ostream& operator<<(std::ostream& os, const contextIdent& ident)
 {
+	if (ident == contextIdent::http)
+		os << "http";
+	else if (ident == contextIdent::server)
+		os << "server";
+	else if (ident == contextIdent::location)
+		os << "location";
+	return (os);
+}
+
+std::ostream& operator<<(std::ostream& os, const context& ctx)
+{
+	os << "---http context---\n";
+	os << ctx.conIdent << ":" << std::endl;
+	os << "    ";
+	for (size_t i = 0; i < ctx.param.size(); i++)
+	{
+		os << "\"" << ctx.param[i].value << "\", ";
+	}
+	for (size_t j = 0; j < ctx.child.size(); j++)
+	{
+		context child = ctx.child[j];
+		os << child.conIdent << ":" << std::endl;
+		os << "    ";
+		for (size_t b = 0; b < child.param.size(); b++)
+		{
+			os << "\"" << child.param[b].value << "\", ";
+		}
+
+		for (size_t c = 0; c < child.child.size(); c++)
+		{
+			context subChild = child.child[c];
+			os << subChild.conIdent << ":" << std::endl;
+			os << "    ";
+			for (size_t d = 0; d < subChild.param.size(); d++)
+			{
+				os << "\"" << subChild.param[d].value << "\", ";
+			}
+		}
+	}
+	return os;
 }

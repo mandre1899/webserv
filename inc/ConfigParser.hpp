@@ -11,32 +11,44 @@
 #include <optional>
 #include <sstream>
 #include "Logger.hpp"
+#include "ConfigLexer.hpp"
 
 #define KILO 1000
 #define MEGA 1000000
 #define GIGA 100000000
 
 
+// http:     root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size  |
+// server:   root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size, | return, | listen, server_name
+// location: root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, |                                                   | return, | allow_methods, upload_store
+
+enum class contextIdent
+{
+	http,
+	server,
+	location
+};
+
+struct context
+{
+	contextIdent conIdent;
+	std::vector<token> param;
+	std::vector<context> child;
+};
+
 class ConfigParser {
 private:
-	httpConf _httpConf;
-	std::vector<serverConfig> _serverConfs;
+	context _httpCtx;
+
 	/* Member Functions */
-
-	bool isDelimiter(char c) const;
-	void removeComment(std::string& line);
-	void splitLineInTokens(std::vector<std::string>& tokens, std::string& line);
-	std::vector<std::string> extractTokens(const char* path);
-
-	bool isAutoIndex(const std::string& token) const;
-	size_t siUnitToValue(const std::string& value, bool isTime) const;
-	void extractHttpConf(std::vector<std::string>& tokens);
-
+	void expectToken(ConfigLexer& lexer, tokenType type);
+	void fillCtx(ConfigLexer& lexer, context con);
+	void createCtx(ConfigLexer& lexer);
 
 public:
 	/* Constructors & Destructors */
 	ConfigParser() = delete;
-	ConfigParser(const char* path);
+	ConfigParser(ConfigLexer& lexer);
 	ConfigParser(const ConfigParser& src) = delete;
 	ConfigParser(ConfigParser&& src) = delete;
 	~ConfigParser();
@@ -48,15 +60,12 @@ public:
 	ConfigParser& operator=(ConfigParser&& src) = delete;
 
 	/* Getters & Setters */
-	size_t getServerConfs();
+	const context& getHttpCtx() const;
 
 	/* Member Class */
-	class SyntaxError : public std::runtime_error
-	{
-	public:
-		SyntaxError(const std::string& message);
-	};
 
 };
+
+std::ostream& operator<<(std::ostream& os, const context& ctx);
 
 #endif // CONFIGPARSER_HPP

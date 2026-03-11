@@ -6,7 +6,7 @@ std::ostream& operator<<(std::ostream& os, const std::vector<std::string>& token
 	{
 		os << "\"" << tokens[i] << "\", ";
 	}
-	os << tokens[tokens.size() - 1] << std::endl;
+	os << "\"" << tokens[tokens.size() - 1] << "\"" << std::endl;
 	return (os);
 }
 
@@ -46,4 +46,6 @@ std::ostream& operator<<(std::ostream& os, const std::vector<serverConfig>& serv
 		// os << "client_max_body_size: " << serverConfs[i].clientMaxBodySize << std::endl;
 		// os << "client_body_timeout: " << serverConfs[i].clientBodyTimeout << std::endl;
 	}
+	return os;
 }
+

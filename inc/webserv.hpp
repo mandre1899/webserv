@@ -49,7 +49,7 @@ struct httpConf
 
 struct sharedConfig : public httpConf
 {
-	std::optional<returnConf> webReturn;
+	std::optional<returnConf> returnConf;
 };
 
 // corresponds to the location{} scope in the conf file
@@ -71,6 +71,6 @@ struct serverConfig : public sharedConfig
 
 std::ostream& operator<<(std::ostream& os, const std::vector<std::string>& tokens);
 std::ostream& operator<<(std::ostream& os, const struct httpConf& httpConf);
-std::ostream& operator<<(std::ostream& os, const std::vector<serverConfig>& serverConfs);
+
 
 #endif // WEBSERV_HPP

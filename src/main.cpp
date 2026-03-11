@@ -4,7 +4,7 @@
 #include <cstring>
 #include <iostream>
 #include "Logger.hpp"
-#include "ConfigParser.hpp"
+#include "HttpConfig.hpp"
 
 int	main(int argc, char** argv)
 {
@@ -18,7 +18,7 @@ int	main(int argc, char** argv)
 		Logger::log<LogLevel::error>("There are too many arguments.");
 		return (EXIT_FAILURE);
 	}
-	ConfigParser conf(argv[1]);
+	HttpConfig config(argv[1]);
 
 	// HttpServer server;
 
