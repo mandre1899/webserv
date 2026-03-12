@@ -41,30 +41,29 @@ private:
 	context _httpCtx;
 
 	/* Member Functions */
-	void expectToken(ConfigLexer &lexer, tokenType type);
-	void fillCtx(ConfigLexer &lexer, context &con);
-	void createCtx(ConfigLexer &lexer);
+	void fillCtx(ConfigLexer& lexer, context& con);
+	void createCtx(ConfigLexer& lexer);
 
 public:
 	/* Constructors & Destructors */
 	ConfigParser() = delete;
-	ConfigParser(ConfigLexer &lexer);
-	ConfigParser(const ConfigParser &src) = delete;
-	ConfigParser(ConfigParser &&src) = delete;
+	ConfigParser(ConfigLexer& lexer);
+	ConfigParser(const ConfigParser& src) = delete;
+	ConfigParser(ConfigParser&& src) = delete;
 	~ConfigParser();
 
 	/* Member Functions */
 
 	/* Basic Operators */
-	ConfigParser &operator=(const ConfigParser &src) = delete;
-	ConfigParser &operator=(ConfigParser &&src) = delete;
+	ConfigParser& operator=(const ConfigParser& src) = delete;
+	ConfigParser& operator=(ConfigParser&& src) = delete;
 
 	/* Getters & Setters */
-	const context &getHttpCtx() const;
+	const context& getHttpCtx() const;
 
 	/* Member Class */
 };
 
-std::ostream &operator<<(std::ostream &os, const context &ctx);
+std::ostream& operator<<(std::ostream& os, const context& ctx);
 
 #endif // CONFIGPARSER_HPP

@@ -1,17 +1,17 @@
 #include "ConfigParser.hpp"
 
 /* Constructors & Destructors */
-ConfigParser::ConfigParser(ConfigLexer &lexer)
+ConfigParser::ConfigParser(ConfigLexer& lexer) // todo: check if all is init to 0
 {
 	try
 	{
 		createCtx(lexer);
 	}
-	catch (const std::exception &e)
+	catch (const std::exception& e)
 	{
 		std::cerr << e.what() << '\n';
 	}
-	catch (const char *msg)
+	catch (const char* msg)
 	{
 		std::cout << "Caught error: " << msg << std::endl;
 	}
@@ -23,16 +23,7 @@ ConfigParser::~ConfigParser()
 }
 
 /* Member Functions */
-void ConfigParser::expectToken(ConfigLexer &lexer, tokenType type)
-{
-	token token = lexer.getNextToken();
-	if (token.type != type)
-	{
-		throw "unexpectet token!";
-	}
-}
-
-void ConfigParser::fillCtx(ConfigLexer &lexer, context &ctx)
+void ConfigParser::fillCtx(ConfigLexer& lexer, context& ctx)
 {
 	token token = lexer.getNextToken();
 
@@ -42,23 +33,27 @@ void ConfigParser::fillCtx(ConfigLexer &lexer, context &ctx)
 		{
 			if (token.value == "server")
 			{
-				context &next = ctx.child.emplace_back();
+				context& next = ctx.child.emplace_back();
 				next.conIdent = contextIdent::server;
-				expectToken(lexer, tokenType::lBrace);
+				lexer.expectToken(tokenType::lBrace);
 				fillCtx(lexer, next);
 			}
 			else if (token.value == "location")
 			{
-				context &next = ctx.child.emplace_back();
+				context& next = ctx.child.emplace_back();
 				next.conIdent = contextIdent::location;
 				next.param.push_back(lexer.getNextToken());
-				expectToken(lexer, tokenType::lBrace);
+				lexer.expectToken(tokenType::lBrace);
 				fillCtx(lexer, next);
 			}
 			else
 			{
 				ctx.param.push_back(token);
 			}
+		}
+		if (token.type == tokenType::semi)
+		{
+			ctx.param.push_back(token);
 		}
 		if (token.type == tokenType::rBrace)
 		{
@@ -69,7 +64,7 @@ void ConfigParser::fillCtx(ConfigLexer &lexer, context &ctx)
 	throw "unexpectet end of file expectet }"; // todo
 }
 
-void ConfigParser::createCtx(ConfigLexer &lexer)
+void ConfigParser::createCtx(ConfigLexer& lexer)
 {
 	token token;
 	token = lexer.getNextToken();
@@ -79,21 +74,21 @@ void ConfigParser::createCtx(ConfigLexer &lexer)
 		throw "expectet http"; // todo
 	}
 	_httpCtx.conIdent = contextIdent::http;
-	expectToken(lexer, tokenType::lBrace);
+	lexer.expectToken(tokenType::lBrace);
 	fillCtx(lexer, _httpCtx);
 }
 
 /* Basic Operators */
 
 /* Getters & Setters */
-const context &ConfigParser::getHttpCtx() const
+const context& ConfigParser::getHttpCtx() const
 {
 	return (_httpCtx);
 }
 
 /* Member Class */
 
-std::ostream &operator<<(std::ostream &os, const contextIdent &ident)
+std::ostream& operator<<(std::ostream& os, const contextIdent& ident)
 {
 	if (ident == contextIdent::http)
 		os << "http";
@@ -104,7 +99,7 @@ std::ostream &operator<<(std::ostream &os, const contextIdent &ident)
 	return (os);
 }
 
-std::ostream &operator<<(std::ostream &os, const context &ctx)
+std::ostream& operator<<(std::ostream& os, const context& ctx)
 {
 	os << "---http context---\n";
 	os << ctx.conIdent << ":" << std::endl;

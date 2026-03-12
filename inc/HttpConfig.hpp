@@ -3,7 +3,7 @@
 
 #include <string>
 #include <netinet/in.h>
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include "webserv.hpp"
 #include <iostream>
@@ -13,21 +13,22 @@
 #include "Logger.hpp"
 #include "ConfigLexer.hpp"
 #include "ConfigParser.hpp"
+#include "extrectValue.hpp"
 
-class HttpConfig {
+class HttpConfig
+{
 private:
 	httpConf _httpConf;
-	std::vector<serverConfig> _serverConfs;
-	//std::map<std::string, void(*)()> _dispatch;
+	std::vector<serverConf> _serverConfs;
+	std::unordered_map<std::string, void (HttpConfig::*)(contextIdent)> _dispatch; //todo
 
 	/* Member Functions */
 	void setHttpConfDefaults();
-	bool isAutoIndex(const std::string& token) const;
-	size_t siUnitToValue(const std::string& value, bool isTime) const;
-	size_t extractSharedConfig(struct httpConf& httpConf, std::vector<std::string>& tokens, size_t pos);
-	void extractHttpConf(std::vector<std::string>& tokens);
-
-	//void fillDispatch();
+	void setServerConfDefaults(serverConf& servConf);
+	void setLocationConfDefaults(locationConf& locConf, serverConf& servConf);
+	void buildLocation(const context& ctx, serverConf& serverConf);
+	void buildServer(const context& ctx, serverConf& serverConf);
+	void buildHttp(const context& ctx);
 
 public:
 	/* Constructors & Destructors */
@@ -44,7 +45,7 @@ public:
 	HttpConfig& operator=(HttpConfig&& src) = delete;
 
 	/* Getters & Setters */
-	size_t getServerConfs();
+	size_t getServerConfs(); //todo
 
 	/* Member Class */
 	class SyntaxError : public std::runtime_error
@@ -53,8 +54,5 @@ public:
 		SyntaxError(const std::string& message);
 	};
 };
-
-std::ostream& operator<<(std::ostream& os, const std::vector<serverConfig>& serverConfs);
-std::ostream& operator<<(std::ostream& os, const ConfigParser& pars);
 
 #endif // HTTPCONFIG_HPP

@@ -6,8 +6,16 @@ ConfigLexer::ConfigLexer(const char* path)
 	std::ifstream configFile(path);
 	if (configFile.fail())
 		throw; // todo: exception
-	extractTokens(configFile);
+	std::vector<std::string> strTokens = extractTokens(configFile);
 	configFile.close();
+	setTokenTyp(strTokens);
+}
+
+ConfigLexer::ConfigLexer(const std::vector<token>& tokens)
+{
+	_tokens = tokens;
+	if (tokens[tokens.size() - 1].type != tokenType::end)
+		_tokens.push_back({ tokenType::end, "" });
 }
 
 ConfigLexer::~ConfigLexer()
@@ -15,7 +23,6 @@ ConfigLexer::~ConfigLexer()
 }
 
 /* Member Functions */
-
 bool ConfigLexer::isDelimiter(char c) const
 {
 	if (c == '{' || c == '}' || c == ';')
@@ -64,47 +71,66 @@ void ConfigLexer::splitLineInTokens(std::vector<std::string>& tokens, std::strin
 	}
 }
 
-void ConfigLexer::extractTokens(std::ifstream& configFile)
+std::vector<std::string> ConfigLexer::extractTokens(std::ifstream& configFile)
 {
 	std::string line;
+	std::vector<std::string> tokens;
 
 	while (std::getline(configFile, line, '\n'))
 	{
 		removeComment(line);
-		splitLineInTokens(_tokens, line);
+		splitLineInTokens(tokens, line);
 	}
 	if (!configFile.eof())
 		throw; // todo: exception
-	Logger::log<LogLevel::trace>("ConfigLexer::extractTokens()\n", _tokens);
+	Logger::log<LogLevel::trace>("ConfigLexer::extractTokens()\n", tokens);
+	return (tokens);
 }
 
-token ConfigLexer::getNextToken()
+void ConfigLexer::setTokenTyp(std::vector<std::string>& tokens)
 {
-	token token;
+	for (size_t i = 0; i < tokens.size(); i++)
+	{
+		token token;
+		if (tokens[i] == "{")
+		{
+			token.type = tokenType::lBrace;
+			token.value = "{";
+		}
+		else if (tokens[i] == "}")
+		{
+			token.type = tokenType::rBrace;
+			token.value = "}";
+		}
+		else if (tokens[i] == ";")
+		{
+			token.type = tokenType::semi;
+			token.value = ";";
+		}
+		else
+		{
+			token.type = tokenType::value;
+			token.value = tokens[i];
+		}
+		_tokens.push_back(token);
+	}
+}
 
-	if (_tokenCount >= _tokens.size())
+const token& ConfigLexer::getNextToken()
+{
+	const token& tmp = _tokens[_tokenCount];
+	if (_tokenCount < (_tokens.size() - 1))
+		_tokenCount++;
+	return(tmp);
+}
+
+void ConfigLexer::expectToken(tokenType type)
+{
+	token token = this->getNextToken();
+	if (token.type != type)
 	{
-		token.type = tokenType::end;
+		throw "unexpectet token!";
 	}
-	else if (_tokens[_tokenCount] == "{")
-	{
-		token.type = tokenType::lBrace;
-	}
-	else if (_tokens[_tokenCount] == "}")
-	{
-		token.type = tokenType::rBrace;
-	}
-	else if (_tokens[_tokenCount] == ";")
-	{
-		token.type = tokenType::semi;
-	}
-	else
-	{
-		token.type = tokenType::value;
-		token.value = _tokens[_tokenCount];
-	}
-	_tokenCount++;
-	return(token);
 }
 
 /* Basic Operators */

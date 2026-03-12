@@ -27,7 +27,7 @@ std::ostream& operator<<(std::ostream& os, const struct httpConf& httpConf)
 	return (os);
 }
 
-std::ostream& operator<<(std::ostream& os, const std::vector<serverConfig>& serverConfs)
+std::ostream& operator<<(std::ostream& os, const std::vector<serverConf>& serverConfs)
 {
 	os << "---serverConfs---\n";
 

@@ -3,8 +3,31 @@
 /* Constructors & Destructors */
 HttpConfig::HttpConfig(const char* path)
 {
-	ConfigLexer lexer(path);
-	ConfigParser parser(lexer);
+	try
+	{
+		ConfigLexer lexer(path);
+		ConfigParser parser(lexer);
+		setHttpConfDefaults();
+		buildHttp(parser.getHttpCtx());
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+	}
+	catch (const char* msg)
+	{
+		std::cout << "Caught error: " << msg << std::endl;
+	}
+
+	for (size_t i = 0; i < _serverConfs.size(); i++)
+	{
+		std::cout << _serverConfs[i].root << std::endl;
+		std::cout << _serverConfs[i].index << std::endl;
+		for (size_t j = 0; j < _serverConfs[i].location.size(); j++)
+		{
+			std::cout << _serverConfs[i].location["/images/"].root << std::endl;
+		}
+	}
 
 }
 
@@ -13,141 +36,99 @@ HttpConfig::~HttpConfig()
 }
 
 /* Member Functions */
-
 void HttpConfig::setHttpConfDefaults()
 {
 	_httpConf.root = "";
 	_httpConf.index = "";
 	_httpConf.autoIndex = false;
 	_httpConf.clientHeaderBufferSize = 1000; // 1k
-	_httpConf.clientHeaderTimeout = 30; // 30s
-	_httpConf.clientMaxBodySize = 2000000; // 2M
-	_httpConf.clientBodyTimeout = 30; //30s
+	_httpConf.clientHeaderTimeout = 30;		 // 30s
+	_httpConf.clientMaxBodySize = 2000000;	 // 2M
+	_httpConf.clientBodyTimeout = 30;		 // 30s
 }
 
-bool HttpConfig::isAutoIndex(const std::string& token) const
+void HttpConfig::setServerConfDefaults(serverConf& servConf)
 {
-	if (token == "on")
-		return true;
-	else if (token == "off")
-		return false;
-	else
-		throw SyntaxError("not valid AutoIndex"); //todo
+	servConf.root = _httpConf.root;
+	servConf.index = _httpConf.index;
+	servConf.autoIndex = _httpConf.autoIndex;
+	servConf.clientHeaderBufferSize = _httpConf.clientHeaderBufferSize;
+	servConf.clientHeaderTimeout = _httpConf.clientHeaderTimeout;
+	servConf.clientMaxBodySize = _httpConf.clientMaxBodySize;
+	servConf.clientBodyTimeout = _httpConf.clientBodyTimeout;
 }
 
-size_t HttpConfig::siUnitToValue(const std::string& str, bool isTime) const
+void HttpConfig::setLocationConfDefaults(locationConf& locConf, serverConf& servConf)
 {
-	if (str.size() < 2)
-		throw SyntaxError("Unit is to small"); // todo
-	char unit = str[str.size() - 1];
-	size_t value = std::stoi(str.substr(0, str.size() - 1));
-	if (isTime && unit == 's')
-		return value;
-	switch (unit)
-	{
-		case 'k':
-			value *= KILO;
-			break;
-		case 'M':
-			value *= MEGA;
-			break;
-		case 'G':
-			value *= GIGA;
-			break;
-		default:
-			throw SyntaxError("not a valid unit"); // todo
-			break;
-	}
-	return value;
+	locConf.root = servConf.root;
+	locConf.index = servConf.index;
+	locConf.autoIndex = servConf.autoIndex;
+	locConf.clientHeaderBufferSize = servConf.clientHeaderBufferSize;
+	locConf.clientHeaderTimeout = servConf.clientHeaderTimeout;
+	locConf.clientMaxBodySize = servConf.clientMaxBodySize;
+	locConf.clientBodyTimeout = servConf.clientBodyTimeout;
 }
 
-size_t HttpConfig::extractSharedConfig(struct httpConf& httpConf, std::vector<std::string>& tokens, size_t pos)
+void HttpConfig::buildLocation(const context& ctx, serverConf& serverConf)
 {
-	if (tokens[pos] == "root")
+	std::string path;
+	locationConf locConf;
+	ConfigLexer tmp(ctx.param);
+	token t;
+
+	setLocationConfDefaults(locConf, serverConf);
+	path = tmp.getNextToken().value;
+	t = tmp.getNextToken();
+	while (t.type != tokenType::end)
 	{
-		httpConf.root = tokens.at(++pos);
+		extractSharedConfig<locationConf>(locConf, ctx.conIdent, t, tmp);
+		tmp.expectToken(tokenType::semi);
+		t = tmp.getNextToken();
 	}
-	else if (tokens[pos] == "index")
-	{
-		httpConf.index = tokens.at(++pos);
-	}
-	else if (tokens[pos] == "autoindex")
-	{
-		httpConf.autoIndex = isAutoIndex(tokens.at(++pos));
-	}
-	else if (tokens[pos] == "error_page")
-	{
-		int code = std::stoi(tokens.at(++pos));
-		if (code > __SHRT_MAX__ || code < 0)
-			throw std::range_error("http code out of range");
-		httpConf.errorPage->code = static_cast<short>(code);
-		httpConf.errorPage->path = tokens.at(++pos);
-	}
-	else if (tokens[pos] == "client_header_buffer_size")
-	{
-		httpConf.clientHeaderBufferSize = siUnitToValue(tokens.at(++pos), false);
-	}
-	else if (tokens[pos] == "client_header_timeout")
-	{
-		httpConf.clientHeaderTimeout = siUnitToValue(tokens.at(++pos), true);
-	}
-	else if (tokens[pos] == "client_max_body_size")
-	{
-		httpConf.clientMaxBodySize = siUnitToValue(tokens.at(++pos), false);
-	}
-	else if (tokens[pos] == "client_body_timeout")
-	{
-		httpConf.clientBodyTimeout = siUnitToValue(tokens.at(++pos), true);
-	}
-	else
-	{
-		throw SyntaxError("error!"); // todo
-	}
-	if (++pos; tokens[pos] != ";")
-		throw SyntaxError("no ;"); // todo
-	return pos;
+	serverConf.location.insert({ path, locConf });
 }
 
-void HttpConfig::extractHttpConf(std::vector<std::string>& tokens)
+void HttpConfig::buildServer(const context& ctx, serverConf& servConf)
 {
-	// tokens.size() != 3 || todo: wird das benoetig?
-	if (tokens.at(0) != "http" || tokens.at(1) != "{")
-		throw SyntaxError("expectet http {"); // ToDo
-	for (size_t i = 2; i < (tokens.size() - 1); i++)
+	size_t childPos = 0;
+
+	ConfigLexer tmp(ctx.param);
+	token t;
+	t = tmp.getNextToken();
+	while (t.type != tokenType::end)
 	{
-		if (tokens[i] == "server")
-		{
-			size_t qoutState = 1;
-			if (tokens[++i] != "{")
-				throw SyntaxError("expectet {"); //todo
-			while (qoutState != 0)
-			{
-				if (tokens[i] == "{")
-					qoutState++;
-				if (tokens[i] == "}")
-					qoutState--;
-				i++;
-			}
-		}
-		else
-		{
-			i = extractSharedConfig(_httpConf, tokens, i);
-		}
+		extractSharedConfig<serverConf>(servConf, ctx.conIdent, t, tmp);
+		tmp.expectToken(tokenType::semi);
+		t = tmp.getNextToken();
 	}
-	if (tokens.at(tokens.size() - 1) != "}")
-		throw SyntaxError("error!"); // todo
-	Logger::log<LogLevel::trace>("ConfigParser::extractHttpConf()\n", _httpConf);
+	while (childPos < ctx.child.size())
+	{
+		buildLocation(ctx.child[childPos], servConf);
+		childPos++;
+	}
 }
 
-// void ConfigParser::indexHandler()
-// {
+void HttpConfig::buildHttp(const context& ctx)
+{
+	size_t childPos = 0;
 
-// }
-
-// void ConfigParser::fillDispatch()
-// {
-// 	_dispatch.insert("index", );
-// }
+	ConfigLexer tmp(ctx.param);
+	token t;
+	t = tmp.getNextToken();
+	while (t.type != tokenType::end)
+	{
+		extractSharedConfig<httpConf>(_httpConf, ctx.conIdent, t, tmp);
+		tmp.expectToken(tokenType::semi);
+		t = tmp.getNextToken();
+	}
+	while (childPos < ctx.child.size())
+	{
+		serverConf& servConf = _serverConfs.emplace_back();
+		setServerConfDefaults(servConf);
+		buildServer(ctx.child[childPos], servConf);
+		childPos++;
+	}
+}
 
 /* Basic Operators */
 

@@ -47,13 +47,13 @@ struct httpConf
 	size_t clientBodyTimeout;	// todo: oveerflow protection
 };
 
-struct sharedConfig : public httpConf
+struct sharedConf : public httpConf
 {
 	std::optional<returnConf> retConf;
 };
 
 // corresponds to the location{} scope in the conf file
-struct locationConf : public sharedConfig
+struct locationConf : public sharedConf
 {
 	std::string uploadStore;
 	std::string fastcgiPath;
@@ -62,7 +62,7 @@ struct locationConf : public sharedConfig
 };
 
 // corresponds to the server{} scope in the conf file
-struct serverConfig : public sharedConfig
+struct serverConf : public sharedConf
 {
 	socketConf listen;
 	std::string serverName;
