@@ -5,10 +5,10 @@ Config::Config(const char* path)
 {
 	try
 	{
-		ConfigLexer lexer(path);
-		ConfigParser parser(lexer);
+		TokenStream tokens = ConfigLexer::extractTokens(path);
+		ContextNode node(tokens);
 		setHttpConfDefaults();
-		buildHttp(parser.getHttpCtx());
+		buildHttp(parser.getRootNode());
 	}
 	catch (const std::exception& e)
 	{
@@ -69,7 +69,7 @@ void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::serverCtx& 
 	locConf.clientBodyTimeout = servConf.clientBodyTimeout;
 }
 
-void Config::buildLocation(const context& ctx, cfg::serverCtx& serverCtx)
+void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 {
 	std::string path;
 	cfg::locationCtx locConf;
@@ -88,7 +88,7 @@ void Config::buildLocation(const context& ctx, cfg::serverCtx& serverCtx)
 	serverCtx.location.insert({ path, locConf });
 }
 
-void Config::buildServer(const context& ctx, cfg::serverCtx& servConf)
+void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
 {
 	size_t childPos = 0;
 
@@ -108,7 +108,7 @@ void Config::buildServer(const context& ctx, cfg::serverCtx& servConf)
 	}
 }
 
-void Config::buildHttp(const context& ctx)
+void Config::buildHttp(const ctxNode& ctx)
 {
 	size_t childPos = 0;
 

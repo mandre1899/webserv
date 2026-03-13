@@ -4,6 +4,10 @@
 #include <vector>
 #include "config/ConfigParser.hpp"
 
+#define KILO 1000
+#define MEGA 1000000
+#define GIGA 100000000
+
 inline bool isAutoIndex(const std::string& token)  // todo move to a .cpp file
 {
 	if (token == "on")
@@ -41,7 +45,7 @@ inline size_t siUnitToValue(const std::string& str, bool isTime) // todo move to
 }
 
 template <typename T>
-void extractSharedConfig(T& confStruct, contextIdent ctx, const token& t, ConfigLexer& tokens)
+void extractSharedConfig(T& confStruct, ctxNodeIdent ctx, const token& t, ConfigLexer& tokens)
 {
 	(void)ctx;
 	if (t.value == "root")

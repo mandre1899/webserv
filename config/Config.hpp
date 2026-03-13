@@ -11,7 +11,7 @@
 #include <sstream>
 #include "utils/Logger.hpp"
 #include "config/ConfigLexer.hpp"
-#include "config/ConfigParser.hpp"
+#include "config/ContextNode.hpp"
 #include "config/extrectValue.hpp"
 #include "config/configTypes.hpp"
 #include "utils/webserv.hpp"
@@ -21,15 +21,15 @@ class Config
 private:
 	cfg::httpCtx _httpConf;
 	std::vector<cfg::serverCtx> _wsConfs;
-	std::unordered_map<std::string, void (Config::*)(contextIdent)> _dispatch; //todo
+	std::unordered_map<std::string, void (Config::*)(ctxNodeIdent)> _dispatch; //todo
 
 	/* Member Functions */
 	void setHttpConfDefaults();
 	void setServerConfDefaults(cfg::serverCtx& servConf);
 	void setLocationConfDefaults(cfg::locationCtx& locConf, cfg::serverCtx& servConf);
-	void buildLocation(const context& ctx, cfg::serverCtx& serverCtx);
-	void buildServer(const context& ctx, cfg::serverCtx& serverCtx);
-	void buildHttp(const context& ctx);
+	void buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx);
+	void buildServer(const ctxNode& ctx, cfg::serverCtx& serverCtx);
+	void buildHttp(const ctxNode& ctx);
 
 public:
 	/* Constructors & Destructors */
