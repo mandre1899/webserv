@@ -5,13 +5,13 @@
 #include <netinet/in.h>
 #include <map>
 #include <vector>
-#include "webserv.hpp"
 #include <iostream>
 #include <fstream>
 #include <optional>
 #include <sstream>
-#include "Logger.hpp"
-#include "ConfigLexer.hpp"
+#include "utils/webserv.hpp"
+#include "utils/Logger.hpp"
+#include "config/ConfigLexer.hpp"
 
 #define KILO 1000
 #define MEGA 1000000

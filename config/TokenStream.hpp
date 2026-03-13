@@ -1,0 +1,6 @@
+#ifndef TOKENSTREAM_HPP
+#define TOKENSTREAM_HPP
+
+
+
+#endif // TOKENSTREAM_HPP

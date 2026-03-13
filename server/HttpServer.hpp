@@ -4,10 +4,10 @@
 #include <string>
 #include <map>
 #include <vector>
-#include <Client.hpp>
-#include <TcpSocket.hpp>
 #include <sys/poll.h>
-#include <Logger.hpp>
+#include "server/Client.hpp"
+#include "server/TcpSocket.hpp"
+#include "utils/Logger.hpp"
 
 class HttpServer {
 private:

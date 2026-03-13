@@ -10,30 +10,30 @@ std::ostream& operator<<(std::ostream& os, const std::vector<std::string>& token
 	return (os);
 }
 
-std::ostream& operator<<(std::ostream& os, const struct httpConf& httpConf)
+std::ostream& operator<<(std::ostream& os, const struct cfg::httpCtx& httpCtx)
 {
-	os << "---httpConf---\n";
-	os << "root: " << httpConf.root << std::endl;
-	os << "index: " << httpConf.index << std::endl;
-	os << "autoindex: " << std::boolalpha << httpConf.autoIndex << std::endl;
-	if (!httpConf.errorPage.has_value())
-		os << "error_page { code: " << httpConf.errorPage->code << " path: " << httpConf.errorPage->path << " }" << std::endl;
+	os << "---httpCtx---\n";
+	os << "root: " << httpCtx.root << std::endl;
+	os << "index: " << httpCtx.index << std::endl;
+	os << "autoindex: " << std::boolalpha << httpCtx.autoIndex << std::endl;
+	if (!httpCtx.errorPage.has_value())
+		os << "error_page { code: " << httpCtx.errorPage->code << " path: " << httpCtx.errorPage->path << " }" << std::endl;
 	else
 		os << "error_page: {}" << std::endl;
-	os << "client_header_buffer_size: " << httpConf.clientHeaderBufferSize << std::endl;
-	os << "client_header_timeout: " << httpConf.clientHeaderTimeout << std::endl;
-	os << "client_max_body_size: " << httpConf.clientMaxBodySize << std::endl;
-	os << "client_body_timeout: " << httpConf.clientBodyTimeout << std::endl;
+	os << "client_header_buffer_size: " << httpCtx.clientHeaderBufferSize << std::endl;
+	os << "client_header_timeout: " << httpCtx.clientHeaderTimeout << std::endl;
+	os << "client_max_body_size: " << httpCtx.clientMaxBodySize << std::endl;
+	os << "client_body_timeout: " << httpCtx.clientBodyTimeout << std::endl;
 	return (os);
 }
 
-std::ostream& operator<<(std::ostream& os, const std::vector<serverConf>& serverConfs)
+std::ostream& operator<<(std::ostream& os, const std::vector<cfg::serverCtx>& serverConfs)
 {
 	os << "---serverConfs---\n";
 
 	for (size_t i = 0; i < serverConfs.size(); i++)
 	{
-		os << static_cast<httpConf>(serverConfs[i]);
+		os << static_cast<cfg::httpCtx>(serverConfs[i]);
 		// os << "root: " << serverConfs[i].root << std::endl;
 		// os << "index: " << serverConfs[i].index << std::endl;
 		// os << "autoindex: " << std::boolalpha << serverConfs[i].autoIndex << std::endl;

@@ -1,10 +1,10 @@
-#include "webserv.hpp"
-#include "TcpSocket.hpp"
-#include "HttpServer.hpp"
+#include "utils/webserv.hpp"
+#include "server/TcpSocket.hpp"
+#include "server/HttpServer.hpp"
 #include <cstring>
 #include <iostream>
-#include "Logger.hpp"
-#include "HttpConfig.hpp"
+#include "utils/Logger.hpp"
+#include "config/Config.hpp"
 
 int	main(int argc, char** argv)
 {
@@ -18,7 +18,7 @@ int	main(int argc, char** argv)
 		Logger::log<LogLevel::error>("There are too many arguments.");
 		return (EXIT_FAILURE);
 	}
-	HttpConfig config(argv[1]);
+	Config config(argv[1]);
 
 	// HttpServer server;
 

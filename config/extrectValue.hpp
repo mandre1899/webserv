@@ -2,7 +2,7 @@
 #define EXTRECTVALUE_HPP
 
 #include <vector>
-#include <ConfigParser.hpp>
+#include "config/ConfigParser.hpp"
 
 inline bool isAutoIndex(const std::string& token)  // todo move to a .cpp file
 {
@@ -24,18 +24,18 @@ inline size_t siUnitToValue(const std::string& str, bool isTime) // todo move to
 		return value;
 	switch (unit)
 	{
-	case 'k':
-		value *= KILO;
-		break;
-	case 'M':
-		value *= MEGA;
-		break;
-	case 'G':
-		value *= GIGA;
-		break;
-	default:
-		throw "not a valid unit"; // todo
-		break;
+		case 'k':
+			value *= KILO;
+			break;
+		case 'M':
+			value *= MEGA;
+			break;
+		case 'G':
+			value *= GIGA;
+			break;
+		default:
+			throw "not a valid unit"; // todo
+			break;
 	}
 	return value;
 }

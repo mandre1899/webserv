@@ -1,0 +1,75 @@
+#ifndef CONFIGTYPES_HPP
+#define CONFIGTYPES_HPP
+
+#include <iostream>
+#include <vector>
+#include <map>
+#include <optional>
+#include <netinet/in.h>
+
+typedef unsigned short http_code;
+
+namespace cfg
+{
+	struct socketCfg
+	{
+		in_addr_t address;
+		uint16_t port;
+	};
+
+	struct returnCfg
+	{
+		http_code code;
+		std::string param;
+	};
+
+	struct allowMethodsCfg
+	{
+		bool isGet;
+		bool isPost;
+		bool isDelete;
+	};
+
+	struct errorPageCfg
+	{
+		http_code code; // todo: overflow protection
+		std::string path;
+	};
+
+	// corresponds to the http{} scope in the conf file
+	struct httpCtx
+	{
+		std::string root;
+		std::string index;
+		bool autoIndex;
+		std::optional<errorPageCfg>  errorPage;
+		size_t clientHeaderBufferSize; // todo: overflow protection
+		size_t clientHeaderTimeout;	// todo: oveerflow protection
+		size_t clientMaxBodySize; // todo: overflow protection
+		size_t clientBodyTimeout;	// todo: oveerflow protection
+	};
+
+	struct sharedCfg : public httpCtx
+	{
+		std::optional<returnCfg> retConf;
+	};
+
+	// corresponds to the location{} scope in the conf file
+	struct locationCtx : public sharedCfg
+	{
+		std::string uploadStore;
+		std::string fastcgiPath;
+		std::string fastcgiIndex;
+		allowMethodsCfg allowMethods;
+	};
+
+	// corresponds to the server{} scope in the conf file
+	struct serverCtx : public sharedCfg
+	{
+		socketCfg listen;
+		std::string serverName;
+		std::map<std::string, locationCtx> location;
+	};
+}
+
+#endif // CONFIGTYPES_HPP
