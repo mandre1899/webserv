@@ -5,10 +5,10 @@ Config::Config(const char* path)
 {
 	try
 	{
-		TokenStream tokens = ConfigLexer::extractTokens(path);
-		ContextNode node(tokens);
+		TokenStream tokens = Lexer::extractTokens(path);
+		ContextNode node = ContextNode(tokens);
 		setHttpConfDefaults();
-		buildHttp(parser.getRootNode());
+		buildHttp(node.getRootNode());
 	}
 	catch (const std::exception& e)
 	{
@@ -17,8 +17,8 @@ Config::Config(const char* path)
 	catch (const char* msg)
 	{
 		std::cout << "Caught error: " << msg << std::endl;
+		throw SyntaxErrorException(msg);
 	}
-
 	for (size_t i = 0; i < _wsConfs.size(); i++)
 	{
 		std::cout << _wsConfs[i].root << std::endl;
@@ -28,7 +28,6 @@ Config::Config(const char* path)
 			std::cout << _wsConfs[i].location["/images/"].root << std::endl;
 		}
 	}
-
 }
 
 Config::~Config()
@@ -73,16 +72,17 @@ void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 {
 	std::string path;
 	cfg::locationCtx locConf;
-	ConfigLexer tmp(ctx.param);
+	TokenStream tmp = ctx.param;
 	token t;
+	ValueExtractor<cfg::locationCtx> ext;
 
 	setLocationConfDefaults(locConf, serverCtx);
 	path = tmp.getNextToken().value;
 	t = tmp.getNextToken();
-	while (t.type != tokenType::end)
+	while (t.type != tType::end)
 	{
-		extractSharedConfig<cfg::locationCtx>(locConf, ctx.conIdent, t, tmp);
-		tmp.expectToken(tokenType::semi);
+		ext.setValue(t.value, locConf, ctxNodeIdent::location, tmp);
+		tmp.expectToken(tType::semi);
 		t = tmp.getNextToken();
 	}
 	serverCtx.location.insert({ path, locConf });
@@ -91,14 +91,15 @@ void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
 {
 	size_t childPos = 0;
-
-	ConfigLexer tmp(ctx.param);
+	TokenStream tmp(ctx.param);
 	token t;
+	ValueExtractor<cfg::serverCtx> ext;
+
 	t = tmp.getNextToken();
-	while (t.type != tokenType::end)
+	while (t.type != tType::end)
 	{
-		extractSharedConfig<cfg::serverCtx>(servConf, ctx.conIdent, t, tmp);
-		tmp.expectToken(tokenType::semi);
+		ext.setValue(t.value, servConf, ctxNodeIdent::server, tmp);
+		tmp.expectToken(tType::semi);
 		t = tmp.getNextToken();
 	}
 	while (childPos < ctx.child.size())
@@ -111,14 +112,15 @@ void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
 void Config::buildHttp(const ctxNode& ctx)
 {
 	size_t childPos = 0;
-
-	ConfigLexer tmp(ctx.param);
+	TokenStream tmp = ctx.param;
 	token t;
+	ValueExtractor<cfg::httpCtx> ext;
+
 	t = tmp.getNextToken();
-	while (t.type != tokenType::end)
+	while (t.type != tType::end)
 	{
-		extractSharedConfig<cfg::httpCtx>(_httpConf, ctx.conIdent, t, tmp);
-		tmp.expectToken(tokenType::semi);
+		ext.setValue(t.value, _httpConf, ctxNodeIdent::http, tmp);
+		tmp.expectToken(tType::semi);
 		t = tmp.getNextToken();
 	}
 	while (childPos < ctx.child.size())
@@ -135,6 +137,6 @@ void Config::buildHttp(const ctxNode& ctx)
 /* Getters & Setters */
 
 /* Member Class */
-Config::SyntaxError::SyntaxError(const std::string& message) : std::runtime_error(message)
+Config::SyntaxErrorException::SyntaxErrorException(const std::string& message) : std::runtime_error(message)
 {
 }

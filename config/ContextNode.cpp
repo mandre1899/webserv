@@ -9,11 +9,8 @@ ContextNode::ContextNode(TokenStream& tokens)
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << e.what() << '\n';
-	}
-	catch (const char* msg)
-	{
-		std::cout << "Caught error: " << msg << std::endl;
+		std::cerr << e.what() << " on line: " << tokens.getPositon().ln << std::endl;
+		throw TokenStream::UnexpectedTokenException();
 	}
 	Logger::log<LogLevel::trace>("ContextNode::ContextNode\n", _rootNode);
 }
@@ -75,18 +72,12 @@ void ContextNode::fillCtx(TokenStream& tokens, ctxNode& ctx)
 		}
 		token = tokens.getNextToken();
 	}
-	throw "unexpectet end of file expectet }"; // todo
+	throw TokenStream::TokenStreamEndException();
 }
 
 void ContextNode::createCtx(TokenStream& tokens)
 {
-	token token;
-	token = tokens.getNextToken();
-
-	if (token.value != "http")
-	{
-		throw "expectet http"; // todo
-	}
+	tokens.expectToken("http");
 	_rootNode.conIdent = ctxNodeIdent::http;
 	tokens.expectToken(tType::lBrace);
 	fillCtx(tokens, _rootNode);
@@ -116,6 +107,10 @@ ContextNode& ContextNode::operator=(ContextNode&& src)
 }
 
 /* Getters & Setters */
+const ctxNode& ContextNode::getRootNode() const
+{
+	return(_rootNode);
+}
 
 std::ostream& operator<<(std::ostream& os, const ctxNodeIdent& ident)
 {

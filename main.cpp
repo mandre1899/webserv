@@ -18,7 +18,15 @@ int	main(int argc, char** argv)
 		Logger::log<LogLevel::error>("There are too many arguments.");
 		return (EXIT_FAILURE);
 	}
-	Config config(argv[1]);
+	try
+	{
+		Config config(argv[1]);
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+	}
+
 
 	// HttpServer server;
 

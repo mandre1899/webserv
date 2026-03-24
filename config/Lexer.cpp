@@ -1,16 +1,16 @@
-#include "ConfigLexer.hpp"
+#include "Lexer.hpp"
 
 /* Constructors & Destructors */
 
 /* Member Functions */
-bool ConfigLexer::isDelimiter(char c)
+bool Lexer::isDelimiter(char c)
 {
 	if (c == '{' || c == '}' || c == ';')
 		return true;
 	return false;
 }
 
-void ConfigLexer::removeComment(std::string& line)
+void Lexer::removeComment(std::string& line)
 {
 	size_t commentPos = line.find('#');
 	if (commentPos != line.npos)
@@ -19,7 +19,7 @@ void ConfigLexer::removeComment(std::string& line)
 	}
 }
 
-void ConfigLexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) // todo:: count pos.col
+void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) // todo:: count pos.col
 {
 	std::stringstream ss(line);
 	std::string tokenStr;
@@ -51,7 +51,7 @@ void ConfigLexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& 
 	}
 }
 
-TokenStream ConfigLexer::extractTokens(const char* path)
+TokenStream Lexer::extractTokens(const char* path)
 {
 	TokenStream ts;
 	filePos pos = {};
@@ -59,7 +59,7 @@ TokenStream ConfigLexer::extractTokens(const char* path)
 	std::ifstream configFile(path);
 
 	if (configFile.fail())
-		throw "cout not open file"; // todo: exception
+		throw FileReadException();
 	while (std::getline(configFile, line, '\n'))
 	{
 		pos.ln++;
@@ -67,11 +67,18 @@ TokenStream ConfigLexer::extractTokens(const char* path)
 		splitLineInTokens(ts, pos, line);
 	}
 	if (!configFile.eof())
-		throw; // todo: exception
+		throw FileReadException();
 	configFile.close();
-	Logger::log<LogLevel::trace>("ConfigLexer::extractTokens()\n", ts);
+	Logger::log<LogLevel::trace>("Lexer::extractTokens()\n", ts);
+	return (ts);
 }
 
 /* Basic Operators */
 
 /* Getters & Setters */
+
+/* Member Class */
+Lexer::FileReadException::FileReadException()
+	: std::runtime_error("File Read Exception")
+{
+}

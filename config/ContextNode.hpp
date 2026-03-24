@@ -25,7 +25,6 @@ struct ctxNode
 // server:   root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size, | return, | listen, server_name
 // location: root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, |                                                   | return, | allow_methods, upload_store
 
-
 class ContextNode {
 private:
 	ctxNode _rootNode;
@@ -50,7 +49,6 @@ public:
 
 	/* Getters & Setters */
 	const ctxNode& getRootNode() const;
-
 };
 
 std::ostream& operator<<(std::ostream& os, const ctxNodeIdent& ident);

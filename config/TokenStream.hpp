@@ -36,7 +36,7 @@ private:
 	token	tEnd = {};
 
 	/* Member Functions */
-	tType TokenStream::getType(const std::string& strToken);
+	tType getType(const std::string& strToken);
 
 public:
 	/* Constructors & Destructors */
@@ -51,6 +51,7 @@ public:
 	const token& getNextToken();
 	const std::string& getNextValue();
 	void expectToken(tType type);
+	void expectToken(const std::string value);
 	void reset();
 
 	/* Basic Operators */
@@ -60,6 +61,18 @@ public:
 	/* Getters & Setters */
 	const filePos& getPositon() const; //todo
 	const std::vector<token>& getRawTokens() const;
+
+	/* Member Class */
+	class UnexpectedTokenException : public std::exception
+	{
+	public:
+		virtual const char* what() const noexcept override;
+	};
+	class TokenStreamEndException : public std::exception
+	{
+	public:
+		virtual const char* what() const noexcept override;
+	};
 };
 
 std::ostream& operator<<(std::ostream& os, const TokenStream& ts);

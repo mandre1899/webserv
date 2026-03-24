@@ -4,7 +4,7 @@ CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR) -g  -fsanitize=addr
 VPATH = ./config:./server:./utils
 OBJECT_DIR = obj
 INCLUDE_DIR = ./
-SOURCES = main.cpp TcpSocket.cpp HttpServer.cpp Client.cpp ConfigParser.cpp webserv.cpp Config.cpp ConfigLexer.cpp
+SOURCES = main.cpp TcpSocket.cpp HttpServer.cpp Client.cpp webserv.cpp Config.cpp Lexer.cpp ContextNode.cpp TokenStream.cpp
 OBJS:= $(addprefix $(OBJECT_DIR)/, $(SOURCES:.cpp=.o))
 
 #   -fsanitize=address

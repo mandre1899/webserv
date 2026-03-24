@@ -9,19 +9,19 @@
 #include <fstream>
 #include <optional>
 #include <sstream>
+#include <bits/stdc++.h>
 #include "utils/Logger.hpp"
-#include "config/ConfigLexer.hpp"
+#include "config/Lexer.hpp"
 #include "config/ContextNode.hpp"
-#include "config/extrectValue.hpp"
 #include "config/configTypes.hpp"
 #include "utils/webserv.hpp"
+#include "config/ValueExtractor.hpp"
 
 class Config
 {
 private:
 	cfg::httpCtx _httpConf;
 	std::vector<cfg::serverCtx> _wsConfs;
-	std::unordered_map<std::string, void (Config::*)(ctxNodeIdent)> _dispatch; //todo
 
 	/* Member Functions */
 	void setHttpConfDefaults();
@@ -46,13 +46,12 @@ public:
 	Config& operator=(Config&& src) = delete;
 
 	/* Getters & Setters */
-	size_t getServerConfs(); //todo
 
 	/* Member Class */
-	class SyntaxError : public std::runtime_error
+	class SyntaxErrorException : public std::runtime_error
 	{
 	public:
-		SyntaxError(const std::string& message);
+		SyntaxErrorException(const std::string& message);
 	};
 };
 

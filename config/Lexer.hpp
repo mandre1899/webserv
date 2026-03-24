@@ -1,5 +1,5 @@
-#ifndef CONFIGLEXER_HPP
-#define CONFIGLEXER_HPP
+#ifndef LEXER_HPP
+#define LEXER_HPP
 
 #include <vector>
 #include <array>
@@ -8,7 +8,7 @@
 #include "TokenStream.hpp"
 #include "utils/Logger.hpp"
 
-class ConfigLexer {
+class Lexer {
 private:
 	/* Member Functions */
 	static bool isDelimiter(char c);
@@ -17,19 +17,27 @@ private:
 
 public:
 	/* Constructors & Destructors */
-	ConfigLexer() = delete;
-	ConfigLexer(const ConfigLexer& src) = delete;
-	ConfigLexer(ConfigLexer&& src) = delete;
-	~ConfigLexer() = delete;
+	Lexer() = delete;
+	Lexer(const Lexer& src) = delete;
+	Lexer(Lexer&& src) = delete;
+	~Lexer() = delete;
 
 	/* Member Functions */
 	static TokenStream extractTokens(const char* path);
 
 	/* Basic Operators */
-	ConfigLexer& operator=(const ConfigLexer& src) = delete;
-	ConfigLexer& operator=(ConfigLexer&& src) = delete;
+	Lexer& operator=(const Lexer& src) = delete;
+	Lexer& operator=(Lexer&& src) = delete;
 
 	/* Getters & Setters */
+
+	/* Member Class */
+	class FileReadException : public std::runtime_error
+	{
+	public:
+		FileReadException();
+	};
+
 };
 
-#endif // CONFIGLEXER_HPP
+#endif // LEXER_HPP
