@@ -11,6 +11,10 @@
 #define MEGA 1000000
 #define GIGA 100000000
 
+// http:     root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size  |
+// server:   root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size, | return, | listen, server_name
+// location: root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, |                                                   | return, | allow_methods, upload_store
+
 template<typename T>
 class ValueExtractor {
 private:
