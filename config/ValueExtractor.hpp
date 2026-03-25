@@ -63,61 +63,74 @@ private:
 		return value;
 	}
 
-	void _root(T& confStruct, TokenStream& tokens)
+	void _root(T& confStruct, TokenStream& ts)
 	{
-		confStruct.root = tokens.getNextToken().value;
-		tokens.expectToken(tType::semi);
+		confStruct.root = ts.getNextValue();
+		ts.expectToken(tType::semi);
 	}
 
-	void _index(T& confStruct, TokenStream& tokens)
+	void _index(T& confStruct, TokenStream& ts)
 	{
-		confStruct.index = tokens.getNextToken().value;
-		tokens.expectToken(tType::semi);
+		confStruct.index = ts.getNextValue();
+		ts.expectToken(tType::semi);
 	}
 
-	void _autoIndex(T& confStruct, TokenStream& tokens)
+	void _autoIndex(T& confStruct, TokenStream& ts)
 	{
-		confStruct.autoIndex = _isAutoIndex(tokens.getNextToken().value);
-		tokens.expectToken(tType::semi);
+		confStruct.autoIndex = _isAutoIndex(ts.getNextValue());
+		ts.expectToken(tType::semi);
 	}
 
-	void _errorPage(T& confStruct, TokenStream& tokens)
+	void _errorPage(T& confStruct, TokenStream& ts)
 	{
-		int code = std::stoi(tokens.getNextToken().value);
-		if (code > __SHRT_MAX__ || code < 0)
+		unsigned long nbr = _stoul(ts.getNextValue());
+		if (nbr > 999)
 			throw std::range_error("http code out of range"); // todo
-		confStruct.errorPage->code = static_cast<short>(code);
-		confStruct.errorPage->path = tokens.getNextToken().value;
-		tokens.expectToken(tType::semi);
+		confStruct.errorPage.emplace();
+		confStruct.errorPage->code = static_cast<short>(nbr);
+		confStruct.errorPage->path = ts.getNextValue();
+		ts.expectToken(tType::semi);
 	}
 
-	void _clientHeaderBufferSize(T& confStruct, TokenStream& tokens)
+	void _clientHeaderBufferSize(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientHeaderBufferSize = _siUnitToValue(tokens.getNextToken().value, false);
-		tokens.expectToken(tType::semi);
+		confStruct.clientHeaderBufferSize = _siUnitToValue(ts.getNextValue(), false);
+		ts.expectToken(tType::semi);
 	}
 
-	void _clientHeaderTimeout(T& confStruct, TokenStream& tokens)
+	void _clientHeaderTimeout(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientHeaderTimeout = _siUnitToValue(tokens.getNextToken().value, true);
-		tokens.expectToken(tType::semi);
+		confStruct.clientHeaderTimeout = _siUnitToValue(ts.getNextValue(), true);
+		ts.expectToken(tType::semi);
 	}
 
-	void _clientMaxBodySize(T& confStruct, TokenStream& tokens)
+	void _clientMaxBodySize(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientMaxBodySize = _siUnitToValue(tokens.getNextToken().value, false);
-		tokens.expectToken(tType::semi);
+		confStruct.clientMaxBodySize = _siUnitToValue(ts.getNextValue(), false);
+		ts.expectToken(tType::semi);
 	}
 
-	void _clientBodyTimeout(T& confStruct, TokenStream& tokens)
+	void _clientBodyTimeout(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientBodyTimeout = _siUnitToValue(tokens.getNextToken().value, true);
-		tokens.expectToken(tType::semi);
+		confStruct.clientBodyTimeout = _siUnitToValue(ts.getNextValue(), true);
+		ts.expectToken(tType::semi);
 	}
 
-	void _listen(T& confStruct, TokenStream& tokens)
+	void _cgiPath(T& confStruct, TokenStream& ts)
 	{
-		std::string tValue = tokens.getNextValue();
+		confStruct.cgiPath = ts.getNextValue();
+		ts.expectToken(tType::semi);
+	}
+
+	void _cgiIndex(T& confStruct, TokenStream& ts)
+	{
+		confStruct.cgiIndex = ts.getNextValue();
+		ts.expectToken(tType::semi);
+	}
+
+	void _listen(T& confStruct, TokenStream& ts)
+	{
+		std::string tValue = ts.getNextValue();
 		std::string ipStr = "0.0.0.0";
 		std::string portStr = tValue;
 		size_t pos = tValue.find(":");
@@ -139,21 +152,20 @@ private:
 		if (result == -1)
 			throw "system error accur, check errono";
 		confStruct.listen.address = addr.s_addr;
-		tokens.expectToken(tType::semi);
+		ts.expectToken(tType::semi);
 	}
 
-	void _serverName(T& confStruct, TokenStream& tokens)
+	void _serverName(T& confStruct, TokenStream& ts)
 	{
-		confStruct.serverName = tokens.getNextToken().value; // todo: servername validation
-		tokens.expectToken(tType::semi);
+		confStruct.serverName = ts.getNextValue(); // todo: servername validation
+		ts.expectToken(tType::semi);
 	}
 
-	void _allowMethods(T& confStruct, TokenStream& tokens)
+	void _allowMethods(T& confStruct, TokenStream& ts)
 	{
-		token token;
+		token token = ts.getNextToken();
 		while (token.type != tType::semi)
 		{
-			token = tokens.getNextToken();
 			if (token.value == "GET")
 				confStruct.allowMethods.isGet = true;
 			else if (token.value == "POST")
@@ -162,51 +174,91 @@ private:
 				confStruct.allowMethods.isDelete = true;
 			else
 				throw UnexpectedIdentifierException();
+			token = ts.getNextToken();
 		}
 	}
+
+	void _retConf(T& confStruct, TokenStream& ts)
+	{
+		unsigned long nbr = _stoul(ts.getNextValue());
+		if (nbr > 999)
+			throw std::range_error("http code out of range"); // todo
+		confStruct.retConf.emplace();
+		confStruct.retConf->code = static_cast<http_code>(nbr);
+		token t = ts.getNextToken();
+		if (t.type == tType::semi)
+			return;
+		confStruct.retConf->param = t.value;
+		ts.expectToken(tType::semi);
+	}
+
+	void _uploadStore(T& confStruct, TokenStream& ts)
+	{
+		confStruct.uploadStore = ts.getNextValue();
+		ts.expectToken(tType::semi);
+	}
+
 
 
 public:
 	/* Constructors & Destructors */
 	ValueExtractor()
 	{
-		_dispatch["root"] = [this](T& confStruct, TokenStream& tokens) {
-			_root(confStruct, tokens);
+		_dispatch["root"] = [this](T& confStruct, TokenStream& ts) {
+			_root(confStruct, ts);
 			};
-		_dispatch["index"] = [this](T& confStruct, TokenStream& tokens) {
-			_index(confStruct, tokens);
+		_dispatch["index"] = [this](T& confStruct, TokenStream& ts) {
+			_index(confStruct, ts);
 			};
-		_dispatch["autoindex"] = [this](T& confStruct, TokenStream& tokens) {
-			_autoIndex(confStruct, tokens);
+		_dispatch["autoindex"] = [this](T& confStruct, TokenStream& ts) {
+			_autoIndex(confStruct, ts);
 			};
-		_dispatch["error_page"] = [this](T& confStruct, TokenStream& tokens) {
-			_errorPage(confStruct, tokens);
+		_dispatch["error_page"] = [this](T& confStruct, TokenStream& ts) {
+			_errorPage(confStruct, ts);
 			};
-		_dispatch["client_header_buffer_size"] = [this](T& confStruct, TokenStream& tokens) {
-			_clientHeaderBufferSize(confStruct, tokens);
+		if constexpr (!std::is_same_v<cfg::locationCtx, T>)
+		{
+			_dispatch["client_header_buffer_size"] = [this](T& confStruct, TokenStream& ts) {
+				_clientHeaderBufferSize(confStruct, ts);
+				};
+			_dispatch["client_header_timeout"] = [this](T& confStruct, TokenStream& ts) {
+				_clientHeaderTimeout(confStruct, ts);
+				};
+		}
+		_dispatch["client_max_body_size"] = [this](T& confStruct, TokenStream& ts) {
+			_clientMaxBodySize(confStruct, ts);
 			};
-		_dispatch["client_header_timeout"] = [this](T& confStruct, TokenStream& tokens) {
-			_clientHeaderTimeout(confStruct, tokens);
+		_dispatch["client_body_timeout"] = [this](T& confStruct, TokenStream& ts) {
+			_clientBodyTimeout(confStruct, ts);
 			};
-		_dispatch["client_max_body_size"] = [this](T& confStruct, TokenStream& tokens) {
-			_clientMaxBodySize(confStruct, tokens);
+		_dispatch["cgi_path"] = [this](T& confStruct, TokenStream& ts) {
+			_cgiPath(confStruct, ts);
 			};
-		_dispatch["client_body_timeout"] = [this](T& confStruct, TokenStream& tokens) {
-			_clientBodyTimeout(confStruct, tokens);
+		_dispatch["cgi_index"] = [this](T& confStruct, TokenStream& ts) {
+			_cgiIndex(confStruct, ts);
 			};
+		if constexpr (std::is_same_v<cfg::serverCtx, T> || std::is_same_v<cfg::locationCtx, T>)
+		{
+			_dispatch["return"] = [this](T& confStruct, TokenStream& ts) {
+				_retConf(confStruct, ts);
+				};
+		}
 		if constexpr (std::is_same_v<cfg::serverCtx, T>)
 		{
-			_dispatch["listen"] = [this](T& confStruct, TokenStream& tokens) {
-				_listen(confStruct, tokens);
+			_dispatch["listen"] = [this](T& confStruct, TokenStream& ts) {
+				_listen(confStruct, ts);
 				};
-			_dispatch["server_name"] = [this](T& confStruct, TokenStream& tokens) {
-				_serverName(confStruct, tokens);
+			_dispatch["server_name"] = [this](T& confStruct, TokenStream& ts) {
+				_serverName(confStruct, ts);
 				};
 		}
 		if constexpr (std::is_same_v<cfg::locationCtx, T>)
 		{
-			_dispatch["allow_methods"] = [this](T& confStruct, TokenStream& tokens) {
-				_allowMethods(confStruct, tokens);
+			_dispatch["allow_methods"] = [this](T& confStruct, TokenStream& ts) {
+				_allowMethods(confStruct, ts);
+				};
+			_dispatch["upload_store"] = [this](T& confStruct, TokenStream& ts) {
+				_uploadStore(confStruct, ts);
 				};
 		}
 	}
@@ -216,12 +268,12 @@ public:
 	~ValueExtractor() = default;
 
 	/* Member Functions */
-	void setValue(const std::string& id, T& confStruct, TokenStream& tokens)
+	void setValue(const std::string& id, T& confStruct, TokenStream& ts)
 	{
 		auto it = _dispatch.find(id);
 		if (it == _dispatch.end())
 			throw UnexpectedIdentifierException();
-		_dispatch[id](confStruct, tokens);
+		_dispatch[id](confStruct, ts);
 	}
 
 	/* Basic Operators */

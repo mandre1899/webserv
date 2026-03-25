@@ -302,15 +302,15 @@ This `location` block configures Nginx to serve **PHP files** using **FastCGI** 
 
 ```nginx
 location /wordpress/ {
-    fastcgi_path unix:/run/php/php8.2-fpm.sock; # custom
-	fastcgi_index index.php;
+    cgi_path /bin/php; # custom
+	cgi_index index.php;
 }
 ```
 
 ### Explanation
 
-- `fastcgi_path unix:/run/php/php8.2-fpm.sock;` – Passes PHP requests to the PHP-FPM socket.  
-- `fastcgi_index index.php;` – Specifies the default index file for FastCGI requests.  
+- `cgi_path /bin/php;` – Passes PHP requests to the PHP executable.
+- `cgi_index index.php;` – Specifies the default index file for CGI requests.  
 
 This setup allows Nginx to process PHP files in `/wordpress/` correctly.
 

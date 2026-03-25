@@ -73,17 +73,17 @@ void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 {
 	std::string path;
 	cfg::locationCtx locConf;
-	TokenStream tmp = ctx.param;
+	TokenStream ts = ctx.param;
 	token t;
 	ValueExtractor<cfg::locationCtx> ext;
 
 	setLocationConfDefaults(locConf, serverCtx);
-	path = tmp.getNextToken().value;
-	t = tmp.getNextToken();
+	path = ts.getNextToken().value;
+	t = ts.getNextToken();
 	while (t.type != tType::end)
 	{
-		ext.setValue(t.value, locConf, tmp);
-		t = tmp.getNextToken();
+		ext.setValue(t.value, locConf, ts);
+		t = ts.getNextToken();
 	}
 	serverCtx.location.insert({ path, locConf });
 }
@@ -91,15 +91,15 @@ void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
 {
 	size_t childPos = 0;
-	TokenStream tmp(ctx.param);
+	TokenStream ts(ctx.param);
 	token t;
 	ValueExtractor<cfg::serverCtx> ext;
 
-	t = tmp.getNextToken();
+	t = ts.getNextToken();
 	while (t.type != tType::end)
 	{
-		ext.setValue(t.value, servConf, tmp);
-		t = tmp.getNextToken();
+		ext.setValue(t.value, servConf, ts);
+		t = ts.getNextToken();
 	}
 	while (childPos < ctx.child.size())
 	{
@@ -111,15 +111,15 @@ void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
 void Config::buildHttp(const ctxNode& ctx)
 {
 	size_t childPos = 0;
-	TokenStream tmp = ctx.param;
+	TokenStream ts = ctx.param;
 	token t;
 	ValueExtractor<cfg::httpCtx> ext;
 
-	t = tmp.getNextToken();
+	t = ts.getNextToken();
 	while (t.type != tType::end)
 	{
-		ext.setValue(t.value, _httpConf, tmp);
-		t = tmp.getNextToken();
+		ext.setValue(t.value, _httpConf, ts);
+		t = ts.getNextToken();
 	}
 	while (childPos < ctx.child.size())
 	{

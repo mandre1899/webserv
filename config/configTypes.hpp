@@ -32,7 +32,7 @@ namespace cfg
 
 	struct errorPageCfg
 	{
-		http_code code; // todo: overflow protection
+		http_code code;
 		std::string path;
 	};
 
@@ -43,10 +43,12 @@ namespace cfg
 		std::string index;
 		bool autoIndex;
 		std::optional<errorPageCfg>  errorPage;
-		size_t clientHeaderBufferSize; // todo: overflow protection
-		size_t clientHeaderTimeout;	// todo: oveerflow protection
-		size_t clientMaxBodySize; // todo: overflow protection
-		size_t clientBodyTimeout;	// todo: oveerflow protection
+		size_t clientHeaderBufferSize; 	// todo: oveerflow protection is programmt, but has to be tested
+		size_t clientHeaderTimeout;
+		size_t clientMaxBodySize;
+		size_t clientBodyTimeout;
+		std::string cgiPath;
+		std::string cgiIndex;
 	};
 
 	struct sharedCfg : public httpCtx
@@ -58,8 +60,6 @@ namespace cfg
 	struct locationCtx : public sharedCfg
 	{
 		std::string uploadStore;
-		std::string fastcgiPath;
-		std::string fastcgiIndex;
 		allowMethodsCfg allowMethods;
 	};
 
