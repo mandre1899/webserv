@@ -21,6 +21,7 @@ Config::Config(const char* path)
 	}
 	for (size_t i = 0; i < _wsConfs.size(); i++)
 	{
+		std::cout << _wsConfs[i].listen.port << std::endl;
 		std::cout << _wsConfs[i].root << std::endl;
 		std::cout << _wsConfs[i].index << std::endl;
 		for (size_t j = 0; j < _wsConfs[i].location.size(); j++)
@@ -81,8 +82,7 @@ void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 	t = tmp.getNextToken();
 	while (t.type != tType::end)
 	{
-		ext.setValue(t.value, locConf, ctxNodeIdent::location, tmp);
-		tmp.expectToken(tType::semi);
+		ext.setValue(t.value, locConf, tmp);
 		t = tmp.getNextToken();
 	}
 	serverCtx.location.insert({ path, locConf });
@@ -98,8 +98,7 @@ void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
 	t = tmp.getNextToken();
 	while (t.type != tType::end)
 	{
-		ext.setValue(t.value, servConf, ctxNodeIdent::server, tmp);
-		tmp.expectToken(tType::semi);
+		ext.setValue(t.value, servConf, tmp);
 		t = tmp.getNextToken();
 	}
 	while (childPos < ctx.child.size())
@@ -119,8 +118,7 @@ void Config::buildHttp(const ctxNode& ctx)
 	t = tmp.getNextToken();
 	while (t.type != tType::end)
 	{
-		ext.setValue(t.value, _httpConf, ctxNodeIdent::http, tmp);
-		tmp.expectToken(tType::semi);
+		ext.setValue(t.value, _httpConf, tmp);
 		t = tmp.getNextToken();
 	}
 	while (childPos < ctx.child.size())
