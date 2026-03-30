@@ -38,6 +38,12 @@ public:
 		FileReadException();
 	};
 
+	class EmptyFileException : public std::runtime_error
+	{
+	public:
+		EmptyFileException();
+	};
+
 };
 
 #endif // LEXER_HPP

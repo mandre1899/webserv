@@ -2,6 +2,7 @@
 #define VALUEEXTRACTOR_HPP
 
 #include <arpa/inet.h>
+#include <string>
 #include "configTypes.hpp"
 #include "TokenStream.hpp"
 #include "ContextNode.hpp"
@@ -23,30 +24,48 @@ private:
 	unsigned long _stoul(const std::string& str)
 	{
 		if (str.size() < 1)
-			throw "not a valid number"; // todo
+			throw std::runtime_error("Not a valid positive number");
 		size_t pos = 0;
-		unsigned long nbr = std::stoul(str, &pos);
+		unsigned long nbr;
+		try
+		{
+			nbr = std::stoul(str, &pos);
+		}
+		catch (const std::exception& e)
+		{
+			throw std::runtime_error("Not a valid positive number");
+		}
 		if (pos != str.size() || str[0] == '-')
-			throw "not a valid number"; // todo
+			throw std::runtime_error("Not a valid positive number");
 		return (nbr);
 	}
 
-	bool _isAutoIndex(const std::string& token)
+	bool _isAutoIndex(const token& token)
 	{
-		if (token == "on")
+		if (token.value == "on")
 			return true;
-		else if (token == "off")
+		else if (token.value == "off")
 			return false;
 		else
-			throw "not valid AutoIndex"; // todo
+			throw std::runtime_error(buildMsg("Not a valid AutoIndex", token.pos));
 	}
 
-	size_t _siUnitToValue(const std::string& str, bool isTime)
+	size_t _siUnitToValue(const token& token, bool isTime)
 	{
+		const std::string& str = token.value;
+
 		if (str.size() < 2)
-			throw "Unit is to small"; // todo
+			throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
 		char unit = str[str.size() - 1];
-		size_t value = _stoul(str.substr(0, str.size() - 1));
+		size_t value;
+		try
+		{
+			value = _stoul(str.substr(0, str.size() - 1));
+		}
+		catch (const std::exception& e)
+		{
+			throw std::runtime_error(buildMsg(e.what(), token.pos));
+		}
 		if (isTime && unit == 's')
 			return value;
 		switch (unit)
@@ -61,7 +80,7 @@ private:
 				value *= GIGA;
 				break;
 			default:
-				throw "not a valid unit"; // todo
+				throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
 				break;
 		}
 		return value;
@@ -81,15 +100,23 @@ private:
 
 	void _autoIndex(T& confStruct, TokenStream& ts)
 	{
-		confStruct.autoIndex = _isAutoIndex(ts.getNextValue());
+		confStruct.autoIndex = _isAutoIndex(ts.getNextToken());
 		ts.expectToken(tType::semi);
 	}
 
 	void _errorPage(T& confStruct, TokenStream& ts)
 	{
-		unsigned long nbr = _stoul(ts.getNextValue());
+		unsigned long nbr;
+		try
+		{
+			nbr = _stoul(ts.getNextValue());
+		}
+		catch (const std::exception& e)
+		{
+			throw std::runtime_error(buildMsg(e.what(), ts.getPositon()));
+		}
 		if (nbr > 999)
-			throw std::range_error("http code out of range"); // todo
+			throw std::range_error(buildMsg("The http code is out of range", ts.getPositon()));
 		confStruct.errorPage.emplace();
 		confStruct.errorPage->code = static_cast<short>(nbr);
 		confStruct.errorPage->path = ts.getNextValue();
@@ -98,25 +125,25 @@ private:
 
 	void _clientHeaderBufferSize(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientHeaderBufferSize = _siUnitToValue(ts.getNextValue(), false);
+		confStruct.clientHeaderBufferSize = _siUnitToValue(ts.getNextToken(), false);
 		ts.expectToken(tType::semi);
 	}
 
 	void _clientHeaderTimeout(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientHeaderTimeout = _siUnitToValue(ts.getNextValue(), true);
+		confStruct.clientHeaderTimeout = _siUnitToValue(ts.getNextToken(), true);
 		ts.expectToken(tType::semi);
 	}
 
 	void _clientMaxBodySize(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientMaxBodySize = _siUnitToValue(ts.getNextValue(), false);
+		confStruct.clientMaxBodySize = _siUnitToValue(ts.getNextToken(), false);
 		ts.expectToken(tType::semi);
 	}
 
 	void _clientBodyTimeout(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientBodyTimeout = _siUnitToValue(ts.getNextValue(), true);
+		confStruct.clientBodyTimeout = _siUnitToValue(ts.getNextToken(), true);
 		ts.expectToken(tType::semi);
 	}
 
@@ -144,17 +171,26 @@ private:
 			ipStr = tValue.substr(0, pos);
 			portStr = tValue.substr(pos + 1);
 		}
-		unsigned long nbr = _stoul(portStr);
+		unsigned long nbr;
+		try
+		{
+			nbr = _stoul(portStr);
+		}
+		catch (const std::exception& e)
+		{
+			throw std::runtime_error(buildMsg(e.what(), ts.getPositon()));
+		}
+
 		if (nbr > UINT16_MAX)
-			throw "port number is to big/not a valid port number";
+			throw std::range_error(buildMsg("This is not a valid port number.", ts.getPositon()));
 		confStruct.listen.port = static_cast<uint16_t>(nbr);
 
 		struct in_addr addr;
 		int result = inet_pton(AF_INET, ipStr.c_str(), &addr);
 		if (result == 0)
-			throw "not a valid ip address";
+			throw std::runtime_error(buildMsg("This is not a valid IP address", ts.getPositon()));
 		if (result == -1)
-			throw "system error accur, check errono";
+			throw std::runtime_error(buildMsg("A system error occurred while transforming the IP string into an in_addr", ts.getPositon()));
 		confStruct.listen.address = addr.s_addr;
 		ts.expectToken(tType::semi);
 	}
@@ -180,16 +216,24 @@ private:
 			else if (token.value == "DELETE")
 				confStruct.allowMethods.isDelete = true;
 			else
-				throw UnexpectedIdentifierException();
+				throw UnexpectedIdentifierException(ts.getPositon());
 			token = ts.getNextToken();
 		}
 	}
 
 	void _retConf(T& confStruct, TokenStream& ts)
 	{
-		unsigned long nbr = _stoul(ts.getNextValue());
+		unsigned long nbr;
+		try
+		{
+			nbr = _stoul(ts.getNextValue());
+		}
+		catch (const std::exception& e)
+		{
+			throw std::runtime_error(buildMsg(e.what(), ts.getPositon()));
+		}
 		if (nbr > 999)
-			throw std::range_error("http code out of range"); // todo
+			throw std::range_error(buildMsg("This is not a valid http code", ts.getPositon())); // todo
 		confStruct.retConf.emplace();
 		confStruct.retConf->code = static_cast<http_code>(nbr);
 		token t = ts.getNextToken();
@@ -279,7 +323,7 @@ public:
 	{
 		auto it = _dispatch.find(id);
 		if (it == _dispatch.end())
-			throw UnexpectedIdentifierException();
+			throw UnexpectedIdentifierException(ts.getPositon());
 		_dispatch[id](confStruct, ts);
 	}
 
@@ -290,15 +334,15 @@ public:
 	/* Getters & Setters */
 
 	/* Member Class */
-	class UnexpectedIdentifierException : public std::exception
+
+	class UnexpectedIdentifierException : public std::runtime_error
 	{
 	public:
-		virtual const char* what() const noexcept override
+		UnexpectedIdentifierException(const filePos& pos)
+			: std::runtime_error(buildMsg("Unexpected identifier", pos).c_str())
 		{
-			return ("Unexpected identifier.");
 		}
 	};
-
 };
 
 #endif // VALUEEXTRACTOR_HPP

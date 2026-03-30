@@ -61,7 +61,10 @@ const token& TokenStream::getNextToken()
 {
 	if (_tokenPos >= _tokens.size())
 	{
-		tEnd.pos.ln = _tokens[_tokenPos - 1].pos.ln;
+		if (_tokens.size() == 0)
+			tEnd.pos.ln = 0;
+		else
+			tEnd.pos.ln = _tokens[_tokenPos - 1].pos.ln;
 		return tEnd;
 	}
 	const token& tmp = _tokens[_tokenPos];
@@ -71,11 +74,9 @@ const token& TokenStream::getNextToken()
 
 const std::string& TokenStream::getNextValue()
 {
-	const token& tmp = _tokens[_tokenPos];
-	if (_tokenPos < (_tokens.size() - 1))
-		_tokenPos++;
-	else
-		throw TokenStreamEndException();
+	const token& tmp = getNextToken();
+	if (tmp.type != tType::value)
+		throw UnexpectedTokenException(this->getPositon());
 	return(tmp.value);
 }
 
@@ -83,7 +84,7 @@ void TokenStream::expectToken(tType type)
 {
 	if (this->getNextToken().type != type)
 	{
-		throw UnexpectedTokenException();
+		throw UnexpectedTokenException(this->getPositon());
 	}
 }
 
@@ -91,7 +92,7 @@ void TokenStream::expectToken(const std::string value)
 {
 	if (this->getNextToken().value != value)
 	{
-		throw UnexpectedTokenException();
+		throw UnexpectedTokenException(this->getPositon());
 	}
 }
 
@@ -125,10 +126,10 @@ TokenStream& TokenStream::operator=(TokenStream&& src)
 /* Getters & Setters */
 const filePos& TokenStream::getPositon() const
 {
-	if (_tokenPos >= _tokens.size())
-	{
+	if (_tokens.size() == 0)
+		return (tEnd.pos);
+	if (_tokenPos > 0)
 		return (_tokens[_tokenPos - 1].pos);
-	}
 	return(_tokens[_tokenPos].pos);
 }
 
@@ -138,19 +139,22 @@ const std::vector<token>& TokenStream::getRawTokens() const
 }
 
 /* Member Class */
-const char* TokenStream::UnexpectedTokenException::what() const noexcept
+
+TokenStream::UnexpectedTokenException::UnexpectedTokenException(const filePos& pos)
+	: std::runtime_error(buildMsg("Unexpected token", pos))
 {
-	return ("Unexpected token.");
 }
 
-const char* TokenStream::TokenStreamEndException::what() const noexcept
+TokenStream::TokenStreamEndException::TokenStreamEndException(const filePos& pos)
+	: std::runtime_error(buildMsg("Unexpected end of file", pos))
 {
-	return ("The token stream is at the end and cannot return a value.");
 }
 
 std::ostream& operator<<(std::ostream& os, const TokenStream& ts)
 {
 	const std::vector<token>& tokens = ts.getRawTokens();
+	if (tokens.size() == 0)
+		return (os);
 	for (size_t i = 0; i < (tokens.size() - 1); i++)
 	{
 		os << "\"" << tokens[i].value << "\", ";

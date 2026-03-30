@@ -20,18 +20,19 @@ int	main(int argc, char** argv)
 	}
 	try
 	{
+		Logger::log<LogLevel::info>("Processing the configuration...");
 		Config config(argv[1]);
+		Logger::log<LogLevel::info>("Configuration complete; ready for start up");
+		// HttpServer server;
+
+		// server.createSockets();
+		// while (true)
+		// 	server.run();
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << e.what() << '\n';
+		Logger::log<LogLevel::error>(e.what());
+		return (EXIT_FAILURE);
 	}
-
-
-	// HttpServer server;
-
-	// server.createSockets();
-	// while (true)
-	// 	server.run();
-	// return (EXIT_SUCCESS);
+	return (EXIT_SUCCESS);
 }

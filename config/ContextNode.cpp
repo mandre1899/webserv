@@ -3,15 +3,7 @@
 /* Constructors & Destructors */
 ContextNode::ContextNode(TokenStream& tokens)
 {
-	try
-	{
-		createCtx(tokens);
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << e.what() << " on line: " << tokens.getPositon().ln << std::endl;
-		throw TokenStream::UnexpectedTokenException();
-	}
+	createCtx(tokens);
 	Logger::log<LogLevel::trace>("ContextNode::ContextNode\n", _rootNode);
 }
 
@@ -72,7 +64,7 @@ void ContextNode::fillCtx(TokenStream& tokens, ctxNode& ctx)
 		}
 		token = tokens.getNextToken();
 	}
-	throw TokenStream::TokenStreamEndException();
+	throw TokenStream::UnexpectedTokenException(token.pos);
 }
 
 void ContextNode::createCtx(TokenStream& tokens)

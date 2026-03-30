@@ -3,23 +3,11 @@
 /* Constructors & Destructors */
 Config::Config(const char* path)
 {
-	try
-	{
-		TokenStream tokens = Lexer::extractTokens(path);
-		ContextNode node = ContextNode(tokens);
-		setHttpConfDefaults();
-		buildHttp(node.getRootNode());
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << e.what() << '\n';
-	}
-	catch (const char* msg)
-	{
-		std::cout << "Caught error: " << msg << std::endl;
-		throw SyntaxErrorException(msg);
-	}
-	Logger::log<LogLevel::trace>("Config::Config()\n", *this);
+	TokenStream tokens = Lexer::extractTokens(path);
+	ContextNode node = ContextNode(tokens);
+	setHttpConfDefaults();
+	buildHttp(node.getRootNode());
+	Logger::log<LogLevel::debug>("Config::Config()\n", *this);
 }
 
 Config::~Config()

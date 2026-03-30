@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include "configUtils.hpp"
 
 enum class tType
 {
@@ -13,12 +14,6 @@ enum class tType
 	semi,
 	undefined,
 	end
-};
-
-struct filePos
-{
-	size_t ln; // line
-	size_t col; // column
 };
 
 struct token
@@ -63,15 +58,17 @@ public:
 	const std::vector<token>& getRawTokens() const;
 
 	/* Member Class */
-	class UnexpectedTokenException : public std::exception
+	class UnexpectedTokenException : public std::runtime_error
 	{
 	public:
-		virtual const char* what() const noexcept override;
+		UnexpectedTokenException(const filePos& pos);
+
 	};
-	class TokenStreamEndException : public std::exception
+	class TokenStreamEndException : public std::runtime_error
 	{
 	public:
-		virtual const char* what() const noexcept override;
+		TokenStreamEndException(const filePos& pos);
+
 	};
 };
 

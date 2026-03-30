@@ -23,6 +23,7 @@ void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) 
 {
 	std::stringstream ss(line);
 	std::string tokenStr;
+	size_t colPos = 0;
 
 	while (ss >> tokenStr)
 	{
@@ -33,7 +34,13 @@ void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) 
 			{
 				std::string tmp = tokenStr.substr(lastSplit, (i - lastSplit));
 				if (tmp != "")
+				{
+					pos.col = colPos + lastSplit;
+					std::cout << "1" << tmp << pos.col << std::endl;
 					ts.push_back(tmp, pos);
+				}
+				pos.col = colPos + i;
+				std::cout << "2" << tokenStr.substr(i, 1) << pos.col << std::endl;
 				ts.push_back(tokenStr.substr(i, 1), pos);
 				lastSplit = i + 1;
 			}
@@ -41,13 +48,24 @@ void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) 
 		if (tokenStr == "")
 			continue;
 		if (lastSplit == 0)
+		{
+			pos.col = colPos;
+			std::cout << "3" << tokenStr << pos.col << std::endl;
 			ts.push_back(tokenStr, pos);
+		}
 		if (lastSplit != 0)
 		{
 			std::string tmp = tokenStr.substr(lastSplit);
 			if (tmp != "")
+			{
+				pos.col = colPos + lastSplit;
+				std::cout << "4" << tmp << pos.col << std::endl;
 				ts.push_back(tmp, pos);
+			}
 		}
+		std::streamoff ssPos = ss.tellg();
+		if (ssPos != -1)
+			colPos = ssPos + 1;
 	}
 }
 
@@ -58,6 +76,7 @@ TokenStream Lexer::extractTokens(const char* path)
 	std::string line;
 	std::ifstream configFile(path);
 
+	pos.path = path;
 	if (configFile.fail())
 		throw FileReadException();
 	while (std::getline(configFile, line, '\n'))
@@ -69,6 +88,8 @@ TokenStream Lexer::extractTokens(const char* path)
 	if (!configFile.eof())
 		throw FileReadException();
 	configFile.close();
+	if (pos.ln == 0)
+		throw EmptyFileException();
 	Logger::log<LogLevel::trace>("Lexer::extractTokens()\n", ts);
 	return (ts);
 }
@@ -79,6 +100,11 @@ TokenStream Lexer::extractTokens(const char* path)
 
 /* Member Class */
 Lexer::FileReadException::FileReadException()
-	: std::runtime_error("File Read Exception")
+	: std::runtime_error("The file is unreadable. Please check the file permissions and confirm that the file exists.")
+{
+}
+
+Lexer::EmptyFileException::EmptyFileException()
+	: std::runtime_error("The configuration file is empty.")
 {
 }
