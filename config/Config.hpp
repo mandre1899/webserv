@@ -40,6 +40,8 @@ public:
 	~Config();
 
 	/* Member Functions */
+	const cfg::serverCtx& at(size_t idx) const;
+	size_t size() const;
 
 	/* Basic Operators */
 	Config& operator=(const Config& src) = delete;
@@ -54,5 +56,7 @@ public:
 		SyntaxErrorException(const std::string& message);
 	};
 };
+
+std::ostream& operator<<(std::ostream& os, const Config& src);
 
 #endif // CONFIG_HPP

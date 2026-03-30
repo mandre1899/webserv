@@ -168,6 +168,9 @@ private:
 	void _allowMethods(T& confStruct, TokenStream& ts)
 	{
 		token token = ts.getNextToken();
+		confStruct.allowMethods.isGet = false;
+		confStruct.allowMethods.isPost = false;
+		confStruct.allowMethods.isDelete = false;
 		while (token.type != tType::semi)
 		{
 			if (token.value == "GET")
