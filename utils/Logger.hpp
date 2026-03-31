@@ -4,7 +4,6 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
-#include "utils/webserv.hpp"
 
 enum class LogLevel {
 	trace,

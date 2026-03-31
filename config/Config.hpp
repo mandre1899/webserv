@@ -14,7 +14,6 @@
 #include "config/Lexer.hpp"
 #include "config/ContextNode.hpp"
 #include "config/configTypes.hpp"
-#include "utils/webserv.hpp"
 #include "config/ValueExtractor.hpp"
 
 class Config
