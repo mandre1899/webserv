@@ -5,7 +5,7 @@ Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clie
 {
 	(void)_serverFd;
 	(void)_clientFd;
-	_status = RECIVE;
+	_status = Status::close;
 	_msg = "";
 	_parsingState = parsing_state::request_line;
 }
@@ -21,7 +21,7 @@ Client::Client(Client&& src) noexcept
 	src._serverFd = -1;
 	src._clientFd = -1;
 	src._msg = "";
-	src._status = CLOSE;
+	src._status = Status::close;
 	src._parsingState = parsing_state::error;
 
 }
@@ -76,7 +76,7 @@ short Client::recvData()
 	}
 	if (_parsingState == parsing_state::done)
 	{
-		Logger::log<LogLevel::TRACE>("Client::recvData() - received client msg: \n---\n", _msg, "---");
+		Logger::log<LogLevel::trace>("Client::recvData() - received client msg: \n---\n", _msg, "---");
 		//sendData();
 		return (POLLOUT);
 	}
@@ -89,7 +89,7 @@ short Client::sendData()
 {
 	const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n<html><h1>Hello from WebServ!</h1></html>";
 	int ret = send(_clientFd, message, 81, 0);
-	Logger::log<LogLevel::TRACE>("Client::sendData() - send return value ist: ", ret);
+	Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
 	return (POLLHUP);
 }
 

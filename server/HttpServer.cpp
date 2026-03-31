@@ -18,7 +18,7 @@ void HttpServer::addClient(int serverFd, int clientFd)
 	pollFd.fd = clientFd;
 	pollFd.events = POLLIN;
 	_pfd.push_back(pollFd);
-	Logger::log<LogLevel::DEBUG>("HttpServer::addClient() - Client added with FD ", clientFd);
+	Logger::log<LogLevel::debug>("HttpServer::addClient() - Client added with FD ", clientFd);
 }
 
 void HttpServer::removeClient(int clientFd)
@@ -31,7 +31,7 @@ void HttpServer::removeClient(int clientFd)
 			_pfd.erase(_pfd.begin() + i);
 		}
 	}
-	Logger::log<LogLevel::DEBUG>("HttpServer::removeClient - Removed client with FD ", clientFd);
+	Logger::log<LogLevel::debug>("HttpServer::removeClient - Removed client with FD ", clientFd);
 }
 
 void HttpServer::createSockets()
@@ -43,11 +43,11 @@ void HttpServer::createSockets()
 	{
 		struct pollfd pollFd;
 
-		_socket.push_back(TcpSocket(INADDR_ANY, socketPort[i]));
-		pollFd.fd = _socket[i].getSocketFd();
+		_serverSockets.push_back(TcpSocket(INADDR_ANY, socketPort[i]));
+		pollFd.fd = _serverSockets[i].getSocketFd();
 		pollFd.events = POLLIN;
 		_pfd.push_back(pollFd);
-		Logger::log<LogLevel::TRACE>("HttpServer::createSockets() - Socket created with FD ", pollFd.fd);
+		Logger::log<LogLevel::trace>("HttpServer::createSockets() - Socket created with FD ", pollFd.fd);
 	}
 }
 
@@ -58,11 +58,11 @@ void HttpServer::run()
 	(void)ret; // TODO: optimise speed
 	for (size_t i = 0; i < pfdSize; i++)
 	{
-		if (i < _socket.size()) // if (serverSocket)...
+		if (i < _serverSockets.size()) // if (serverSocket)...
 		{
 			if (_pfd[i].revents & POLLIN)
 			{
-				addClient(_pfd[i].fd, _socket[i].acceptClient());
+				addClient(_pfd[i].fd, _serverSockets[i].acceptClient());
 			}
 		}
 		else // if (clientSocket)...

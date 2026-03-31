@@ -4,14 +4,14 @@
 #include <string>
 #include <map>
 #include <vector>
-#include <Client.hpp>
-#include <TcpSocket.hpp>
 #include <sys/poll.h>
-#include <Logger.hpp>
+#include "server/Client.hpp"
+#include "server/TcpSocket.hpp"
+#include "utils/Logger.hpp"
 
 class HttpServer {
 private:
-	std::vector<TcpSocket> _socket{};
+	std::vector<TcpSocket> _serverSockets{};
 	std::map<int, Client> _clientMap{};
 	std::vector<struct pollfd> _pfd{};
 
