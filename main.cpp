@@ -22,11 +22,11 @@ int	main(int argc, char** argv)
 		Logger::log<LogLevel::info>("Processing the configuration...");
 		Config config(argv[1]);
 		Logger::log<LogLevel::info>("Configuration complete; ready for start up");
-		// HttpServer server;
+		HttpServer server;
 
-		// server.createSockets();
-		// while (true)
-		// 	server.run();
+		server.createSockets();
+		while (true)
+			server.run();
 	}
 	catch (const std::exception& e)
 	{
