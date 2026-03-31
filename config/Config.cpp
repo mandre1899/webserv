@@ -114,12 +114,10 @@ const cfg::serverCtx& Config::at(size_t idx) const
 	return (_wsConfs.at(idx));
 }
 
-
 size_t Config::size() const
 {
 	return (_wsConfs.size());
 }
-
 
 /* Basic Operators */
 

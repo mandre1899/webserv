@@ -54,7 +54,7 @@ public:
 	TokenStream& operator=(TokenStream&& src);
 
 	/* Getters & Setters */
-	const filePos& getPositon() const; //todo
+	const filePos& getPositon() const;
 	const std::vector<token>& getRawTokens() const;
 
 	/* Member Class */

@@ -19,12 +19,12 @@
 template<typename T>
 class ValueExtractor {
 private:
-	std::unordered_map<std::string, std::function<void(T&, TokenStream&)>> _dispatch; //todo
+	std::unordered_map<std::string, std::function<void(T&, TokenStream&)>> _dispatch;
 
 	unsigned long _stoul(const std::string& str)
 	{
 		if (str.size() < 1)
-			throw std::runtime_error("Not a valid positive number");
+			throw std::runtime_error(" This is not a valid positive number, or the number is too large.");
 		size_t pos = 0;
 		unsigned long nbr;
 		try
@@ -33,10 +33,10 @@ private:
 		}
 		catch (const std::exception& e)
 		{
-			throw std::runtime_error("Not a valid positive number");
+			throw std::runtime_error(" This is not a valid positive number, or the number is too large.");
 		}
 		if (pos != str.size() || str[0] == '-')
-			throw std::runtime_error("Not a valid positive number");
+			throw std::runtime_error(" This is not a valid positive number, or the number is too large.");
 		return (nbr);
 	}
 
@@ -197,7 +197,7 @@ private:
 
 	void _serverName(T& confStruct, TokenStream& ts)
 	{
-		confStruct.serverName = ts.getNextValue(); // todo: servername validation
+		confStruct.serverName = ts.getNextValue();
 		ts.expectToken(tType::semi);
 	}
 
@@ -233,7 +233,7 @@ private:
 			throw std::runtime_error(buildMsg(e.what(), ts.getPositon()));
 		}
 		if (nbr > 999)
-			throw std::range_error(buildMsg("This is not a valid http code", ts.getPositon())); // todo
+			throw std::range_error(buildMsg("This is not a valid http code", ts.getPositon()));
 		confStruct.retConf.emplace();
 		confStruct.retConf->code = static_cast<http_code>(nbr);
 		token t = ts.getNextToken();

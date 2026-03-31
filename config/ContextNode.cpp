@@ -64,7 +64,7 @@ void ContextNode::fillCtx(TokenStream& tokens, ctxNode& ctx)
 		}
 		token = tokens.getNextToken();
 	}
-	throw TokenStream::UnexpectedTokenException(token.pos);
+	throw TokenStream::TokenStreamEndException(token.pos);
 }
 
 void ContextNode::createCtx(TokenStream& tokens)
@@ -73,6 +73,7 @@ void ContextNode::createCtx(TokenStream& tokens)
 	_rootNode.conIdent = ctxNodeIdent::http;
 	tokens.expectToken(tType::lBrace);
 	fillCtx(tokens, _rootNode);
+	tokens.expectToken(tType::end);
 }
 
 /* Basic Operators */

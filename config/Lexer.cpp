@@ -19,7 +19,7 @@ void Lexer::removeComment(std::string& line)
 	}
 }
 
-void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) // todo:: count pos.col
+void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line)
 {
 	std::stringstream ss(line);
 	std::string tokenStr;
@@ -27,6 +27,11 @@ void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) 
 
 	while (ss >> tokenStr)
 	{
+		std::streamoff ssPos = ss.tellg();
+		if (ssPos != -1)
+			colPos = static_cast<size_t>(ssPos) + 1 - tokenStr.size();
+		else
+			colPos = line.size() + 1 - tokenStr.size();
 		size_t lastSplit = 0;
 		for (size_t i = 0; i < tokenStr.size(); i++)
 		{
@@ -36,11 +41,9 @@ void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) 
 				if (tmp != "")
 				{
 					pos.col = colPos + lastSplit;
-					std::cout << "1" << tmp << pos.col << std::endl;
 					ts.push_back(tmp, pos);
 				}
 				pos.col = colPos + i;
-				std::cout << "2" << tokenStr.substr(i, 1) << pos.col << std::endl;
 				ts.push_back(tokenStr.substr(i, 1), pos);
 				lastSplit = i + 1;
 			}
@@ -50,7 +53,6 @@ void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) 
 		if (lastSplit == 0)
 		{
 			pos.col = colPos;
-			std::cout << "3" << tokenStr << pos.col << std::endl;
 			ts.push_back(tokenStr, pos);
 		}
 		if (lastSplit != 0)
@@ -59,13 +61,9 @@ void Lexer::splitLineInTokens(TokenStream& ts, filePos& pos, std::string& line) 
 			if (tmp != "")
 			{
 				pos.col = colPos + lastSplit;
-				std::cout << "4" << tmp << pos.col << std::endl;
 				ts.push_back(tmp, pos);
 			}
 		}
-		std::streamoff ssPos = ss.tellg();
-		if (ssPos != -1)
-			colPos = ssPos + 1;
 	}
 }
 

@@ -64,7 +64,10 @@ const token& TokenStream::getNextToken()
 		if (_tokens.size() == 0)
 			tEnd.pos.ln = 0;
 		else
-			tEnd.pos.ln = _tokens[_tokenPos - 1].pos.ln;
+		{
+			tEnd.pos = _tokens[_tokenPos - 1].pos;
+			tEnd.pos.col += _tokens[_tokenPos - 1].value.size();
+		}
 		return tEnd;
 	}
 	const token& tmp = _tokens[_tokenPos];

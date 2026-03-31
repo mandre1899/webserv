@@ -43,7 +43,7 @@ namespace cfg
 		std::string index;
 		bool autoIndex;
 		std::optional<errorPageCfg>  errorPage;
-		size_t clientHeaderBufferSize; 	// todo: oveerflow protection is programmt, but has to be tested
+		size_t clientHeaderBufferSize;
 		size_t clientHeaderTimeout;
 		size_t clientMaxBodySize;
 		size_t clientBodyTimeout;
