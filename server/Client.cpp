@@ -68,11 +68,13 @@ short Client::recvData()
 		}
 		_msg.erase(0, pos + 2);
 	}
-	if (_parsedHttp.getMethod() == method_type::DELETE || _parsedHttp.getMethod() == method_type::GET)
+	if ((_parsedHttp.getMethod() == method_type::DELETE || _parsedHttp.getMethod() == method_type::GET) && _parsingState == parsing_state::body)
 		_parsingState = parsing_state::done;
-	else
+	else if (_parsingState == parsing_state::body)
 	{
 		_parsedHttp.parseBody(_msg);
+		if (_msg.size() >= 4 && _msg.compare(_msg.size() - 4, 4, "\r\n\r\n") == 0)
+			_parsingState = parsing_state::done;
 	}
 	if (_parsingState == parsing_state::done)
 	{

@@ -6,11 +6,12 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/02/25 16:59:39 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/03/31 14:16:36 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HttpParser.hpp"
+#include <fstream>
 
 /* Constructors & Destructors */
 HttpParser::HttpParser()
@@ -51,17 +52,16 @@ void HttpParser::parseRequestLine(std::string& line)
 		throw HttpParsingError();
 
 	getline(ss, temp, del);
-	if (temp != "HTTP/1.1")
+	if (!(temp == "HTTP/1.1" || temp == "HTTP/1.0"))
 		throw HttpParsingError();
 	_http_version = temp;
-
-	if (!ss.eof()) //extra space seems okay tho ...
+	if (!ss.eof()) //extra space seems okay tho ... so trim space at end
 	{
 		throw HttpParsingError();
 	}
 }
 
-inline void trim(std::string& s)
+static void trim(std::string& s)
 {
 	auto start = s.find_first_not_of(" \t\r\n");
 	auto end = s.find_last_not_of(" \t\r\n");
@@ -91,11 +91,36 @@ void HttpParser::parseHeaders(std::string& line)
 	_headers_map.insert(std::pair<std::string, std::string>{key, value});
 }
 
-void HttpParser::parseBody(std::string& line)
+bool is_number(const std::string& s)
 {
-	(void)line;
+	std::string::const_iterator it = s.begin();
+	while (it != s.end() && std::isdigit(*it))
+		++it;
+	return !s.empty() && it == s.end();
 }
 
+
+void HttpParser::parseBody(std::string& line)
+{
+	static int bytes_read = 0;
+	if (!((_headers_map.find("Content-Length") != _headers_map.end()) != (_headers_map.find("Transfer-Encoding") != _headers_map.end())))
+		throw HttpParsingError();
+
+	std::ofstream	ofs("test");
+	if (!ofs)
+	{
+		std::cerr << "failed to establish outstream" << std::endl;
+	}
+	if (auto search = _headers_map.find("Content-Length"); is_number(search->second))
+	{
+		while (search->second > bytes_read)
+		{
+			ofs << line;
+			bytes_read += sizeof(line);
+		}
+	}
+	ofs.close();
+}
 
 const char* HttpParser::HttpParsingError::what() const noexcept
 {
