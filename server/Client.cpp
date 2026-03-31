@@ -41,7 +41,6 @@ short Client::recvData()
 	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
 	if (ret == -1)
 		return (POLLHUP); // evt. throw exception
-	std::cout << "recevied" << buffer << std::endl;
 	_msg.append(buffer, ret);
 	while (_parsingState == parsing_state::request_line || _parsingState == parsing_state::headers)
 	{
@@ -58,7 +57,7 @@ short Client::recvData()
 		{
 			if (line.empty())
 			{
-				Logger::log<LogLevel::TRACE>(this->_parsedHttp);
+				Logger::log<LogLevel::trace>(this->_parsedHttp);
 				_msg.erase(0, pos + 2);
 				_parsingState = parsing_state::body;
 				std::cout << "reached body parsing" << std::endl;
@@ -72,16 +71,13 @@ short Client::recvData()
 		_parsingState = parsing_state::done;
 	else if (_parsingState == parsing_state::body)
 	{
-		_parsedHttp.parseBody(_msg);
-		if (_msg.size() >= 4 && _msg.compare(_msg.size() - 4, 4, "\r\n\r\n") == 0)
+		std::cout << this->_parsedHttp << std::endl;
+		if (_parsedHttp.parseBody(_msg))
 			_parsingState = parsing_state::done;
+		_msg.erase();
 	}
 	if (_parsingState == parsing_state::done)
-	{
-		Logger::log<LogLevel::trace>("Client::recvData() - received client msg: \n---\n", _msg, "---");
-		//sendData();
 		return (POLLOUT);
-	}
 	if (ret == 0)
 		return (POLLHUP);
 	return (POLLIN);

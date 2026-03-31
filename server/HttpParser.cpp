@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/03/31 14:16:36 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/03/31 16:52:07 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,36 +91,44 @@ void HttpParser::parseHeaders(std::string& line)
 	_headers_map.insert(std::pair<std::string, std::string>{key, value});
 }
 
-bool is_number(const std::string& s)
+void is_number(const std::string& s)
 {
 	std::string::const_iterator it = s.begin();
 	while (it != s.end() && std::isdigit(*it))
 		++it;
-	return !s.empty() && it == s.end();
+	if (!s.empty() && it == s.end())
+		return;
+	throw HttpParser::HttpParsingError();
 }
 
 
-void HttpParser::parseBody(std::string& line)
+bool HttpParser::parseBody(std::string& line)
 {
-	static int bytes_read = 0;
+	static unsigned long bytes_read = 0;
+
 	if (!((_headers_map.find("Content-Length") != _headers_map.end()) != (_headers_map.find("Transfer-Encoding") != _headers_map.end())))
 		throw HttpParsingError();
-
-	std::ofstream	ofs("test");
+	std::ofstream ofs("test", std::ios_base::app);
 	if (!ofs)
 	{
 		std::cerr << "failed to establish outstream" << std::endl;
 	}
-	if (auto search = _headers_map.find("Content-Length"); is_number(search->second))
-	{
-		while (search->second > bytes_read)
-		{
-			ofs << line;
-			bytes_read += sizeof(line);
-		}
-	}
+	auto search = _headers_map.find("Content-Length");
+	is_number(search->second);
+	std::cout << "Bytes read" << bytes_read << "\n" << "Contect-Length second" << search->second << "\n" << "second to usigned long" << std::stoul(search->second) << std::endl;
+	bytes_read += line.size();
+	if (bytes_read > std::stoul(search->second))
+		throw HttpParser::HttpParsingError();
+	std::cout << line << std::endl;
+	ofs << line;
 	ofs.close();
+	if (bytes_read == std::stoul(search->second))
+		return true;
+	return false;
 }
+
+// curl -X POST http://localhost:8085/upload \
+//   -F "myfile=@./test.txt"
 
 const char* HttpParser::HttpParsingError::what() const noexcept
 {

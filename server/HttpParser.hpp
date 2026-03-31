@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/02/25 16:50:06 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/03/31 16:10:24 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,7 @@
 #include <sstream>
 #include <map>
 #include <iostream>
-#include "Logger.hpp"
+#include "utils/Logger.hpp"
 
 enum class method_type
 {
@@ -45,7 +45,7 @@ public:
 	/* Member Functions */
 	void parseRequestLine(std::string& line);
 	void parseHeaders(std::string& line);
-	void parseBody(std::string& data);
+	bool parseBody(std::string& data);
 	class HttpParsingError : public std::exception {
 	public:
 		const char* what() const noexcept override;
