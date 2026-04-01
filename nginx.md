@@ -11,6 +11,13 @@ You can specify:
 - Both address **and** port
 - Only the port (**Default address:** `0.0.0.0`)
 
+
+**Default:**
+
+```
+0.0.0.0:80
+```
+
 **Syntax:**
 
 ```

@@ -14,7 +14,7 @@ namespace cfg
 	struct socketCfg
 	{
 		in_addr_t address;
-		uint16_t port;
+		uint16_t port = 80;
 	};
 
 	struct returnCfg

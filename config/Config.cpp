@@ -7,6 +7,7 @@ Config::Config(const char* path)
 	ContextNode node = ContextNode(tokens);
 	setHttpConfDefaults();
 	buildHttp(node.getRootNode());
+	checkConfig(path);
 	Logger::log<LogLevel::debug>("Config::Config()\n", *this);
 }
 
@@ -58,7 +59,7 @@ void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 	ValueExtractor<cfg::locationCtx> ext;
 
 	setLocationConfDefaults(locConf, serverCtx);
-	path = ts.getNextToken().value; 
+	path = ts.getNextToken().value;
 	locationPos = ts.getPositon();
 	t = ts.getNextToken();
 	while (t.type != tType::end)
@@ -110,6 +111,20 @@ void Config::buildHttp(const ctxNode& ctx)
 		setServerConfDefaults(servConf);
 		buildServer(ctx.child[childPos], servConf);
 		childPos++;
+	}
+}
+
+void Config::checkConfig(const char* path)
+{
+	std::set<std::string> srvIdent;
+
+	for (size_t i = 0; i < this->size(); i++)
+	{
+		cfg::serverCtx ctx = this->at(i);
+		std::string id = std::to_string(ctx.listen.address) + std::to_string(ctx.listen.port) + ctx.serverName;
+		auto it = srvIdent.insert(id);
+		if (!it.second)
+			throw std::runtime_error("Conflicting server name/address " + std::string(path));
 	}
 }
 
