@@ -189,7 +189,7 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 		if (!ctx.location.empty())
 		{
 			os << "location: ";
-			for (std::map<std::string, cfg::locationCtx>::const_iterator it = ctx.location.begin(); it != ctx.location.end(); ++it)
+			for (std::unordered_map<std::string, cfg::locationCtx>::const_iterator it = ctx.location.begin(); it != ctx.location.end(); ++it)
 			{
 				os << "\n   path: " << it->first << std::endl;
 				const cfg::locationCtx& loc = it->second;

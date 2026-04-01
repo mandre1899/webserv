@@ -2,7 +2,7 @@
 #define HTTPSERVER_HPP
 
 #include <string>
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include <sys/poll.h>
 #include "server/Client.hpp"
@@ -12,7 +12,7 @@
 class HttpServer {
 private:
 	std::vector<TcpSocket> _serverSockets{};
-	std::map<int, Client> _clientMap{};
+	std::unordered_map<int, Client> _clientMap{};
 	std::vector<struct pollfd> _pfd{};
 
 	/* Member Functions */
