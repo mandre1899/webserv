@@ -51,20 +51,24 @@ void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::serverCtx& 
 void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 {
 	std::string path;
+	filePos locationPos;
 	cfg::locationCtx locConf;
 	TokenStream ts = ctx.param;
 	token t;
 	ValueExtractor<cfg::locationCtx> ext;
 
 	setLocationConfDefaults(locConf, serverCtx);
-	path = ts.getNextToken().value;
+	path = ts.getNextToken().value; 
+	locationPos = ts.getPositon();
 	t = ts.getNextToken();
 	while (t.type != tType::end)
 	{
 		ext.setValue(t.value, locConf, ts);
 		t = ts.getNextToken();
 	}
-	serverCtx.location.insert({ path, locConf });
+	auto it = serverCtx.location.insert({ path, locConf });
+	if (!it.second)
+		throw std::runtime_error(buildMsg("Duplicate location \"" + path + "\"", locationPos));;
 }
 
 void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
