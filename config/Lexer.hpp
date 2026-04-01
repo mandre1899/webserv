@@ -5,6 +5,7 @@
 #include <array>
 #include <string>
 #include <fstream>
+#include <sstream>
 #include "TokenStream.hpp"
 #include "utils/Logger.hpp"
 
