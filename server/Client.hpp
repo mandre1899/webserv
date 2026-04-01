@@ -4,7 +4,7 @@
 #include <string>
 #include <sys/socket.h> 
 #include <iostream>
-#include <sys/poll.h>
+#include <sys/epoll.h> 
 #include <unistd.h>
 #include "config/configTypes.hpp"
 #include "utils/Logger.hpp"
@@ -25,8 +25,8 @@ private:
 	const cfg::srvCtxCfg& _srvCfg;
 
 	/* Member Functions */
-	short recvData();
-	short sendData();
+	uint32_t recvData();
+	uint32_t sendData();
 
 public:
 	/* Constructors & Destructors */
@@ -37,7 +37,7 @@ public:
 	~Client();
 
 	/* Member Functions */
-	short handleConnection(short revents);
+	uint32_t handleConnection(uint32_t event);
 
 	/* Basic Operators */
 	Client& operator=(const Client& src) = delete;

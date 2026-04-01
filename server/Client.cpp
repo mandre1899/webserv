@@ -3,8 +3,6 @@
 /* Constructors & Destructors */
 Client::Client(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _srvCfg(srvCfg)
 {
-	(void)_serverFd;
-	(void)_clientFd;
 	_status = Status::close;
 	_msg = "";
 }
@@ -27,14 +25,14 @@ Client::~Client()
 }
 
 /* Member Functions */
-short Client::recvData()
+uint32_t Client::recvData()
 {
 	char buffer[20] = {};
 	int ret;
 
 	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
 	if (ret == -1)
-		return (POLLHUP); // evt. throw exception
+		return (EPOLLHUP); // evt. throw exception
 	_msg.append(buffer, ret);
 	std::string end = _msg.substr((_msg.length() - 4));
 	if (end == "\r\n\r\n")
@@ -43,35 +41,34 @@ short Client::recvData()
 		sendData();
 	}
 	if (ret == 0)
-		return (POLLHUP);
-	return (POLLIN);
+		return (EPOLLHUP);
+	return (EPOLLIN);
 }
 
-short Client::sendData()
+uint32_t Client::sendData()
 {
 	const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n<html><h1>Hello from WebServ!</h1></html>";
 	int ret = send(_clientFd, message, 81, 0);
 	Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
-	return (POLLHUP);
+	return (EPOLLHUP);
 }
 
-short Client::handleConnection(short revents)
+uint32_t Client::handleConnection(uint32_t event)
 {
-	if (revents & POLLIN)
+	if (event & EPOLLIN)
 		return (recvData());
-	if (revents & POLLPRI)
-		throw "Unexpectet call";
-	if (revents & POLLOUT)
+	if (event & EPOLLPRI)
+		throw "Unexpectet call"; //todo
+	if (event & EPOLLOUT)
 		return (sendData());
-	if (revents & POLLRDHUP)
+	if (event & EPOLLRDHUP)
 		throw "Unexpectet call";
-	if (revents & POLLERR)
+	if (event & EPOLLERR)
 		throw "Unexpectet call";
-	if (revents & POLLHUP)
-		return (POLLHUP);
-	if (revents & POLLNVAL)
-		throw "Unexpectet call";
-	return (POLLHUP);
+	if (event & EPOLLHUP)
+		return (EPOLLHUP);
+	// todo add all epoll events
+	return (EPOLLHUP);
 }
 
 /* Basic Operators */
