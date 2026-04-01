@@ -21,14 +21,14 @@ class Config
 {
 private:
 	cfg::httpCtx _httpConf;
-	std::vector<cfg::serverCtx> _wsConfs;
+	std::vector<cfg::srvCtxCfg> _wsConfs;
 
 	/* Member Functions */
 	void setHttpConfDefaults();
-	void setServerConfDefaults(cfg::serverCtx& servConf);
-	void setLocationConfDefaults(cfg::locationCtx& locConf, cfg::serverCtx& servConf);
-	void buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx);
-	void buildServer(const ctxNode& ctx, cfg::serverCtx& serverCtx);
+	void setServerConfDefaults(cfg::srvCtxCfg& servConf);
+	void setLocationConfDefaults(cfg::locationCtx& locConf, cfg::srvCtxCfg& servConf);
+	void buildLocation(const ctxNode& ctx, cfg::srvCtxCfg& serverCtx);
+	void buildServer(const ctxNode& ctx, cfg::srvCtxCfg& serverCtx);
 	void buildHttp(const ctxNode& ctx);
 	void checkConfig(const char* path);
 
@@ -41,7 +41,7 @@ public:
 	~Config();
 
 	/* Member Functions */
-	const cfg::serverCtx& at(size_t idx) const;
+	const cfg::srvCtxCfg& at(size_t idx) const;
 	size_t size() const;
 
 	/* Basic Operators */

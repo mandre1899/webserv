@@ -4,7 +4,9 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <utility>
 #include <sys/poll.h>
+#include "config/Config.hpp"
 #include "server/Client.hpp"
 #include "server/TcpSocket.hpp"
 #include "utils/Logger.hpp"
@@ -16,7 +18,7 @@ private:
 	std::vector<struct pollfd> _pfd{};
 
 	/* Member Functions */
-	void addClient(int serverFd, int clientFd);
+	void addClient(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg);
 	void removeClient(int clientFd);
 
 public:
@@ -27,8 +29,7 @@ public:
 	~HttpServer();
 
 	/* Member Functions */
-	void parseConfig(std::string path);
-	void createSockets();
+	void createSockets(Config& conf);
 	void run();
 
 	/* Basic Operators */

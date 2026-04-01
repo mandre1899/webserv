@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sys/poll.h>
 #include <unistd.h>
+#include "config/configTypes.hpp"
 #include "utils/Logger.hpp"
 
 enum class Status {
@@ -21,6 +22,7 @@ private:
 	int _clientFd;
 	Status _status;
 	std::string _msg;
+	const cfg::srvCtxCfg& _srvCfg;
 
 	/* Member Functions */
 	short recvData();
@@ -29,7 +31,7 @@ private:
 public:
 	/* Constructors & Destructors */
 	Client() = delete;
-	Client(int serverFd, int clientFd);
+	Client(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg);
 	Client(const Client& src) = delete;
 	Client(Client&& src) noexcept;
 	~Client();

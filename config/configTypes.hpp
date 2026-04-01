@@ -64,7 +64,7 @@ namespace cfg
 	};
 
 	// corresponds to the server{} scope in the conf file
-	struct serverCtx : public sharedCfg
+	struct srvCtxCfg : public sharedCfg
 	{
 		socketCfg listen;
 		std::string serverName;

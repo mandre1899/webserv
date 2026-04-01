@@ -1,7 +1,7 @@
 #include "Client.hpp"
 
 /* Constructors & Destructors */
-Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clientFd)
+Client::Client(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _srvCfg(srvCfg)
 {
 	(void)_serverFd;
 	(void)_clientFd;
@@ -9,7 +9,7 @@ Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clie
 	_msg = "";
 }
 
-Client::Client(Client&& src) noexcept
+Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 {
 	_serverFd = src._serverFd;
 	_clientFd = src._clientFd;

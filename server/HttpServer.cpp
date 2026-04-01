@@ -10,11 +10,11 @@ HttpServer::~HttpServer()
 }
 
 /* Member Functions */
-void HttpServer::addClient(int serverFd, int clientFd)
+void HttpServer::addClient(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg)
 {
 	struct pollfd pollFd;
 
-	_clientMap.insert({ clientFd, Client(serverFd, clientFd) });
+	_clientMap.insert({ clientFd, Client(serverFd, clientFd, srvCfg) });
 	pollFd.fd = clientFd;
 	pollFd.events = POLLIN;
 	_pfd.push_back(pollFd);
@@ -34,16 +34,14 @@ void HttpServer::removeClient(int clientFd)
 	Logger::log<LogLevel::debug>("HttpServer::removeClient - Removed client with FD ", clientFd);
 }
 
-void HttpServer::createSockets()
+void HttpServer::createSockets(Config& conf)
 {
-	size_t socketCount = 2;
-	int socketPort[2] = { 8085, 8081 };
-
-	for (size_t i = 0; i < socketCount; i++)
+	for (size_t i = 0; i < conf.size(); i++)
 	{
+		const struct cfg::srvCtxCfg& srv = conf.at(i);
 		struct pollfd pollFd;
 
-		_serverSockets.push_back(TcpSocket(INADDR_ANY, socketPort[i]));
+		_serverSockets.push_back(TcpSocket(srv.listen.address, srv.listen.port, srv));
 		pollFd.fd = _serverSockets[i].getSocketFd();
 		pollFd.events = POLLIN;
 		_pfd.push_back(pollFd);
@@ -62,7 +60,7 @@ void HttpServer::run()
 		{
 			if (_pfd[i].revents & POLLIN)
 			{
-				addClient(_pfd[i].fd, _serverSockets[i].acceptClient());
+				addClient(_pfd[i].fd, _serverSockets[i].acceptClient(), _serverSockets[i].getConfig());
 			}
 		}
 		else // if (clientSocket)...

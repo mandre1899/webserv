@@ -1,7 +1,7 @@
 #include "TcpSocket.hpp"
 
 /* Constructors & Destructors */
-TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port)
+TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port, const cfg::srvCtxCfg& srv) : _srvCfg(srv)
 {
 	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (_socket == -1)
@@ -17,7 +17,7 @@ TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port)
 		throw SocketError();
 }
 
-TcpSocket::TcpSocket(TcpSocket&& src) noexcept
+TcpSocket::TcpSocket(TcpSocket&& src) noexcept : _srvCfg(src._srvCfg)
 {
 	_socket = src._socket;
 	_sockAddr = src._sockAddr;
@@ -56,6 +56,11 @@ int TcpSocket::getSocketFd() const
 sockaddr_in TcpSocket::getSocketAddr() const
 {
 	return (_sockAddr);
+}
+
+const cfg::srvCtxCfg& TcpSocket::getConfig() const
+{
+	return (_srvCfg);
 }
 
 /* Member Class */
