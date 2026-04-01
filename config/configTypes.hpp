@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <optional>
 #include <netinet/in.h>
 
@@ -68,7 +68,7 @@ namespace cfg
 	{
 		socketCfg listen;
 		std::string serverName;
-		std::map<std::string, locationCtx> location;
+		std::unordered_map<std::string, locationCtx> location;
 	};
 }
 
