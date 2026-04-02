@@ -9,6 +9,7 @@
 #include <fstream>
 #include <optional>
 #include <sstream>
+#include <set>
 #include <bits/stdc++.h>
 #include "utils/Logger.hpp"
 #include "config/Lexer.hpp"
@@ -29,6 +30,7 @@ private:
 	void buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx);
 	void buildServer(const ctxNode& ctx, cfg::serverCtx& serverCtx);
 	void buildHttp(const ctxNode& ctx);
+	void checkConfig(const char* path);
 
 public:
 	/* Constructors & Destructors */

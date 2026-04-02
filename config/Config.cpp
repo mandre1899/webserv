@@ -7,6 +7,7 @@ Config::Config(const char* path)
 	ContextNode node = ContextNode(tokens);
 	setHttpConfDefaults();
 	buildHttp(node.getRootNode());
+	checkConfig(path);
 	Logger::log<LogLevel::debug>("Config::Config()\n", *this);
 }
 
@@ -51,6 +52,7 @@ void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::serverCtx& 
 void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 {
 	std::string path;
+	filePos locationPos;
 	cfg::locationCtx locConf;
 	TokenStream ts = ctx.param;
 	token t;
@@ -58,13 +60,16 @@ void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 
 	setLocationConfDefaults(locConf, serverCtx);
 	path = ts.getNextToken().value;
+	locationPos = ts.getPositon();
 	t = ts.getNextToken();
 	while (t.type != tType::end)
 	{
 		ext.setValue(t.value, locConf, ts);
 		t = ts.getNextToken();
 	}
-	serverCtx.location.insert({ path, locConf });
+	auto it = serverCtx.location.insert({ path, locConf });
+	if (!it.second)
+		throw std::runtime_error(buildMsg("Duplicate location \"" + path + "\"", locationPos));;
 }
 
 void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
@@ -106,6 +111,20 @@ void Config::buildHttp(const ctxNode& ctx)
 		setServerConfDefaults(servConf);
 		buildServer(ctx.child[childPos], servConf);
 		childPos++;
+	}
+}
+
+void Config::checkConfig(const char* path)
+{
+	std::set<std::string> srvIdent;
+
+	for (size_t i = 0; i < this->size(); i++)
+	{
+		cfg::serverCtx ctx = this->at(i);
+		std::string id = std::to_string(ctx.listen.address) + std::to_string(ctx.listen.port) + ctx.serverName;
+		auto it = srvIdent.insert(id);
+		if (!it.second)
+			throw std::runtime_error("Conflicting server name/address " + std::string(path));
 	}
 }
 
@@ -170,7 +189,7 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 		if (!ctx.location.empty())
 		{
 			os << "location: ";
-			for (std::map<std::string, cfg::locationCtx>::const_iterator it = ctx.location.begin(); it != ctx.location.end(); ++it)
+			for (std::unordered_map<std::string, cfg::locationCtx>::const_iterator it = ctx.location.begin(); it != ctx.location.end(); ++it)
 			{
 				os << "\n   path: " << it->first << std::endl;
 				const cfg::locationCtx& loc = it->second;

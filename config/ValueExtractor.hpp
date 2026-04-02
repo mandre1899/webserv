@@ -10,7 +10,7 @@
 
 #define KILO 1000
 #define MEGA 1000000
-#define GIGA 100000000
+#define GIGA 1000000000
 
 // http:     root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size  |
 // server:   root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size, | return, | listen, server_name
@@ -70,18 +70,18 @@ private:
 			return value;
 		switch (unit)
 		{
-			case 'k':
-				value *= KILO;
-				break;
-			case 'M':
-				value *= MEGA;
-				break;
-			case 'G':
-				value *= GIGA;
-				break;
-			default:
-				throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
-				break;
+		case 'k':
+			value *= KILO;
+			break;
+		case 'M':
+			value *= MEGA;
+			break;
+		case 'G':
+			value *= GIGA;
+			break;
+		default:
+			throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
+			break;
 		}
 		return value;
 	}
@@ -249,6 +249,11 @@ private:
 		ts.expectToken(tType::semi);
 	}
 
+	void _duplicate(T& confStruct, TokenStream& ts)
+	{
+		(void)confStruct;
+		throw std::runtime_error(buildMsg("Duplicate directive found", ts.getPositon()));
+	}
 
 
 public:
@@ -324,7 +329,10 @@ public:
 		auto it = _dispatch.find(id);
 		if (it == _dispatch.end())
 			throw UnexpectedIdentifierException(ts.getPositon());
-		_dispatch[id](confStruct, ts);
+		it->second(confStruct, ts);
+		it->second = [this](T& confStruct, TokenStream& ts) {
+			_duplicate(confStruct, ts);
+			};
 	}
 
 	/* Basic Operators */
