@@ -2,29 +2,29 @@
 
 const std::map<std::string, std::string>  HttpResponse::_mime_types = 
 {
-    {".html", "text/html"},
-    {".css", "text/css"},
-    {".js", "application/javascript"},
-    {".json", "application/json"},
-    {".xml", "application/xml"},
-    {".png", "image/png"},
-    {".jpg", "image/jpeg"},
-    {".gif", "image/gif"},
-    {".svg", "image/svg+xml"},
+	{".html", "text/html"},
+	{".css", "text/css"},
+	{".js", "application/javascript"},
+	{".json", "application/json"},
+	{".xml", "application/xml"},
+	{".png", "image/png"},
+	{".jpg", "image/jpeg"},
+	{".gif", "image/gif"},
+	{".svg", "image/svg+xml"},
 	  {".ico", "image/vnd.microsoft.icon"},
-    {".woff", "font/woff"},
-    {".woff2", "font/woff2"},
-    {".ttf", "font/ttf"},
-    {".otf", "font/otf"},
-    {".mp4", "video/mp4"},
-    {".mp3", "audio/mpeg"},
-    {".wav", "audio/wav"},
-    {".pdf", "application/pdf"},
-    {".zip", "application/zip"},
-    {".tar", "application/x-tar"},
-    {".gz", "application/gzip"},
+	{".woff", "font/woff"},
+	{".woff2", "font/woff2"},
+	{".ttf", "font/ttf"},
+	{".otf", "font/otf"},
+	{".mp4", "video/mp4"},
+	{".mp3", "audio/mpeg"},
+	{".wav", "audio/wav"},
+	{".pdf", "application/pdf"},
+	{".zip", "application/zip"},
+	{".tar", "application/x-tar"},
+	{".gz", "application/gzip"},
 	  {"notype", "application/octet-stream"}
-}
+};
 // Static data storages END
 
 // Removes suffixed and prefixed slash (Helper function)
