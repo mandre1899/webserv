@@ -31,7 +31,7 @@ uint32_t Client::recvData()
 	int ret;
 
 	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
-	if (ret == -1)
+	if (ret < 1)
 		return (EPOLLHUP); // evt. throw exception
 	_msg.append(buffer, ret);
 	std::string end = _msg.substr((_msg.length() - 4));

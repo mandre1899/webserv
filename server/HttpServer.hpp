@@ -6,6 +6,7 @@
 #include <vector>
 #include <utility>
 #include <sys/epoll.h> 
+#include <variant>
 #include "config/Config.hpp"
 #include "server/Client.hpp"
 #include "server/TcpSocket.hpp"
@@ -16,8 +17,7 @@
 class HttpServer {
 private:
 	int _epollFd;
-	std::vector<TcpSocket> _serverSockets{};
-	std::unordered_map<int, Client> _clientMap{};
+	std::unordered_map<int, std::variant<TcpSocket, Client>> _map{};
 
 	/* Member Functions */
 	void addClient(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg);
