@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/03/31 16:10:24 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/02 15:53:38 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ private:
 	std::string _request_URI;
 	std::string _http_version;
 	std::map<std::string, std::string> _headers_map;
-	//body information
+	std::string _boundary;
 
 public:
 	/* Constructors & Destructors */
@@ -46,6 +46,7 @@ public:
 	void parseRequestLine(std::string& line);
 	void parseHeaders(std::string& line);
 	bool parseBody(std::string& data);
+	void parseBodyFromTmp(std::string path);
 	class HttpParsingError : public std::exception {
 	public:
 		const char* what() const noexcept override;

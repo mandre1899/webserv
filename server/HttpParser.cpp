@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/02 12:58:37 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/02 15:56:19 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,6 +101,30 @@ void is_number(const std::string& s)
 	throw HttpParser::HttpParsingError();
 }
 
+std::string extractBoundary(std::string& value)
+{
+	if (value.substr(0, 30).compare("multipart/form-data; boundary=") != 0)
+		throw HttpParser::HttpParsingError();
+	std::string boundary = value.substr(32, value.size() - 32);
+	return (boundary);
+}
+
+
+void HttpParser::parseBodyFromTmp(std::string path)
+{
+	std::ifstream in(path, std::ios::binary);
+	auto boundary_header = _headers_map.find("Content-Type");
+	if (boundary_header == _headers_map.end())
+		throw HttpParser::HttpParsingError();
+	_boundary = extractBoundary(boundary_header->second);
+	std::cout << "BOUNDARY CHECK :" << _boundary << std::endl;
+	auto start =
+}
+
+// curl -X POST http://localhost:8085/upload \
+//   -F "file1=@test.txt" \
+//   -F "file2=@b.png"s
+
 
 bool HttpParser::parseBody(std::string& line)
 {
@@ -108,7 +132,7 @@ bool HttpParser::parseBody(std::string& line)
 
 	if (!((_headers_map.find("Content-Length") != _headers_map.end()) != (_headers_map.find("Transfer-Encoding") != _headers_map.end())))
 		throw HttpParsingError();
-	std::ofstream ofs("test", std::ios_base::app);
+	std::ofstream ofs("/tmp/test", std::ios_base::app | std::ios::binary);
 	if (!ofs)
 	{
 		std::cerr << "failed to establish outstream" << std::endl;
@@ -123,7 +147,10 @@ bool HttpParser::parseBody(std::string& line)
 	ofs << line;
 	ofs.close();
 	if (bytes_read == std::stoul(search->second))
+	{
+		parseBodyFromTmp("/tmp/test");
 		return true; // need to reset bytes_read? can same client get here a second time?
+	}
 	return false;
 }
 
