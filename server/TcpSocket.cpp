@@ -35,13 +35,13 @@ int TcpSocket::acceptClient()
 {
 	int fd = accept(_socket, nullptr, nullptr);
 	if (fd == -1)
-		throw AcceptFaild();
-	int flags = fcntl(fd, F_GETFL, 0);
-	if (flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-	{
-		close(fd);
-		throw AcceptFaild();
-	}
+		throw AcceptFailed();
+	// int flags = fcntl(fd, F_GETFL, 0);
+	// if (flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+	// {
+	// 	close(fd);
+	// 	throw AcceptFailed();
+	// }
 	return (fd);
 }
 
@@ -69,7 +69,7 @@ const char* TcpSocket::SocketError::what() const noexcept
 	return (strerror(errno));
 }
 
-const char* TcpSocket::AcceptFaild::what() const noexcept
+const char* TcpSocket::AcceptFailed::what() const noexcept
 {
 	return ("An error occurred while accepting the client.");
 }

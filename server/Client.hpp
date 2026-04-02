@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "config/configTypes.hpp"
 #include "utils/Logger.hpp"
+#include "HttpParser.hpp"
 
 enum class Status {
 	recive,
@@ -16,12 +17,22 @@ enum class Status {
 	close
 };
 
+enum class state {
+	parsing_request_line = 0,
+	parsing_headers,
+	parsing_body,
+	parsing_done,
+	error
+};
+
 class Client {
 private:
 	int _serverFd;
 	int _clientFd;
 	Status _status;
 	std::string _msg;
+	HttpParser _parsedHttp;
+	state _parsingState;
 	const cfg::srvCtxCfg& _srvCfg;
 
 	/* Member Functions */
