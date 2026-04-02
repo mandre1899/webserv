@@ -75,7 +75,7 @@ uint32_t Client::recvData()
 		_msg.erase();
 	}
 	if (_parsingState == state::parsing_done)
-		return (POLLOUT);
+		return (EPOLLOUT);
 	if (ret == 0)
 		return (EPOLLHUP);
 	return (EPOLLIN);
