@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/03/31 16:52:07 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/02 12:58:37 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -115,7 +115,7 @@ bool HttpParser::parseBody(std::string& line)
 	}
 	auto search = _headers_map.find("Content-Length");
 	is_number(search->second);
-	std::cout << "Bytes read" << bytes_read << "\n" << "Contect-Length second" << search->second << "\n" << "second to usigned long" << std::stoul(search->second) << std::endl;
+	//std::cout << "Bytes read" << bytes_read << "\n" << "Contect-Length second" << search->second << "\n" << "second to usigned long" << std::stoul(search->second) << std::endl;
 	bytes_read += line.size();
 	if (bytes_read > std::stoul(search->second))
 		throw HttpParser::HttpParsingError();
@@ -123,11 +123,11 @@ bool HttpParser::parseBody(std::string& line)
 	ofs << line;
 	ofs.close();
 	if (bytes_read == std::stoul(search->second))
-		return true;
+		return true; // need to reset bytes_read? can same client get here a second time?
 	return false;
 }
 
-// curl -X POST http://localhost:8085/upload \
+// curl -X POST http://localhost:8085/upload 
 //   -F "myfile=@./test.txt"
 
 const char* HttpParser::HttpParsingError::what() const noexcept
