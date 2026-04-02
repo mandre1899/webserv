@@ -27,7 +27,7 @@ void Config::setHttpConfDefaults()
 	_httpConf.clientBodyTimeout = 30;		 // 30s
 }
 
-void Config::setServerConfDefaults(cfg::serverCtx& servConf)
+void Config::setServerConfDefaults(cfg::srvCtxCfg& servConf)
 {
 	servConf.root = _httpConf.root;
 	servConf.index = _httpConf.index;
@@ -38,7 +38,7 @@ void Config::setServerConfDefaults(cfg::serverCtx& servConf)
 	servConf.clientBodyTimeout = _httpConf.clientBodyTimeout;
 }
 
-void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::serverCtx& servConf)
+void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::srvCtxCfg& servConf)
 {
 	locConf.root = servConf.root;
 	locConf.index = servConf.index;
@@ -49,7 +49,7 @@ void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::serverCtx& 
 	locConf.clientBodyTimeout = servConf.clientBodyTimeout;
 }
 
-void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
+void Config::buildLocation(const ctxNode& ctx, cfg::srvCtxCfg& serverCtx)
 {
 	std::string path;
 	filePos locationPos;
@@ -72,12 +72,12 @@ void Config::buildLocation(const ctxNode& ctx, cfg::serverCtx& serverCtx)
 		throw std::runtime_error(buildMsg("Duplicate location \"" + path + "\"", locationPos));;
 }
 
-void Config::buildServer(const ctxNode& ctx, cfg::serverCtx& servConf)
+void Config::buildServer(const ctxNode& ctx, cfg::srvCtxCfg& servConf)
 {
 	size_t childPos = 0;
 	TokenStream ts(ctx.param);
 	token t;
-	ValueExtractor<cfg::serverCtx> ext;
+	ValueExtractor<cfg::srvCtxCfg> ext;
 
 	t = ts.getNextToken();
 	while (t.type != tType::end)
@@ -107,7 +107,7 @@ void Config::buildHttp(const ctxNode& ctx)
 	}
 	while (childPos < ctx.child.size())
 	{
-		cfg::serverCtx& servConf = _wsConfs.emplace_back();
+		cfg::srvCtxCfg& servConf = _wsConfs.emplace_back();
 		setServerConfDefaults(servConf);
 		buildServer(ctx.child[childPos], servConf);
 		childPos++;
@@ -120,7 +120,7 @@ void Config::checkConfig(const char* path)
 
 	for (size_t i = 0; i < this->size(); i++)
 	{
-		cfg::serverCtx ctx = this->at(i);
+		cfg::srvCtxCfg ctx = this->at(i);
 		std::string id = std::to_string(ctx.listen.address) + std::to_string(ctx.listen.port) + ctx.serverName;
 		auto it = srvIdent.insert(id);
 		if (!it.second)
@@ -128,7 +128,7 @@ void Config::checkConfig(const char* path)
 	}
 }
 
-const cfg::serverCtx& Config::at(size_t idx) const
+const cfg::srvCtxCfg& Config::at(size_t idx) const
 {
 	return (_wsConfs.at(idx));
 }
@@ -152,7 +152,7 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 	for (size_t i = 0; i < src.size(); i++)
 	{
 		os << "-------------------server config-------------------\n";
-		cfg::serverCtx ctx = src.at(i);
+		cfg::srvCtxCfg ctx = src.at(i);
 		os << "listen: \n";
 		struct in_addr addr;
 		addr.s_addr = ctx.listen.address;

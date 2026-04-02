@@ -293,13 +293,13 @@ public:
 		_dispatch["cgi_index"] = [this](T& confStruct, TokenStream& ts) {
 			_cgiIndex(confStruct, ts);
 			};
-		if constexpr (std::is_same_v<cfg::serverCtx, T> || std::is_same_v<cfg::locationCtx, T>)
+		if constexpr (std::is_same_v<cfg::srvCtxCfg, T> || std::is_same_v<cfg::locationCtx, T>)
 		{
 			_dispatch["return"] = [this](T& confStruct, TokenStream& ts) {
 				_retConf(confStruct, ts);
 				};
 		}
-		if constexpr (std::is_same_v<cfg::serverCtx, T>)
+		if constexpr (std::is_same_v<cfg::srvCtxCfg, T>)
 		{
 			_dispatch["listen"] = [this](T& confStruct, TokenStream& ts) {
 				_listen(confStruct, ts);

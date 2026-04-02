@@ -4,19 +4,23 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <sys/poll.h>
+#include <utility>
+#include <sys/epoll.h> 
+#include <variant>
+#include "config/Config.hpp"
 #include "server/Client.hpp"
 #include "server/TcpSocket.hpp"
 #include "utils/Logger.hpp"
 
+#define MAX_EVENTS 5
+
 class HttpServer {
 private:
-	std::vector<TcpSocket> _serverSockets{};
-	std::unordered_map<int, Client> _clientMap{};
-	std::vector<struct pollfd> _pfd{};
+	int _epollFd;
+	std::unordered_map<int, std::variant<TcpSocket, Client>> _map{};
 
 	/* Member Functions */
-	void addClient(int serverFd, int clientFd);
+	void addClient(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg);
 	void removeClient(int clientFd);
 
 public:
@@ -27,8 +31,7 @@ public:
 	~HttpServer();
 
 	/* Member Functions */
-	void parseConfig(std::string path);
-	void createSockets();
+	void createSockets(Config& conf);
 	void run();
 
 	/* Basic Operators */

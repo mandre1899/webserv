@@ -24,7 +24,7 @@ int	main(int argc, char** argv)
 		Logger::log<LogLevel::info>("Configuration complete; ready for start up");
 		HttpServer server;
 
-		server.createSockets();
+		server.createSockets(config);
 		while (true)
 			server.run();
 	}
