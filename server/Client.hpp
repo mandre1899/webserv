@@ -16,11 +16,11 @@ enum class Status {
 	close
 };
 
-enum class parsing_state {
-	request_line = 0,
-	headers,
-	body,
-	done,
+enum class state {
+	parsing_request_line = 0,
+	parsing_headers,
+	parsing_body,
+	parsing_done,
 	error
 };
 
@@ -31,7 +31,7 @@ private:
 	Status _status;
 	std::string _msg;
 	HttpParser _parsedHttp;
-	parsing_state _parsingState;
+	state _parsingState;
 
 	/* Member Functions */
 	short recvData();

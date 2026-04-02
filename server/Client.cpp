@@ -7,7 +7,7 @@ Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clie
 	(void)_clientFd;
 	_status = Status::close;
 	_msg = "";
-	_parsingState = parsing_state::request_line;
+	_parsingState = state::parsing_request_line;
 }
 
 Client::Client(Client&& src) noexcept
@@ -22,7 +22,7 @@ Client::Client(Client&& src) noexcept
 	src._clientFd = -1;
 	src._msg = "";
 	src._status = Status::close;
-	src._parsingState = parsing_state::error;
+	src._parsingState = state::error;
 
 }
 
@@ -42,24 +42,24 @@ short Client::recvData()
 	if (ret == -1)
 		return (POLLHUP); // evt. throw exception
 	_msg.append(buffer, ret);
-	while (_parsingState == parsing_state::request_line || _parsingState == parsing_state::headers)
+	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
 		if (pos == std::string::npos)
 			break;
 		std::string line = _msg.substr(0, pos);
-		if (_parsingState == parsing_state::request_line)
+		if (_parsingState == state::parsing_request_line)
 		{
 			_parsedHttp.parseRequestLine(line);
-			_parsingState = parsing_state::headers;
+			_parsingState = state::parsing_headers;
 		}
-		else if (_parsingState == parsing_state::headers)
+		else if (_parsingState == state::parsing_headers)
 		{
 			if (line.empty())
 			{
 				Logger::log<LogLevel::trace>(this->_parsedHttp);
 				_msg.erase(0, pos + 2);
-				_parsingState = parsing_state::body;
+				_parsingState = state::parsing_body;
 				std::cout << "reached body parsing" << std::endl;
 				break;
 			}
@@ -67,16 +67,16 @@ short Client::recvData()
 		}
 		_msg.erase(0, pos + 2);
 	}
-	if ((_parsedHttp.getMethod() == method_type::DELETE || _parsedHttp.getMethod() == method_type::GET) && _parsingState == parsing_state::body)
-		_parsingState = parsing_state::done;
-	else if (_parsingState == parsing_state::body)
+	if ((_parsedHttp.getMethod() == method_type::DELETE || _parsedHttp.getMethod() == method_type::GET) && _parsingState == state::parsing_body)
+		_parsingState = state::parsing_done;
+	else if (_parsingState == state::parsing_body)
 	{
 		std::cout << this->_parsedHttp << std::endl;
 		if (_parsedHttp.parseBody(_msg))
-			_parsingState = parsing_state::done;
+			_parsingState = state::parsing_done;
 		_msg.erase();
 	}
-	if (_parsingState == parsing_state::done)
+	if (_parsingState == state::parsing_done)
 		return (POLLOUT);
 	if (ret == 0)
 		return (POLLHUP);
