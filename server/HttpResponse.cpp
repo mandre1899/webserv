@@ -23,7 +23,7 @@ const std::map<std::string, std::string>  HttpResponse::_mime_types =
 	{".zip", "application/zip"},
 	{".tar", "application/x-tar"},
 	{".gz", "application/gzip"},
-	  {"notype", "application/octet-stream"}
+	{"notype", "application/octet-stream"}
 };
 // Static data storages END
 
@@ -62,43 +62,107 @@ static std::pair<int, std::string>	rtn_pair(int code, std::string path)
 	return rtn;
 }
 
-static bool	loc_uri_comp(const std::string& loc, std::string& uri)
+static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 {
-	if (loc.rfind(uri, 0) != std::string::npos)
+	if (loc.empty())
+		return false;
+
+	if (uri == loc)
+		return true;
+	// Prefix match on path boundary:
+	// "/images" matches "/images/logo.png"
+	// but not "/images2/test"
+	if (uri.size() > loc.size() &&
+		uri.compare(0, loc.size(), loc) == 0 &&
+		uri[loc.size()] == '/')
 		return true;
 	return false;
 }
 
-std::pair<int, std::string>	HttpResponse::resolve_path(void)
+static std::string join_path(const std::string& left, const std::string& right) //Wrapper safer path concat
 {
-	std::string root_path = "/Volumes/MateoSSD/42Projects/network_programming/webserv_mausperg";
-	//std::string uri_path = clean_string(_request.getRequestUri());
-	std::string uri_path = _request.getRequestUri();
+	if (left.empty())
+		return right;
+	if (right.empty())
+		return left;
+
+	if (left[left.size() - 1] == '/' && right[0] == '/')
+		return left + right.substr(1);
+	if (left[left.size() - 1] != '/' && right[0] != '/')
+		return left + "/" + right;
+	return left + right;
+}
+
+std::pair<int, std::string> HttpResponse::resolve_path(void)
+{
+	const std::string root_path =
+		"/Volumes/MateoSSD/42Projects/network_programming/webserv_mausperg";
+
+	const std::string uri_path = _request.getRequestUri();
+
 	if (_config.location.empty())
-		return  rtn_pair(404, std::string());
-	for (const auto& loc : _config.location)
+		return rtn_pair(404, std::string());
+
+	for (auto it = _config.location.begin();
+		 it != _config.location.end();
+		 ++it)
 	{
-		if (loc_uri_comp(loc.first, uri_path))
-		{
-			std::cout << "Location root: " << loc.second.root << std::endl;
-			return rtn_pair(200, root_path + "/" + loc.second.index);
-			// URI has valid location block match ablolute path
-		}
+		const std::string& location_path = it->first;
+		const cfg::locationCtx& location_cfg = it->second;
+
+		if (!loc_uri_comp(location_path, uri_path))
+			continue;
+		// For now using the hardcoded base path (must fix!)
+		if (!location_cfg.index.empty())
+			return rtn_pair(200, join_path(root_path, location_cfg.index));
+		return rtn_pair(404, std::string());
 	}
-	return rtn_pair(404, _config.errorPage->path);
+
+	if (_config.errorPage)
+		return rtn_pair(404, _config.errorPage->path);
+	return rtn_pair(404, std::string());
+}
+
+std::string	HttpResponse::resolve_content_type(const std::string& filetype)
+{
+	for (auto a : _mime_types)
+	{
+		if (a.first == filetype)
+			return a.second;
+	}
+	return _mime_types.find("notype")->second;
 }
 
 filetype  HttpResponse::resolve_filetype(const std::string& abs_path)
 {
-  if (abs_path.find(".php") || abs_path.find(".py"))
-    return DYNAMIC_FILE;
-  return STATIC_FILE;
+	if (abs_path.find(".php") || abs_path.find(".py"))
+		return DYNAMIC_FILE;
+  	return STATIC_FILE;
+}
+
+static const std::string resolve_file_suffix(const std::string& abs_path)
+{
+	std::string res;
+	size_t	dotPos = abs_path.find(".");
+	size_t	questMark = abs_path.find("?");
+	
+	if (0 < questMark)
+		return abs_path.substr(dotPos, questMark);
+	return abs_path.substr(dotPos);
 }
 
 void  HttpResponse::build(void)
 {
 	std::pair<int, std::string> res= resolve_path();
-	std::cout << "Absolute Path is: " << res.second << std::endl;
+	std::cout << "Absolute Path is: " << res.second << " status " << res.first << std::endl;
+	_status_code = res.first;
+	const std::string file_suffix = resolve_file_suffix(res.second);
+	std::cout << "Filesuffix: " << file_suffix << std::endl;
+	_content_type = resolve_content_type(file_suffix);
+	std::cout << "Content-type: " << _content_type << std::endl;
+	std::cout << "Filetype: " << resolve_filetype(file_suffix) << std::endl;
+
+	
   // 1.Resolve path
   // 2.Resolve Mime type
   // 3.Resolve filetype

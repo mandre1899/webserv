@@ -34,7 +34,7 @@ class HttpResponse
 		std::string     get_file_extension(const std::string& path) const;
 
 		// Path resolution
-		std::pair<int, std::string> resolve_path(void);
+		std::pair<int, std::string> resolve_path(void); //get absolute path
 		std::string                 resolve_content_type(const std::string& abs_path);
 		filetype                    resolve_filetype(const std::string& abs_path);
 
