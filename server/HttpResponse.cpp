@@ -25,6 +25,52 @@ const std::map<std::string, std::string>  HttpResponse::_mime_types =
 	{".gz", "application/gzip"},
 	{"notype", "application/octet-stream"}
 };
+
+const std::map<int, std::string> _http_status_map= {
+    {100, "Continue"},
+    {101, "Switching Protocols"},
+    {102, "Processing"},
+
+    {200, "OK"},
+    {201, "Created"},
+    {202, "Accepted"},
+    {203, "Non-Authoritative Information"},
+    {204, "No Content"},
+    {205, "Reset Content"},
+    {206, "Partial Content"},
+
+    {300, "Multiple Choices"},
+    {301, "Moved Permanently"},
+    {302, "Found"},
+    {303, "See Other"},
+    {304, "Not Modified"},
+    {307, "Temporary Redirect"},
+    {308, "Permanent Redirect"},
+
+    {400, "Bad Request"},
+    {401, "Unauthorized"},
+    {402, "Payment Required"},
+    {403, "Forbidden"},
+    {404, "Not Found"},
+    {405, "Method Not Allowed"},
+    {406, "Not Acceptable"},
+    {408, "Request Timeout"},
+    {409, "Conflict"},
+    {410, "Gone"},
+    {411, "Length Required"},
+    {413, "Payload Too Large"},
+    {414, "URI Too Long"},
+    {415, "Unsupported Media Type"},
+    {418, "I'm a teapot"},
+    {429, "Too Many Requests"},
+
+    {500, "Internal Server Error"},
+    {501, "Not Implemented"},
+    {502, "Bad Gateway"},
+    {503, "Service Unavailable"},
+    {504, "Gateway Timeout"},
+    {505, "HTTP Version Not Supported"}
+};
 // Static data storages END
 
 // Removes suffixed and prefixed slash (Helper function)
@@ -39,8 +85,6 @@ std::string     HttpResponse::clean_string(const std::string& path)
     tmp.erase(tmp.length() - 1);
   return tmp;
 }
-
-
 
 //Private Member function - HELPER END
 
@@ -91,6 +135,21 @@ static std::string join_path(const std::string& left, const std::string& right) 
 	if (left[left.size() - 1] != '/' && right[0] != '/')
 		return left + "/" + right;
 	return left + right;
+}
+
+const std::string	HttpResponse::get_response_str() const
+{
+	std::ostringstream	tmp;
+	
+	tmp << "HTTP/1.1 " << _status_code << " " << _http_status_map.find(_status_code)->second << "\r\n";
+	//Includes adding content-length
+	for (auto a : _headers)
+	{
+		tmp << a.first << ": " << a.second << "\r\n";
+	}
+	tmp << "\r\n";
+	tmp << _body;
+	return tmp.str();
 }
 
 std::pair<int, std::string> HttpResponse::resolve_path(void)
@@ -154,14 +213,20 @@ static const std::string resolve_file_suffix(const std::string& abs_path)
 void  HttpResponse::build(void)
 {
 	std::pair<int, std::string> res= resolve_path();
+	//Leave for edgecase checking 
 	std::cout << "Absolute Path is: " << res.second << " status " << res.first << std::endl;
 	_status_code = res.first;
 	const std::string file_suffix = resolve_file_suffix(res.second);
-	std::cout << "Filesuffix: " << file_suffix << std::endl;
 	_content_type = resolve_content_type(file_suffix);
-	std::cout << "Content-type: " << _content_type << std::endl;
-	std::cout << "Filetype: " << resolve_filetype(file_suffix) << std::endl;
+	filetype filetype = resolve_filetype(file_suffix);
+	if (filetype == STATIC_FILE)
+	{
+		
+	}
+	//else if (filetype == DYNAMIC_FILE)
+	//{
 
+	//}
 	
   // 1.Resolve path
   // 2.Resolve Mime type
