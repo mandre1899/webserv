@@ -8,7 +8,7 @@
 #include "config/Config.hpp"
 
 enum filetype {
-	STATIC_FILE,
+	STATIC_FILE = 0,
 	DYNAMIC_FILE,
 	UNKNOWN
 };
@@ -21,6 +21,7 @@ class HttpResponse
 		std::string                         _content_type;
 		std::map<std::string, std::string>  _headers;
 		std::string                         _body;
+		size_t								_body_size;
 		bool                                _is_built;
 		const HttpParser&                   _request;
 		const cfg::srvCtxCfg&				_config;
@@ -33,11 +34,12 @@ class HttpResponse
 		std::string					clean_string(const std::string& path);
 		std::string					get_status_message(int code) const;
 		std::string					get_file_extension(const std::string& path) const;
+		bool						read_file_to_body(const std::string &abs_path); //reads the file to the _body member string
 
 		// Path resolution
 		std::pair<int, std::string>			resolve_path(void); //get absolute path
 		std::string							resolve_content_type(const std::string& abs_path);
-		filetype	 						resolve_filetype(const std::string& abs_path);
+		filetype	 						resolve_filetype(const std::string& file_suffix);
 
 		// Response building
 		void					set_default_headers(void);

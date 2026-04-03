@@ -26,7 +26,7 @@ const std::map<std::string, std::string>  HttpResponse::_mime_types =
 	{"notype", "application/octet-stream"}
 };
 
-const std::map<int, std::string> _http_status_map= {
+const std::map<int, std::string> HttpResponse::_http_status_map= {
     {100, "Continue"},
     {101, "Switching Protocols"},
     {102, "Processing"},
@@ -86,6 +86,25 @@ std::string     HttpResponse::clean_string(const std::string& path)
   return tmp;
 }
 
+bool	HttpResponse::read_file_to_body(const std::string& abs_path)
+{
+	std::ifstream	file;
+	file.open(abs_path);
+	if (!file.is_open())
+		return false;
+	_body_size = 0;
+	std::string	buf;
+	while ((std::getline(file, buf)))
+	{
+		buf.append("\n");
+		_body.append(buf);
+		_body_size += buf.size();
+	}
+	_headers["content-length"] = std::to_string(_body_size);//temporary will create wrapper
+	file.close();
+	return true;
+}
+
 //Private Member function - HELPER END
 
 HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf) : _request(static_cast<const HttpParser&>(req)), _config(conf)
@@ -143,7 +162,7 @@ const std::string	HttpResponse::get_response_str() const
 	
 	tmp << "HTTP/1.1 " << _status_code << " " << _http_status_map.find(_status_code)->second << "\r\n";
 	//Includes adding content-length
-	for (auto a : _headers)
+	for (const auto& a : _headers)
 	{
 		tmp << a.first << ": " << a.second << "\r\n";
 	}
@@ -173,7 +192,7 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 			continue;
 		// For now using the hardcoded base path (must fix!)
 		if (!location_cfg.index.empty())
-			return rtn_pair(200, join_path(root_path, location_cfg.index));
+			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
 		return rtn_pair(404, std::string());
 	}
 
@@ -192,9 +211,9 @@ std::string	HttpResponse::resolve_content_type(const std::string& filetype)
 	return _mime_types.find("notype")->second;
 }
 
-filetype  HttpResponse::resolve_filetype(const std::string& abs_path)
+filetype  HttpResponse::resolve_filetype(const std::string& file_suffix)
 {
-	if (abs_path.find(".php") || abs_path.find(".py"))
+	if (file_suffix == ".php" || file_suffix == ".py")
 		return DYNAMIC_FILE;
   	return STATIC_FILE;
 }
@@ -219,10 +238,9 @@ void  HttpResponse::build(void)
 	const std::string file_suffix = resolve_file_suffix(res.second);
 	_content_type = resolve_content_type(file_suffix);
 	filetype filetype = resolve_filetype(file_suffix);
+	std::cout << filetype << std::endl;
 	if (filetype == STATIC_FILE)
-	{
-		
-	}
+		read_file_to_body(res.second);
 	//else if (filetype == DYNAMIC_FILE)
 	//{
 
