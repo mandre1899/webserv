@@ -11,7 +11,7 @@ const std::map<std::string, std::string>  HttpResponse::_mime_types =
 	{".jpg", "image/jpeg"},
 	{".gif", "image/gif"},
 	{".svg", "image/svg+xml"},
-	  {".ico", "image/vnd.microsoft.icon"},
+	{".ico", "image/vnd.microsoft.icon"},
 	{".woff", "font/woff"},
 	{".woff2", "font/woff2"},
 	{".ttf", "font/ttf"},
@@ -40,24 +40,14 @@ std::string     HttpResponse::clean_string(const std::string& path)
   return tmp;
 }
 
-size_t	HttpResponse::get_vserver_idx(void) const
-{
-	std::string_view host = _request.getHeadersMap().find("Host")->second;
-	for (size_t i = 0; i < _config.size(); i++)
-	{
-		if (host == _config.at(i).serverName)
-			return i;
-	}
-	return 0;
-}
 
 
 //Private Member function - HELPER END
 
-HttpResponse::HttpResponse(HttpParser &req, const Config& conf) : _request(static_cast<const HttpParser&>(req)), _config(conf)
+HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf) : _request(static_cast<const HttpParser&>(req)), _config(conf)
 {}
 
-HttpResponse::HttpResponse(const HttpParser &req, const Config& conf) : _request(req), _config(conf)
+HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf) : _request(req), _config(conf)
 {}
 
 HttpResponse::~HttpResponse()
@@ -72,33 +62,33 @@ static std::pair<int, std::string>	rtn_pair(int code, std::string path)
 	return rtn;
 }
 
-static bool matches_location(const std::string& path, const std::string& loc)
+static bool	loc_uri_comp(const std::string& loc, std::string& uri)
 {
-    if (path == loc)
+	if (loc.rfind(uri, 0) != std::string::npos)
 		return true;
-    if (path.size() <= loc.size())
-		return false;
-
-    return path.compare(0, loc.size(), loc) == 0 &&
-       path[loc.size()] == '/';
+	return false;
 }
 
 std::pair<int, std::string>	HttpResponse::resolve_path(void)
 {
-	cfg::srvCtxCfg server = _config.at(get_vserver_idx());
-	cfg::locationCtx location;
-	if (server.location.empty())
+	std::string root_path = "/Volumes/MateoSSD/42Projects/network_programming/webserv_mausperg";
+	//std::string uri_path = clean_string(_request.getRequestUri());
+	std::string uri_path = _request.getRequestUri();
+	if (_config.location.empty())
 		return  rtn_pair(404, std::string());
-	for (const auto& loc : server.location)
+	for (const auto& loc : _config.location)
 	{
-		//path == location || path.starts_with(location + "/")
-		if (matches_location(loc.first, _request.getRequestUri()))
-			cfg::locationCtx location = loc.second;
+		if (loc_uri_comp(loc.first, uri_path))
+		{
+			std::cout << "Location root: " << loc.second.root << std::endl;
+			return rtn_pair(200, root_path + "/" + loc.second.index);
+			// URI has valid location block match ablolute path
+		}
 	}
-	return rtn_pair(404, server.errorPage->path);
+	return rtn_pair(404, _config.errorPage->path);
 }
 
-filetype  HttpResponse::resolve_filetype(std::string& abs_path)
+filetype  HttpResponse::resolve_filetype(const std::string& abs_path)
 {
   if (abs_path.find(".php") || abs_path.find(".py"))
     return DYNAMIC_FILE;
@@ -107,6 +97,8 @@ filetype  HttpResponse::resolve_filetype(std::string& abs_path)
 
 void  HttpResponse::build(void)
 {
+	std::pair<int, std::string> res= resolve_path();
+	std::cout << "Absolute Path is: " << res.second << std::endl;
   // 1.Resolve path
   // 2.Resolve Mime type
   // 3.Resolve filetype
