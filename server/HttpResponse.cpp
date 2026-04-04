@@ -29,49 +29,49 @@ const std::map<std::string, std::string>  HttpResponse::_mime_types =
 };
 
 const std::map<int, std::string> HttpResponse::_http_status_map= {
-    {100, "Continue"},
-    {101, "Switching Protocols"},
-    {102, "Processing"},
+	{100, "Continue"},
+	{101, "Switching Protocols"},
+	{102, "Processing"},
 
-    {200, "OK"},
-    {201, "Created"},
-    {202, "Accepted"},
-    {203, "Non-Authoritative Information"},
-    {204, "No Content"},
-    {205, "Reset Content"},
-    {206, "Partial Content"},
+	{200, "OK"},
+	{201, "Created"},
+	{202, "Accepted"},
+	{203, "Non-Authoritative Information"},
+	{204, "No Content"},
+	{205, "Reset Content"},
+	{206, "Partial Content"},
 
-    {300, "Multiple Choices"},
-    {301, "Moved Permanently"},
-    {302, "Found"},
-    {303, "See Other"},
-    {304, "Not Modified"},
-    {307, "Temporary Redirect"},
-    {308, "Permanent Redirect"},
+	{300, "Multiple Choices"},
+	{301, "Moved Permanently"},
+	{302, "Found"},
+	{303, "See Other"},
+	{304, "Not Modified"},
+	{307, "Temporary Redirect"},
+	{308, "Permanent Redirect"},
 
-    {400, "Bad Request"},
-    {401, "Unauthorized"},
-    {402, "Payment Required"},
-    {403, "Forbidden"},
-    {404, "Not Found"},
-    {405, "Method Not Allowed"},
-    {406, "Not Acceptable"},
-    {408, "Request Timeout"},
-    {409, "Conflict"},
-    {410, "Gone"},
-    {411, "Length Required"},
-    {413, "Payload Too Large"},
-    {414, "URI Too Long"},
-    {415, "Unsupported Media Type"},
-    {418, "I'm a teapot"},
-    {429, "Too Many Requests"},
+	{400, "Bad Request"},
+	{401, "Unauthorized"},
+	{402, "Payment Required"},
+	{403, "Forbidden"},
+	{404, "Not Found"},
+	{405, "Method Not Allowed"},
+	{406, "Not Acceptable"},
+	{408, "Request Timeout"},
+	{409, "Conflict"},
+	{410, "Gone"},
+	{411, "Length Required"},
+	{413, "Payload Too Large"},
+	{414, "URI Too Long"},
+	{415, "Unsupported Media Type"},
+	{418, "I'm a teapot"},
+	{429, "Too Many Requests"},
 
-    {500, "Internal Server Error"},
-    {501, "Not Implemented"},
-    {502, "Bad Gateway"},
-    {503, "Service Unavailable"},
-    {504, "Gateway Timeout"},
-    {505, "HTTP Version Not Supported"}
+	{500, "Internal Server Error"},
+	{501, "Not Implemented"},
+	{502, "Bad Gateway"},
+	{503, "Service Unavailable"},
+	{504, "Gateway Timeout"},
+	{505, "HTTP Version Not Supported"}
 };
 // Static data storages END
 
@@ -79,13 +79,13 @@ const std::map<int, std::string> HttpResponse::_http_status_map= {
 // Creates a copy of the string passed as reference.
 std::string     HttpResponse::clean_string(const std::string& path)
 {
-  std::string tmp = path;
+	std::string tmp = path;
 
-  if (tmp[0] == '/')
-    tmp.erase(tmp.begin());
-  if (tmp[tmp.length() - 1] == '/')
-    tmp.erase(tmp.length() - 1);
-  return tmp;
+	if (tmp[0] == '/')
+		tmp.erase(tmp.begin());
+	if (tmp[tmp.length() - 1] == '/')
+		tmp.erase(tmp.length() - 1);
+	return tmp;
 }
 
 HttpResponse	&HttpResponse::set_content_type(const std::string& type)
@@ -126,10 +126,10 @@ static char**	parse_header_to_env(std::map<std::string, std::string> headers)
 	for (const auto &a : headers)
 	{
 		std::string concat = a.first + "=" + a.second;
-    	auto ptr = std::make_unique<char[]>(concat.length() + 1);
-    	std::strcpy(ptr.get(), concat.c_str());
-    	env.push_back(ptr.get());
-    	env_ptr.push_back(std::move(ptr));
+		auto ptr = std::make_unique<char[]>(concat.length() + 1);
+		std::strcpy(ptr.get(), concat.c_str());
+		env.push_back(ptr.get());
+		env_ptr.push_back(std::move(ptr));
 	}
 	env.push_back(nullptr);
 	return &env[0];
@@ -139,9 +139,9 @@ bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 {
 	static const std::string	pyExec = {"/usr/bin/python3"};
 	char *execPath = nullptr;
-	char *scriptPath = const_cast<char*>(abs_path.c_str()); // Use const_cast to convert const char* to char*
+	char *scriptPath = const_cast<char*>(abs_path.c_str());
 	char **env;
-	
+
 	_status_code = 200;
 	if (filetype == ".py")
 		execPath = const_cast<char *>(pyExec.c_str());
@@ -160,10 +160,12 @@ bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 
 //Private Member function - HELPER END
 
-HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd) : _request(static_cast<const HttpParser&>(req)), _config(conf), _socket_fd(clientFd)
+HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd)
+	: _request(static_cast<const HttpParser&>(req)), _config(conf), _socket_fd(clientFd)
 {}
 
-HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd) : _request(req), _config(conf), _socket_fd(clientFd)
+HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd)
+	: _request(req), _config(conf), _socket_fd(clientFd)
 {}
 
 HttpResponse::~HttpResponse()
@@ -189,8 +191,8 @@ static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 	// "/images" matches "/images/logo.png"
 	// but not "/images2/test"
 	if (uri.size() > loc.size() &&
-		uri.compare(0, loc.size(), loc) == 0 &&
-		uri[loc.size()] == '/')
+			uri.compare(0, loc.size(), loc) == 0 &&
+			uri[loc.size()] == '/')
 		return true;
 	return false;
 }
@@ -212,7 +214,7 @@ static std::string join_path(const std::string& left, const std::string& right) 
 const std::string	HttpResponse::get_response_str() const
 {
 	std::ostringstream	tmp;
-	
+
 	tmp << "HTTP/1.1 " << _status_code << " " << _http_status_map.find(_status_code)->second << "\r\n";
 	//Includes adding content-length
 	for (const auto& a : _headers)
@@ -235,14 +237,24 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		return rtn_pair(404, std::string());
 
 	for (auto it = _config.location.begin();
-		 it != _config.location.end();
-		 ++it)
+			it != _config.location.end();
+			++it)
 	{
 		const std::string& location_path = it->first;
 		const cfg::locationCtx& location_cfg = it->second;
 
 		if (!loc_uri_comp(location_path, uri_path))
 			continue;
+
+		// Check method for location
+		method_type method = _request.getMethod();
+		const cfg::allowMethodsCfg& allowed = location_cfg.allowMethods;
+
+		if ((method == method_type::GET && !allowed.isGet) ||
+				(method == method_type::POST && !allowed.isPost) ||
+				(method == method_type::DELETE && !allowed.isDelete))
+			return rtn_pair(405, std::string());
+
 		// For now using the hardcoded base path (must fix!)
 		if (!location_cfg.index.empty())
 			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
@@ -268,7 +280,7 @@ filetype  HttpResponse::resolve_filetype(const std::string& file_suffix)
 {
 	if (file_suffix == ".php" || file_suffix == ".py")
 		return DYNAMIC_FILE;
-  	return STATIC_FILE;
+	return STATIC_FILE;
 }
 
 static const std::string resolve_file_suffix(const std::string& abs_path)
@@ -276,18 +288,59 @@ static const std::string resolve_file_suffix(const std::string& abs_path)
 	std::string res;
 	size_t	dotPos = abs_path.find(".");
 	size_t	questMark = abs_path.find("?");
-	
+
 	if (0 < questMark)
 		return abs_path.substr(dotPos, questMark);
 	return abs_path.substr(dotPos);
 }
 
-void  HttpResponse::build(void)
+void HttpResponse::generate_error_page(void)
+{
+	std::string status_text = "Unknown Error";
+
+	std::map<int, std::string>::const_iterator it = _http_status_map.find(_status_code);
+	if (it != _http_status_map.end())
+		status_text = it->second;
+	else
+		status_text = "Error not found in the map";
+
+	std::ostringstream body;
+
+	set_content_type("text/html");
+	body << "<!DOCTYPE html>\n"
+		<< "<html lang=\"en\">\n"
+		<< "<head>\n"
+		<< "  <meta charset=\"UTF-8\">\n"
+		<< "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+		<< "  <title>" << _status_code << " " << status_text << "</title>\n"
+		<< "  <style>\n"
+		<< "    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }\n"
+		<< "    h1 { font-size: 50px; }\n"
+		<< "    p { font-size: 20px; color: #555; }\n"
+		<< "  </style>\n"
+		<< "</head>\n"
+		<< "<body>\n"
+		<< "  <h1>" << _status_code << "</h1>\n"
+		<< "  <p>" << status_text << "</p>\n"
+		<< "  <hr>\n"
+		<< "  <p>Websmurf</p>\n"
+		<< "</body>\n"
+		<< "</html>\n";
+
+	_body = body.str();
+}
+
+void  HttpResponse::build(void) // Eventually just return the state for the client state machine
 {
 	std::pair<int, std::string> res= resolve_path();
+	_status_code = res.first;
+	if (_status_code != 200)
+	{
+		generate_error_page();
+		return ;
+	}
 	//Leave for edgecase checking 
 	std::cout << "Absolute Path is: " << res.second << " status " << res.first << std::endl;
-	_status_code = res.first;
 	const std::string file_suffix = resolve_file_suffix(res.second);
 	set_content_type(resolve_content_type(file_suffix));
 	filetype filetype = resolve_filetype(file_suffix);
@@ -296,14 +349,14 @@ void  HttpResponse::build(void)
 		read_file_to_body(res.second);
 	else if (filetype == DYNAMIC_FILE)
 		execute_cgi_proc(res.second, file_suffix);
-	
-  // 1.Resolve path
-  // 2.Resolve Mime type
-  // 3.Resolve filetype
-  //  -> if is STATIC_FILE
-  //  4. read file into body string
-  //  -> if is CGI
-  //  4. run CGI etc.
-  // 5. set client state 
+
+	// 1.Resolve path
+	// 2.Resolve Mime type
+	// 3.Resolve filetype
+	//  -> if is STATIC_FILE
+	//  4. read file into body string
+	//  -> if is CGI
+	//  4. run CGI etc.
+	// 5. set client state 
 }
 

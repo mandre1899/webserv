@@ -53,6 +53,7 @@ class HttpResponse
 		void					handle_cgi_request(const std::string& script_path);
 		void					handle_error(int error_code);
 		std::string				read_file(const std::string& file_path);
+		void					generate_error_page(void);
 
 		int						get_status_code(void) const;
 		std::string				get_body(void) const;
@@ -62,6 +63,7 @@ class HttpResponse
 		HttpResponse(void) = delete;
 		HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd);
 		HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd);
+		HttpResponse(const HttpResponse& obj) = delete;
 		~HttpResponse(void);
 
 		void					build(void);
