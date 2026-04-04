@@ -142,7 +142,6 @@ bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	char *scriptPath = const_cast<char*>(abs_path.c_str()); // Use const_cast to convert const char* to char*
 	char **env;
 	
-	std::cout << "Is CGI" << std::endl;
 	_status_code = 200;
 	if (filetype == ".py")
 		execPath = const_cast<char *>(pyExec.c_str());
@@ -154,6 +153,7 @@ bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 		dup2(_socket_fd, STDOUT_FILENO);
 		execve(execPath, argv, env);
 	}
+	_cgi_pid = pid;
 	return true;
 }
 

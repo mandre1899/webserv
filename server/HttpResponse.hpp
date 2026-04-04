@@ -26,10 +26,12 @@ class HttpResponse
 		const HttpParser&                   _request;
 		const cfg::srvCtxCfg&				_config;
 
+
 		const static std::map<std::string, std::string>		_mime_types;
 		static const std::map<int, std::string>				_http_status_map;
 		const static std::map<int, std::string>         	_status_messages;
 		int													_socket_fd;
+		int													_cgi_pid;
 
 		// Helper functions
 		std::string					clean_string(const std::string& path);
