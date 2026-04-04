@@ -29,12 +29,16 @@ class HttpResponse
 		const static std::map<std::string, std::string>		_mime_types;
 		static const std::map<int, std::string>				_http_status_map;
 		const static std::map<int, std::string>         	_status_messages;
+		int													_socket_fd;
 
 		// Helper functions
 		std::string					clean_string(const std::string& path);
 		std::string					get_status_message(int code) const;
 		std::string					get_file_extension(const std::string& path) const;
-		bool						read_file_to_body(const std::string &abs_path); //reads the file to the _body member string
+		bool						read_file_to_body(const std::string& abs_path); //reads the file to the _body member string
+		bool						execute_cgi_proc(const std::string& abs_path, const std::string& filetype);
+		HttpResponse&				set_content_type(const std::string& type);
+		HttpResponse&				add_header(const std::string& key, const std::string& val);
 
 		// Path resolution
 		std::pair<int, std::string>			resolve_path(void); //get absolute path
@@ -54,8 +58,8 @@ class HttpResponse
 
 	public:
 		HttpResponse(void) = delete;
-		HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf);
-		HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf);
+		HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd);
+		HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd);
 		~HttpResponse(void);
 
 		void					build(void);

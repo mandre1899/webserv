@@ -23,6 +23,8 @@ const std::map<std::string, std::string>  HttpResponse::_mime_types =
 	{".zip", "application/zip"},
 	{".tar", "application/x-tar"},
 	{".gz", "application/gzip"},
+	{".py", "text/x-python"},
+	{".php", "text/html"},
 	{"notype", "application/octet-stream"}
 };
 
@@ -86,6 +88,18 @@ std::string     HttpResponse::clean_string(const std::string& path)
   return tmp;
 }
 
+HttpResponse	&HttpResponse::set_content_type(const std::string& type)
+{
+	_headers["content-type"] = type;
+	return *this;
+}
+
+HttpResponse&	HttpResponse::add_header(const std::string& key, const std::string& val)
+{
+	_headers[key] = val;
+	return *this;
+}
+
 bool	HttpResponse::read_file_to_body(const std::string& abs_path)
 {
 	std::ifstream	file;
@@ -105,12 +119,51 @@ bool	HttpResponse::read_file_to_body(const std::string& abs_path)
 	return true;
 }
 
+static char**	parse_header_to_env(std::map<std::string, std::string> headers)
+{
+	static std::vector<char*> env;
+	static std::vector<std::unique_ptr<char[]>> env_ptr;
+	for (const auto &a : headers)
+	{
+		std::string concat = a.first + "=" + a.second;
+    	auto ptr = std::make_unique<char[]>(concat.length() + 1);
+    	std::strcpy(ptr.get(), concat.c_str());
+    	env.push_back(ptr.get());
+    	env_ptr.push_back(std::move(ptr));
+	}
+	env.push_back(nullptr);
+	return &env[0];
+}
+
+bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::string& filetype)
+{
+	static const std::string	pyExec = {"/usr/bin/python3"};
+	char *execPath = nullptr;
+	char *scriptPath = const_cast<char*>(abs_path.c_str()); // Use const_cast to convert const char* to char*
+	char **env;
+	
+	std::cout << "Is CGI" << std::endl;
+	_status_code = 200;
+	if (filetype == ".py")
+		execPath = const_cast<char *>(pyExec.c_str());
+	char *const argv[] = {execPath, scriptPath, NULL};
+	env = parse_header_to_env(_request.getHeadersMap());
+	int pid = fork();
+	if (pid == 0)
+	{
+		dup2(_socket_fd, STDOUT_FILENO);
+		execve(execPath, argv, env);
+	}
+	return true;
+}
+
+
 //Private Member function - HELPER END
 
-HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf) : _request(static_cast<const HttpParser&>(req)), _config(conf)
+HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd) : _request(static_cast<const HttpParser&>(req)), _config(conf), _socket_fd(clientFd)
 {}
 
-HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf) : _request(req), _config(conf)
+HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd) : _request(req), _config(conf), _socket_fd(clientFd)
 {}
 
 HttpResponse::~HttpResponse()
@@ -236,15 +289,13 @@ void  HttpResponse::build(void)
 	std::cout << "Absolute Path is: " << res.second << " status " << res.first << std::endl;
 	_status_code = res.first;
 	const std::string file_suffix = resolve_file_suffix(res.second);
-	_content_type = resolve_content_type(file_suffix);
+	set_content_type(resolve_content_type(file_suffix));
 	filetype filetype = resolve_filetype(file_suffix);
 	std::cout << filetype << std::endl;
 	if (filetype == STATIC_FILE)
 		read_file_to_body(res.second);
-	//else if (filetype == DYNAMIC_FILE)
-	//{
-
-	//}
+	else if (filetype == DYNAMIC_FILE)
+		execute_cgi_proc(res.second, file_suffix);
 	
   // 1.Resolve path
   // 2.Resolve Mime type
