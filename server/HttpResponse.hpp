@@ -6,6 +6,7 @@
 #include "./HttpParser.hpp"
 #include "config/configTypes.hpp"
 #include "config/Config.hpp"
+#include "sys/stat.h"
 
 enum filetype {
 	STATIC_FILE = 0,
@@ -58,7 +59,7 @@ class HttpResponse
 		int						get_status_code(void) const;
 		std::string				get_body(void) const;
 		bool					is_built(void) const;
-
+		bool 					is_path_safe(const std::string& abs_path, const std::string& base_path);
 	public:
 		HttpResponse(void) = delete;
 		HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd);

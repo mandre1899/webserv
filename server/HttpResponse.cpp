@@ -100,23 +100,74 @@ HttpResponse&	HttpResponse::add_header(const std::string& key, const std::string
 	return *this;
 }
 
-bool	HttpResponse::read_file_to_body(const std::string& abs_path)
+void	HttpResponse::set_default_headers(void)
 {
-	std::ifstream	file;
-	file.open(abs_path);
-	if (!file.is_open())
+    // Add server header if not present
+    if (_headers.find("server") == _headers.end())
+        _headers["server"] = "Webserv/1.0";
+    
+    // Add date header
+    if (_headers.find("date") == _headers.end()) {
+        time_t now = time(0);
+        struct tm tm_struct;
+        gmtime_r(&now, &tm_struct);
+        char buf[100];
+        strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_struct);
+        _headers["date"] = std::string(buf);
+    }
+    
+    // Add connection header based on HTTP version
+    if (_headers.find("connection") == _headers.end()) {
+        _headers["connection"] = "close"; // Can be "keep-alive" if supported
+    }
+}
+
+bool HttpResponse::read_file_to_body(const std::string& abs_path)
+{
+	// Add file size check
+	struct stat file_stat;
+	if (stat(abs_path.c_str(), &file_stat) != 0) {
+		set_status_code(404);
 		return false;
-	_body_size = 0;
-	std::string	buf;
-	while ((std::getline(file, buf)))
-	{
-		buf.append("\n");
-		_body.append(buf);
-		_body_size += buf.size();
 	}
-	_headers["content-length"] = std::to_string(_body_size);//temporary will create wrapper
-	file.close();
-	return true;
+	// Check if file is too large (e.g., max 10MB)
+	const long long MAX_FILE_SIZE = 10 * 1024 * 1024;
+	if (file_stat.st_size > MAX_FILE_SIZE) {
+		set_status_code(413); // payload to large
+		return false;
+	}
+	// check if file and not directory
+	if (!S_ISREG(file_stat.st_mode))
+	{
+		set_status_code(403);
+		return false;
+	}
+	std::ifstream file;
+	file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	try
+	{
+		file.open(abs_path, std::ios::binary);
+		_body.reserve(file_stat.st_size); //reserve for better performance
+		_body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+		_body_size = _body.size();
+		_headers["content-length"] = std::to_string(_body_size);
+		file.close();
+		return true;
+
+	} catch (const std::ifstream::failure& e) {
+		set_status_code(500);
+		// Add logging
+		return false;
+	}
+}
+
+void HttpResponse::set_status_code(int code) //default wrapper
+{
+    if (_http_status_map.find(code) == _http_status_map.end()) {
+        _status_code = 500;
+        return;
+    }
+    _status_code = code;
 }
 
 static char**	parse_header_to_env(std::map<std::string, std::string> headers)
@@ -142,7 +193,7 @@ bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	char *scriptPath = const_cast<char*>(abs_path.c_str());
 	char **env;
 
-	_status_code = 200;
+	set_status_code(200);
 	if (filetype == ".py")
 		execPath = const_cast<char *>(pyExec.c_str());
 	char *const argv[] = {execPath, scriptPath, NULL};
@@ -330,33 +381,59 @@ void HttpResponse::generate_error_page(void)
 	_body = body.str();
 }
 
-void  HttpResponse::build(void) // Eventually just return the state for the client state machine
+void HttpResponse::build(void)
 {
-	std::pair<int, std::string> res= resolve_path();
-	_status_code = res.first;
-	if (_status_code != 200)
+	try
 	{
-		generate_error_page();
-		return ;
+		std::pair<int, std::string> res = resolve_path();
+		_status_code = res.first;
+
+		if (_status_code != 200) {
+			generate_error_page();
+			return;
+		}
+
+		const std::string& abs_path = res.second;
+
+		if (access(abs_path.c_str(), R_OK) != 0)
+		{
+			_status_code = (errno == EACCES) ? 403 : 404;
+			generate_error_page();
+			return;
+		}
+
+		const std::string file_suffix = resolve_file_suffix(abs_path);
+		set_content_type(resolve_content_type(file_suffix));
+
+		filetype type = resolve_filetype(file_suffix);
+
+		bool success;
+		if (type == STATIC_FILE)
+		{
+			success = read_file_to_body(abs_path);
+		}
+		else if (type == DYNAMIC_FILE)
+		{
+			success = execute_cgi_proc(abs_path, file_suffix);
+		}
+		else
+		{
+			_status_code = 415; // Unsupported Media Type
+			success = false;
+		}
+
+		if (!success)
+		{
+			generate_error_page();
+			return;
+		}
+
+		set_default_headers();
+		_is_built = true;
 	}
-	//Leave for edgecase checking 
-	std::cout << "Absolute Path is: " << res.second << " status " << res.first << std::endl;
-	const std::string file_suffix = resolve_file_suffix(res.second);
-	set_content_type(resolve_content_type(file_suffix));
-	filetype filetype = resolve_filetype(file_suffix);
-	std::cout << filetype << std::endl;
-	if (filetype == STATIC_FILE)
-		read_file_to_body(res.second);
-	else if (filetype == DYNAMIC_FILE)
-		execute_cgi_proc(res.second, file_suffix);
-
-	// 1.Resolve path
-	// 2.Resolve Mime type
-	// 3.Resolve filetype
-	//  -> if is STATIC_FILE
-	//  4. read file into body string
-	//  -> if is CGI
-	//  4. run CGI etc.
-	// 5. set client state 
+	catch (const std::exception& e)
+	{
+		_status_code = 500;
+		generate_error_page();
+	}
 }
-
