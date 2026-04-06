@@ -61,8 +61,9 @@ class HttpResponse
 		std::string				read_file(const std::string& file_path);
 		void					generate_error_page(void);
 
-		//Delete Request
-		bool					delete_request(const std::string abs_path);
+		//Http methods
+		bool			delete_request(const std::string& abs_path);
+		bool			get_request(const std::string& abs_path);
 
 		int						get_status_code(void) const;
 		std::string				get_body(void) const;

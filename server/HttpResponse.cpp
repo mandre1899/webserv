@@ -414,9 +414,8 @@ void	HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 
 //directory listing end
 
-bool	HttpResponse::delete_request(const std::string abs_path)
+bool	HttpResponse::delete_request(const std::string& abs_path)
 {
-	std::cout << "Hellooo" << std::endl;
 	struct stat path_stat;
     if (stat(abs_path.c_str(), &path_stat) != 0)
         return false;
@@ -425,6 +424,52 @@ bool	HttpResponse::delete_request(const std::string abs_path)
 		return false;
     return unlink(abs_path.c_str()) == 0;
 }
+
+bool	HttpResponse::get_request(const std::string& abs_path)
+{
+	//Check for edge cases
+	if(is_directory(abs_path))
+	{
+		std::cout << "allo" << std::endl;
+		generate_dir_listing(abs_path, _request.getRequestUri());
+	}
+	else
+	{
+		const std::string file_suffix = resolve_file_suffix(abs_path);
+		set_content_type(resolve_content_type(file_suffix));
+
+		filetype type = resolve_filetype(file_suffix);
+
+		bool success;
+		if (type == STATIC_FILE)
+		{
+			success = read_file_to_body(abs_path);
+		}
+		else if (type == DYNAMIC_FILE)
+		{
+			success = execute_cgi_proc(abs_path, file_suffix);
+		}
+		else
+		{
+			_status_code = 415; // Unsupported Media Type
+			success = false;
+		}
+
+		if (!success)
+		{
+			generate_error_page();
+			return false;
+		}
+	}
+	set_default_headers();
+	_is_built = true;
+	return true;
+}
+
+//bool	HttpResponse::post_request(const std::string& abs_path)
+//{
+//	
+//}
 
 void HttpResponse::build(void)
 {
@@ -449,45 +494,10 @@ void HttpResponse::build(void)
 
 		if (method_type::DELETE == _request.getMethod())
 			delete_request(abs_path);
+		//else if (method_type::POST == _request.getMethod())
+		//	post_request(abs_path);
 		else if (method_type::GET == _request.getMethod())
-		{
-			//Check for edge cases
-			if(is_directory(abs_path))
-			{
-				std::cout << "allo" << std::endl;
-				generate_dir_listing(abs_path, _request.getRequestUri());
-			}
-			else
-			{
-				const std::string file_suffix = resolve_file_suffix(abs_path);
-				set_content_type(resolve_content_type(file_suffix));
-
-				filetype type = resolve_filetype(file_suffix);
-
-				bool success;
-				if (type == STATIC_FILE)
-				{
-					success = read_file_to_body(abs_path);
-				}
-				else if (type == DYNAMIC_FILE)
-				{
-					success = execute_cgi_proc(abs_path, file_suffix);
-				}
-				else
-				{
-					_status_code = 415; // Unsupported Media Type
-					success = false;
-				}
-
-				if (!success)
-				{
-					generate_error_page();
-					return;
-				}
-			}
-			set_default_headers();
-			_is_built = true;
-		}
+			get_request(abs_path);
 	}
 	catch (const std::exception& e)
 	{
