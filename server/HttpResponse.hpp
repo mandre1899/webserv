@@ -7,6 +7,7 @@
 #include "config/configTypes.hpp"
 #include "config/Config.hpp"
 #include "sys/stat.h"
+#include <dirent.h>
 
 enum filetype {
 	STATIC_FILE = 0,
@@ -47,6 +48,10 @@ class HttpResponse
 		std::pair<int, std::string>			resolve_path(void); //get absolute path
 		std::string							resolve_content_type(const std::string& abs_path);
 		filetype	 						resolve_filetype(const std::string& file_suffix);
+
+		//Directroy listing
+		bool						is_directory(const std::string& path);
+		void						generate_dir_listing(const std::string& dir_path, const std::string& uri_path);
 
 		// Response building
 		void					set_default_headers(void);

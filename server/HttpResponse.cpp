@@ -77,7 +77,7 @@ const std::map<int, std::string> HttpResponse::_http_status_map= {
 
 // Removes suffixed and prefixed slash (Helper function)
 // Creates a copy of the string passed as reference.
-std::string     HttpResponse::clean_string(const std::string& path)
+std::string     HttpResponse::clean_string(const std::string& path)// Not used at moment (leave maybe will need)
 {
 	std::string tmp = path;
 
@@ -102,11 +102,8 @@ HttpResponse&	HttpResponse::add_header(const std::string& key, const std::string
 
 void	HttpResponse::set_default_headers(void)
 {
-    // Add server header if not present
     if (_headers.find("server") == _headers.end())
         _headers["server"] = "Webserv/1.0";
-    
-    // Add date header
     if (_headers.find("date") == _headers.end()) {
         time_t now = time(0);
         struct tm tm_struct;
@@ -118,7 +115,7 @@ void	HttpResponse::set_default_headers(void)
     
     // Add connection header based on HTTP version
     if (_headers.find("connection") == _headers.end()) {
-        _headers["connection"] = "close"; // Can be "keep-alive" if supported
+        _headers["connection"] = "close";
     }
 }
 
@@ -128,18 +125,6 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 	struct stat file_stat;
 	if (stat(abs_path.c_str(), &file_stat) != 0) {
 		set_status_code(404);
-		return false;
-	}
-	// Check if file is too large (e.g., max 10MB)
-	const long long MAX_FILE_SIZE = 10 * 1024 * 1024;
-	if (file_stat.st_size > MAX_FILE_SIZE) {
-		set_status_code(413); // payload to large
-		return false;
-	}
-	// check if file and not directory
-	if (!S_ISREG(file_stat.st_mode))
-	{
-		set_status_code(403);
 		return false;
 	}
 	std::ifstream file;
@@ -269,9 +254,7 @@ const std::string	HttpResponse::get_response_str() const
 	tmp << "HTTP/1.1 " << _status_code << " " << _http_status_map.find(_status_code)->second << "\r\n";
 	//Includes adding content-length
 	for (const auto& a : _headers)
-	{
 		tmp << a.first << ": " << a.second << "\r\n";
-	}
 	tmp << "\r\n";
 	tmp << _body;
 	return tmp.str();
@@ -309,9 +292,10 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		// For now using the hardcoded base path (must fix!)
 		if (!location_cfg.index.empty())
 			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
+		else if (location_cfg.autoIndex == true)
+			return rtn_pair(200, join_path(root_path + "/", location_cfg.root));
 		return rtn_pair(404, std::string());
 	}
-
 	if (_config.errorPage)
 		return rtn_pair(404, _config.errorPage->path);
 	return rtn_pair(404, std::string());
@@ -381,6 +365,55 @@ void HttpResponse::generate_error_page(void)
 	_body = body.str();
 }
 
+//directory listing
+
+bool	HttpResponse::is_directory(const std::string& path)
+{
+    struct stat file_stat;
+    if (stat(path.c_str(), &file_stat) != 0)
+        return false;
+    return S_ISDIR(file_stat.st_mode);
+}
+
+void	HttpResponse::generate_dir_listing(const std::string& dir_path, const std::string& uri_path)
+{
+	std::ostringstream	ss;
+
+	ss << "<!DOCTYPE html>\n"
+		<< "<html lang=\"en\">\n"
+		<< "<head>\n"
+		<< "  <meta charset=\"UTF-8\">\n"
+		<< "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+		<< "  <title>"<< uri_path << " - Dir listing </title>\n"
+		<< "  <style>\n"
+		<< "  </style>\n"
+		<< "</head>\n"
+		<< "<body>\n"
+		<< "  <ul>\n";
+
+		DIR *dir = opendir(dir_path.c_str());
+		if (dir != nullptr)
+		{
+		    struct dirent *next_dir;
+		    while ((next_dir = readdir(dir)) != nullptr)
+		    {
+		        ss << "<li>" 
+		           << "<a" << " href=\"" << next_dir->d_name << "\">" << next_dir->d_name << "</a>"
+		           << "</li>\n";
+		    }
+		    closedir(dir);
+		}
+
+	ss << "  </ul>\n"
+		<< "</ul>"
+		<< "</body>\n"
+		<< "</html>\n";
+	_content_type = "text/html";
+	_body = ss.str();
+}
+
+//directory listing end
+
 void HttpResponse::build(void)
 {
 	try
@@ -401,31 +434,41 @@ void HttpResponse::build(void)
 			generate_error_page();
 			return;
 		}
+	
+		std::cout << "abs_path: " << abs_path << std::endl;
 
-		const std::string file_suffix = resolve_file_suffix(abs_path);
-		set_content_type(resolve_content_type(file_suffix));
-
-		filetype type = resolve_filetype(file_suffix);
-
-		bool success;
-		if (type == STATIC_FILE)
+		if(is_directory(abs_path))
 		{
-			success = read_file_to_body(abs_path);
-		}
-		else if (type == DYNAMIC_FILE)
-		{
-			success = execute_cgi_proc(abs_path, file_suffix);
+			std::cout << "allo" << std::endl;
+			generate_dir_listing(abs_path, _request.getRequestUri());
 		}
 		else
 		{
-			_status_code = 415; // Unsupported Media Type
-			success = false;
-		}
+			const std::string file_suffix = resolve_file_suffix(abs_path);
+			set_content_type(resolve_content_type(file_suffix));
 
-		if (!success)
-		{
-			generate_error_page();
-			return;
+			filetype type = resolve_filetype(file_suffix);
+
+			bool success;
+			if (type == STATIC_FILE)
+			{
+				success = read_file_to_body(abs_path);
+			}
+			else if (type == DYNAMIC_FILE)
+			{
+				success = execute_cgi_proc(abs_path, file_suffix);
+			}
+			else
+			{
+				_status_code = 415; // Unsupported Media Type
+				success = false;
+			}
+
+			if (!success)
+			{
+				generate_error_page();
+				return;
+			}
 		}
 
 		set_default_headers();
