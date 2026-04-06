@@ -36,7 +36,7 @@ class HttpResponse
 		int													_cgi_pid;
 
 		// Helper functions
-		std::string					clean_string(const std::string& path);
+		std::string					abstract_filename(const std::string& path);
 		std::string					get_status_message(int code) const;
 		std::string					get_file_extension(const std::string& path) const;
 		bool						read_file_to_body(const std::string& abs_path); //reads the file to the _body member string

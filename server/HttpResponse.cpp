@@ -75,16 +75,9 @@ const std::map<int, std::string> HttpResponse::_http_status_map= {
 };
 // Static data storages END
 
-// Removes suffixed and prefixed slash (Helper function)
-// Creates a copy of the string passed as reference.
-std::string     HttpResponse::clean_string(const std::string& path)// Not used at moment (leave maybe will need)
+std::string     HttpResponse::abstract_filename(const std::string& path)
 {
-	std::string tmp = path;
-
-	if (tmp[0] == '/')
-		tmp.erase(tmp.begin());
-	if (tmp[tmp.length() - 1] == '/')
-		tmp.erase(tmp.length() - 1);
+	std::string tmp = path.substr(path.find_last_of("/") + 1);
 	return tmp;
 }
 
@@ -216,19 +209,18 @@ static std::pair<int, std::string>	rtn_pair(int code, std::string path)
 	return rtn;
 }
 
+//Improved is also now matching /index.html on / location
 static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 {
 	if (loc.empty())
 		return false;
-
+	if (loc == "/")
+		return !uri.empty() && uri[0] == '/';
 	if (uri == loc)
 		return true;
-	// Prefix match on path boundary:
-	// "/images" matches "/images/logo.png"
-	// but not "/images2/test"
 	if (uri.size() > loc.size() &&
-			uri.compare(0, loc.size(), loc) == 0 &&
-			uri[loc.size()] == '/')
+		uri.compare(0, loc.size(), loc) == 0 &&
+		uri[loc.size()] == '/')
 		return true;
 	return false;
 }
@@ -292,8 +284,15 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		// For now using the hardcoded base path (must fix!)
 		if (!location_cfg.index.empty())
 			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
-		else if (location_cfg.autoIndex == true)
-			return rtn_pair(200, join_path(root_path + "/", location_cfg.root));
+		else
+		{
+			std::string test = abstract_filename(uri_path);
+			std::cout << test << std::endl;
+			std::string tmp = join_path(root_path + "/" + location_cfg.root, test);
+			std::cout << "The path: " << tmp << std::endl;
+			if (access(tmp.c_str(), R_OK) == 0)
+				return rtn_pair(200, tmp);
+		}
 		return rtn_pair(404, std::string());
 	}
 	if (_config.errorPage)
@@ -434,9 +433,8 @@ void HttpResponse::build(void)
 			generate_error_page();
 			return;
 		}
-	
-		std::cout << "abs_path: " << abs_path << std::endl;
 
+		//Check for edge cases
 		if(is_directory(abs_path))
 		{
 			std::cout << "allo" << std::endl;
@@ -470,7 +468,6 @@ void HttpResponse::build(void)
 				return;
 			}
 		}
-
 		set_default_headers();
 		_is_built = true;
 	}
