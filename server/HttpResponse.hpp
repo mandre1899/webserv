@@ -61,6 +61,9 @@ class HttpResponse
 		std::string				read_file(const std::string& file_path);
 		void					generate_error_page(void);
 
+		//Delete Request
+		void					delete_request(void);
+
 		int						get_status_code(void) const;
 		std::string				get_body(void) const;
 		bool					is_built(void) const;

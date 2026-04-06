@@ -110,6 +110,7 @@ void	HttpResponse::set_default_headers(void)
     if (_headers.find("connection") == _headers.end()) {
         _headers["connection"] = "close";
     }
+	_headers["content-length"] = std::to_string(_body_size);
 }
 
 bool HttpResponse::read_file_to_body(const std::string& abs_path)
@@ -128,7 +129,6 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 		_body.reserve(file_stat.st_size); //reserve for better performance
 		_body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 		_body_size = _body.size();
-		_headers["content-length"] = std::to_string(_body_size);
 		file.close();
 		return true;
 
@@ -148,10 +148,10 @@ void HttpResponse::set_status_code(int code) //default wrapper
     _status_code = code;
 }
 
-static char**	parse_header_to_env(std::map<std::string, std::string> headers)
+static std::vector<char*> parse_header_to_env(std::map<std::string, std::string> headers)
 {
-	static std::vector<char*> env;
-	static std::vector<std::unique_ptr<char[]>> env_ptr;
+	std::vector<char*> env;
+	std::vector<std::unique_ptr<char[]>> env_ptr;
 	for (const auto &a : headers)
 	{
 		std::string concat = a.first + "=" + a.second;
@@ -161,7 +161,7 @@ static char**	parse_header_to_env(std::map<std::string, std::string> headers)
 		env_ptr.push_back(std::move(ptr));
 	}
 	env.push_back(nullptr);
-	return &env[0];
+	return env;
 }
 
 bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::string& filetype)
@@ -175,7 +175,8 @@ bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	if (filetype == ".py")
 		execPath = const_cast<char *>(pyExec.c_str());
 	char *const argv[] = {execPath, scriptPath, NULL};
-	env = parse_header_to_env(_request.getHeadersMap());
+	std::vector<char *> tmp = parse_header_to_env(_request.getHeadersMap());
+	env = tmp.data();
 	int pid = fork();
 	if (pid == 0)
 	{
@@ -244,7 +245,6 @@ const std::string	HttpResponse::get_response_str() const
 	std::ostringstream	tmp;
 
 	tmp << "HTTP/1.1 " << _status_code << " " << _http_status_map.find(_status_code)->second << "\r\n";
-	//Includes adding content-length
 	for (const auto& a : _headers)
 		tmp << a.first << ": " << a.second << "\r\n";
 	tmp << "\r\n";
@@ -323,7 +323,7 @@ static const std::string resolve_file_suffix(const std::string& abs_path)
 	size_t	dotPos = abs_path.find(".");
 	size_t	questMark = abs_path.find("?");
 
-	if (0 < questMark)
+	if (questMark != std::string::npos)
 		return abs_path.substr(dotPos, questMark);
 	return abs_path.substr(dotPos);
 }
@@ -362,6 +362,7 @@ void HttpResponse::generate_error_page(void)
 		<< "</html>\n";
 
 	_body = body.str();
+	_body_size = _body.size();
 }
 
 //directory listing
@@ -404,11 +405,11 @@ void	HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 		}
 
 	ss << "  </ul>\n"
-		<< "</ul>"
 		<< "</body>\n"
 		<< "</html>\n";
 	_content_type = "text/html";
 	_body = ss.str();
+	_body_size = _body.size();
 }
 
 //directory listing end
@@ -434,42 +435,47 @@ void HttpResponse::build(void)
 			return;
 		}
 
-		//Check for edge cases
-		if(is_directory(abs_path))
+		if (method_type::DELETE)
+			delete_request();
+		esle if (method_type::GET == _request.getMethod())
 		{
-			std::cout << "allo" << std::endl;
-			generate_dir_listing(abs_path, _request.getRequestUri());
-		}
-		else
-		{
-			const std::string file_suffix = resolve_file_suffix(abs_path);
-			set_content_type(resolve_content_type(file_suffix));
-
-			filetype type = resolve_filetype(file_suffix);
-
-			bool success;
-			if (type == STATIC_FILE)
+			//Check for edge cases
+			if(is_directory(abs_path))
 			{
-				success = read_file_to_body(abs_path);
-			}
-			else if (type == DYNAMIC_FILE)
-			{
-				success = execute_cgi_proc(abs_path, file_suffix);
+				std::cout << "allo" << std::endl;
+				generate_dir_listing(abs_path, _request.getRequestUri());
 			}
 			else
 			{
-				_status_code = 415; // Unsupported Media Type
-				success = false;
-			}
+				const std::string file_suffix = resolve_file_suffix(abs_path);
+				set_content_type(resolve_content_type(file_suffix));
 
-			if (!success)
-			{
-				generate_error_page();
-				return;
+				filetype type = resolve_filetype(file_suffix);
+
+				bool success;
+				if (type == STATIC_FILE)
+				{
+					success = read_file_to_body(abs_path);
+				}
+				else if (type == DYNAMIC_FILE)
+				{
+					success = execute_cgi_proc(abs_path, file_suffix);
+				}
+				else
+				{
+					_status_code = 415; // Unsupported Media Type
+					success = false;
+				}
+
+				if (!success)
+				{
+					generate_error_page();
+					return;
+				}
 			}
+			set_default_headers();
+			_is_built = true;
 		}
-		set_default_headers();
-		_is_built = true;
 	}
 	catch (const std::exception& e)
 	{
