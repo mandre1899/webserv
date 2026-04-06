@@ -422,7 +422,12 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 	//If its directory do not delete!?
     if (S_ISDIR(path_stat.st_mode))
 		return false;
-    return unlink(abs_path.c_str()) == 0;
+	if (unlink(abs_path.c_str()) == 0)
+	{
+		_body = "<html lang=\"en-US\">\n<body>\n<h1>File \"" + abstract_filename(abs_path) + "\" deleted.</h1>\n</body>\n</html>";
+		return true;
+	}
+	return false;
 }
 
 bool	HttpResponse::get_request(const std::string& abs_path)
