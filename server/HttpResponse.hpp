@@ -62,7 +62,7 @@ class HttpResponse
 		void					generate_error_page(void);
 
 		//Delete Request
-		void					delete_request(void);
+		bool					delete_request(const std::string abs_path);
 
 		int						get_status_code(void) const;
 		std::string				get_body(void) const;

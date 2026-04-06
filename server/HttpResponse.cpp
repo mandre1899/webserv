@@ -414,6 +414,18 @@ void	HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 
 //directory listing end
 
+bool	HttpResponse::delete_request(const std::string abs_path)
+{
+	std::cout << "Hellooo" << std::endl;
+	struct stat path_stat;
+    if (stat(abs_path.c_str(), &path_stat) != 0)
+        return false;
+	//If its directory do not delete!?
+    if (S_ISDIR(path_stat.st_mode))
+		return false;
+    return unlink(abs_path.c_str()) == 0;
+}
+
 void HttpResponse::build(void)
 {
 	try
@@ -435,9 +447,9 @@ void HttpResponse::build(void)
 			return;
 		}
 
-		if (method_type::DELETE)
-			delete_request();
-		esle if (method_type::GET == _request.getMethod())
+		if (method_type::DELETE == _request.getMethod())
+			delete_request(abs_path);
+		else if (method_type::GET == _request.getMethod())
 		{
 			//Check for edge cases
 			if(is_directory(abs_path))
