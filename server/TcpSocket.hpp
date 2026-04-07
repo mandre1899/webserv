@@ -16,12 +16,12 @@ private:
 	int _socket;
 	sockaddr_in _sockAddr{};
 	static const u_int16_t _maxRequests = 10;
-	const cfg::srvCtxCfg& _srvCfg;
+	const cfg::socketCfg& _config;
 
 public:
 	/* Constructors & Destructors */
 	TcpSocket() = delete;
-	TcpSocket(in_addr_t serverAddress, uint16_t port, const cfg::srvCtxCfg& srv);
+	TcpSocket(uint16_t port, const cfg::socketCfg& config);
 	TcpSocket(const TcpSocket& src) = delete;
 	TcpSocket(TcpSocket&& src) noexcept;
 	~TcpSocket();
@@ -36,7 +36,7 @@ public:
 	/* Getters & Setters */
 	int getSocketFd() const;
 	sockaddr_in getSocketAddr() const;
-	const cfg::srvCtxCfg& getConfig() const;
+	const cfg::socketCfg& getConfig() const;
 
 	/* Member Class */
 	class SocketError : public std::exception

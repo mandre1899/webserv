@@ -1,7 +1,7 @@
 #include "Client.hpp"
 
 /* Constructors & Destructors */
-Client::Client(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _srvCfg(srvCfg)
+Client::Client(int serverFd, int clientFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _srvCfg(srvCfg)
 {
 	_status = Status::close;
 	_msg = "";

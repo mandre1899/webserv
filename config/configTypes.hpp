@@ -11,12 +11,6 @@ typedef unsigned short http_code;
 
 namespace cfg
 {
-	struct socketCfg
-	{
-		in_addr_t address;
-		uint16_t port = 80;
-	};
-
 	struct returnCfg
 	{
 		http_code code;
@@ -64,11 +58,26 @@ namespace cfg
 	};
 
 	// corresponds to the server{} scope in the conf file
-	struct srvCtxCfg : public sharedCfg
+	struct vHost : public sharedCfg
 	{
-		socketCfg listen;
-		std::string serverName;
+		in_addr_t address;
+		uint16_t port = 80;
+		std::vector<std::string> serverName;
 		std::unordered_map<std::string, locationCtx> location;
+	};
+
+	struct srvCfg
+	{
+		in_addr_t address;
+		uint16_t port;
+		std::unordered_map<std::string, int> srvNameMap; // key: serverName, value: vHost index
+		std::vector<vHost> vHost;
+	};
+
+	struct socketCfg
+	{
+		uint16_t port;
+		std::unordered_map<std::string, srvCfg&> socketMap; // key: ip address, value: srvCfg
 	};
 }
 

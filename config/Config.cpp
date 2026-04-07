@@ -7,7 +7,7 @@ Config::Config(const char* path)
 	ContextNode node = ContextNode(tokens);
 	setHttpConfDefaults();
 	buildHttp(node.getRootNode());
-	checkConfig(path);
+	buildServerConf(path);
 	Logger::log<LogLevel::debug>("Config::Config()\n", *this);
 }
 
@@ -27,7 +27,7 @@ void Config::setHttpConfDefaults()
 	_httpConf.clientBodyTimeout = 30;		 // 30s
 }
 
-void Config::setServerConfDefaults(cfg::srvCtxCfg& servConf)
+void Config::setServerConfDefaults(cfg::vHost& servConf)
 {
 	servConf.root = _httpConf.root;
 	servConf.index = _httpConf.index;
@@ -38,7 +38,7 @@ void Config::setServerConfDefaults(cfg::srvCtxCfg& servConf)
 	servConf.clientBodyTimeout = _httpConf.clientBodyTimeout;
 }
 
-void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::srvCtxCfg& servConf)
+void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::vHost& servConf)
 {
 	locConf.root = servConf.root;
 	locConf.index = servConf.index;
@@ -49,7 +49,7 @@ void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::srvCtxCfg& 
 	locConf.clientBodyTimeout = servConf.clientBodyTimeout;
 }
 
-void Config::buildLocation(const ctxNode& ctx, cfg::srvCtxCfg& serverCtx)
+void Config::buildLocation(const ctxNode& ctx, cfg::vHost& serverCtx)
 {
 	std::string path;
 	filePos locationPos;
@@ -72,12 +72,12 @@ void Config::buildLocation(const ctxNode& ctx, cfg::srvCtxCfg& serverCtx)
 		throw std::runtime_error(buildMsg("Duplicate location \"" + path + "\"", locationPos));;
 }
 
-void Config::buildServer(const ctxNode& ctx, cfg::srvCtxCfg& servConf)
+void Config::buildServer(const ctxNode& ctx, cfg::vHost& servConf)
 {
 	size_t childPos = 0;
 	TokenStream ts(ctx.param);
 	token t;
-	ValueExtractor<cfg::srvCtxCfg> ext;
+	ValueExtractor<cfg::vHost> ext;
 
 	t = ts.getNextToken();
 	while (t.type != tType::end)
@@ -107,35 +107,84 @@ void Config::buildHttp(const ctxNode& ctx)
 	}
 	while (childPos < ctx.child.size())
 	{
-		cfg::srvCtxCfg& servConf = _wsConfs.emplace_back();
+		cfg::vHost& servConf = _hostConfs.emplace_back();
 		setServerConfDefaults(servConf);
 		buildServer(ctx.child[childPos], servConf);
 		childPos++;
 	}
 }
 
-void Config::checkConfig(const char* path)
+void Config::buildServerConf(const char* path)
 {
-	std::set<std::string> srvIdent;
-
-	for (size_t i = 0; i < this->size(); i++)
+	for (size_t i = 0; i < this->vHostSize(); i++)
 	{
-		cfg::srvCtxCfg ctx = this->at(i);
-		std::string id = std::to_string(ctx.listen.address) + std::to_string(ctx.listen.port) + ctx.serverName;
-		auto it = srvIdent.insert(id);
-		if (!it.second)
-			throw std::runtime_error("Conflicting server name/address " + std::string(path));
+		cfg::vHost host = this->vHostAt(i);
+		std::string id = std::to_string(host.address) + std::to_string(host.port);
+
+		cfg::srvCfg tmp;
+		auto it = _srvConfs.insert({ id, tmp });
+
+		cfg::srvCfg& server = it.first->second;
+		size_t pos = 0;
+		if (it.second)
+		{
+			server.address = host.address;
+			server.port = host.port;
+		}
+		pos = server.vHost.size();
+		server.vHost.push_back(host);
+		for (size_t j = 0; j < host.serverName.size(); j++)
+		{
+			bool isDubplicate = !server.srvNameMap.insert({ host.serverName[j], pos }).second;
+			if (isDubplicate)
+				throw std::runtime_error("Conflicting server name \"" + host.serverName[j] + "\" " + std::string(path));
+		}
+	}
+	for (size_t i = 0; i < this->srvSize(); i++)
+	{
+		cfg::srvCfg srv = this->srvAt(i);
+		cfg::socketCfg tmp;
+		auto it = _socketCfg.insert({ srv.port, tmp });
+		cfg::socketCfg& socketCfg = it.first->second;
+		if (it.second)
+			socketCfg.port = srv.port;
+		std::string id = std::to_string(srv.address) + std::to_string(srv.port);
+		socketCfg.socketMap.insert({ id, srv });
 	}
 }
 
-const cfg::srvCtxCfg& Config::at(size_t idx) const
+const cfg::vHost& Config::vHostAt(size_t idx) const
 {
-	return (_wsConfs.at(idx));
+	return (_hostConfs.at(idx));
 }
 
-size_t Config::size() const
+size_t Config::vHostSize() const
 {
-	return (_wsConfs.size());
+	return (_hostConfs.size());
+}
+
+const cfg::srvCfg& Config::srvAt(size_t idx) const
+{
+	auto it = _srvConfs.begin();
+	it = std::next(it, idx);
+	return (it->second);
+}
+
+size_t Config::srvSize() const
+{
+	return (_srvConfs.size());
+}
+
+const cfg::socketCfg& Config::socAt(size_t idx) const
+{
+	auto it = _socketCfg.begin();
+	it = std::next(it, idx);
+	return (it->second);
+}
+
+size_t Config::socSize() const
+{
+	return (_socketCfg.size());
 }
 
 /* Basic Operators */
@@ -149,17 +198,24 @@ Config::SyntaxErrorException::SyntaxErrorException(const std::string& message) :
 
 std::ostream& operator<<(std::ostream& os, const Config& src)
 {
-	for (size_t i = 0; i < src.size(); i++)
+	for (size_t i = 0; i < src.vHostSize(); i++)
 	{
 		os << "-------------------server config-------------------\n";
-		cfg::srvCtxCfg ctx = src.at(i);
+		cfg::vHost ctx = src.vHostAt(i);
 		os << "listen: \n";
 		struct in_addr addr;
-		addr.s_addr = ctx.listen.address;
+		addr.s_addr = ctx.address;
 		os << "   address: " << inet_ntoa(addr) << std::endl;
-		os << "   port: " << ctx.listen.port << std::endl;
+		os << "   port: " << ctx.port << std::endl;
 		if (!ctx.serverName.empty())
-			os << "serverName: " << ctx.serverName << std::endl;
+		{
+			os << "serverName:";
+			for (size_t j = 0; j < ctx.serverName.size(); j++)
+			{
+				os << " " << ctx.serverName[j];
+			}
+			os << std::endl;
+		}
 		if (!ctx.root.empty())
 			os << "root: " << ctx.root << std::endl;
 		if (!ctx.index.empty())

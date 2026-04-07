@@ -20,7 +20,7 @@ private:
 	std::unordered_map<int, std::variant<TcpSocket, Client>> _map{};
 
 	/* Member Functions */
-	void addClient(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg);
+	void addClient(int serverFd, int clientFd, const cfg::socketCfg& socCfg);
 	void removeClient(int clientFd);
 
 public:

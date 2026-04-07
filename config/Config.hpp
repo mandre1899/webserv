@@ -21,16 +21,19 @@ class Config
 {
 private:
 	cfg::httpCtx _httpConf;
-	std::vector<cfg::srvCtxCfg> _wsConfs;
+	std::vector<cfg::vHost> _hostConfs;
+	std::unordered_map<std::string, cfg::srvCfg> _srvConfs; // key: ip address + port | value: cfg::srvCfg
+	std::unordered_map<uint16_t, cfg::socketCfg> _socketCfg; // key: port | value: cfg::socketCfg
+
 
 	/* Member Functions */
 	void setHttpConfDefaults();
-	void setServerConfDefaults(cfg::srvCtxCfg& servConf);
-	void setLocationConfDefaults(cfg::locationCtx& locConf, cfg::srvCtxCfg& servConf);
-	void buildLocation(const ctxNode& ctx, cfg::srvCtxCfg& serverCtx);
-	void buildServer(const ctxNode& ctx, cfg::srvCtxCfg& serverCtx);
+	void setServerConfDefaults(cfg::vHost& servConf);
+	void setLocationConfDefaults(cfg::locationCtx& locConf, cfg::vHost& servConf);
+	void buildLocation(const ctxNode& ctx, cfg::vHost& serverCtx);
+	void buildServer(const ctxNode& ctx, cfg::vHost& serverCtx);
 	void buildHttp(const ctxNode& ctx);
-	void checkConfig(const char* path);
+	void buildServerConf(const char* path);
 
 public:
 	/* Constructors & Destructors */
@@ -41,8 +44,12 @@ public:
 	~Config();
 
 	/* Member Functions */
-	const cfg::srvCtxCfg& at(size_t idx) const;
-	size_t size() const;
+	const cfg::vHost& vHostAt(size_t idx) const;
+	size_t vHostSize() const;
+	const cfg::srvCfg& srvAt(size_t idx) const;
+	size_t srvSize() const;
+	const cfg::socketCfg& socAt(size_t idx) const;
+	size_t socSize() const;
 
 	/* Basic Operators */
 	Config& operator=(const Config& src) = delete;
