@@ -289,9 +289,7 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 			std::string test = abstract_filename(uri_path);
 			std::cout << test << std::endl;
 			std::string tmp = join_path(root_path + "/" + location_cfg.root, test);
-			std::cout << "The path: " << tmp << std::endl;
-			if (access(tmp.c_str(), R_OK) == 0)
-				return rtn_pair(200, tmp);
+			return rtn_pair(200, tmp);
 		}
 		return rtn_pair(404, std::string());
 	}
@@ -419,9 +417,10 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 	struct stat path_stat;
     if (stat(abs_path.c_str(), &path_stat) != 0)
         return false;
-	//If its directory do not delete!?
+	//If its directory do not delete ???
     if (S_ISDIR(path_stat.st_mode))
 		return false;
+
 	if (unlink(abs_path.c_str()) == 0)
 	{
 		_body = "<html lang=\"en-US\">\n<body>\n<h1>File \"" + abstract_filename(abs_path) + "\" deleted.</h1>\n</body>\n</html>";
@@ -432,7 +431,6 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 
 bool	HttpResponse::get_request(const std::string& abs_path)
 {
-	//Check for edge cases
 	if(is_directory(abs_path))
 	{
 		std::cout << "allo" << std::endl;
@@ -456,6 +454,7 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 		}
 		else
 		{
+			// Momentarily dead code -> resolve_filetype always returns one of two above types
 			_status_code = 415; // Unsupported Media Type
 			success = false;
 		}
@@ -492,14 +491,23 @@ void HttpResponse::build(void)
 
 		if (access(abs_path.c_str(), R_OK) != 0)
 		{
+			//Not sure if errno is allowd to use by subject
 			_status_code = (errno == EACCES) ? 403 : 404;
 			generate_error_page();
 			return;
 		}
 
 		if (method_type::DELETE == _request.getMethod())
-			delete_request(abs_path);
-		//else if (method_type::POST == _request.getMethod())
+		{
+			if (!delete_request(abs_path))
+			{
+				_status_code = 403;
+				generate_error_page();
+				return;
+			}
+
+		}
+		//else if (method_type::POST == _request.getMethod()) // Return a success message(depending on state)
 		//	post_request(abs_path);
 		else if (method_type::GET == _request.getMethod())
 			get_request(abs_path);
