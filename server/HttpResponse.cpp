@@ -208,17 +208,43 @@ bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd)
 	: _request(static_cast<const HttpParser&>(req)), _configs(conf), _socket_fd(clientFd)
 {
-	std::string host = req.getHeadersMap().find("Host")->second;
-	int index = _configs.srvNameMap.find(host)->second;
-	_config = _configs.vHost[index];
+	const auto& headers = req.getHeadersMap();
+	auto hostIt = headers.find("Host");
+	if (hostIt == headers.end() || hostIt->second.empty())
+		_config = _configs.vHost[0];
+	else
+	{
+		const std::string& host = hostIt->second;
+		auto srvIt = _configs.srvNameMap.find(host);
+		if (srvIt == _configs.srvNameMap.end())
+			_config = _configs.vHost[0];
+		int index = srvIt->second;
+		if (index < 0 || static_cast<size_t>(index) >= _configs.vHost.size())
+			_config = _configs.vHost[0];
+		else
+			_config = _configs.vHost[index];
+	}
 }
 
 HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd)
 	: _request(req), _configs(conf), _socket_fd(clientFd)
 {
-	std::string host = req.getHeadersMap().find("Host")->second;
-	int index = _configs.srvNameMap.find(host)->second;
-	_config = _configs.vHost[index];
+	const auto& headers = req.getHeadersMap();
+	auto hostIt = headers.find("Host");
+	if (hostIt == headers.end() || hostIt->second.empty())
+		_config = _configs.vHost[0];
+	else
+	{
+		const std::string& host = hostIt->second;
+		auto srvIt = _configs.srvNameMap.find(host);
+		if (srvIt == _configs.srvNameMap.end())
+			_config = _configs.vHost[0];
+		int index = srvIt->second;
+		if (index < 0 || static_cast<size_t>(index) >= _configs.vHost.size())
+			_config = _configs.vHost[0];
+		else
+			_config = _configs.vHost[index];
+	}
 }
 
 HttpResponse::~HttpResponse()
