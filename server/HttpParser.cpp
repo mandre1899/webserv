@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/02 15:56:19 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/07 15:40:46 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,26 +105,41 @@ std::string extractBoundary(std::string& value)
 {
 	if (value.substr(0, 30).compare("multipart/form-data; boundary=") != 0)
 		throw HttpParser::HttpParsingError();
-	std::string boundary = value.substr(32, value.size() - 32);
+	std::string boundary = value.substr(30);
 	return (boundary);
 }
-
 
 void HttpParser::parseBodyFromTmp(std::string path)
 {
 	std::ifstream in(path, std::ios::binary);
+	if (!in)
+		throw HttpParser::HttpParsingError();
 	auto boundary_header = _headers_map.find("Content-Type");
 	if (boundary_header == _headers_map.end())
 		throw HttpParser::HttpParsingError();
 	_boundary = extractBoundary(boundary_header->second);
-	std::cout << "BOUNDARY CHECK :" << _boundary << std::endl;
-	auto start =
+	//std::cout << "BOUNDARY CHECK :" << _boundary << std::endl;
+	std::string temp;
+	getline(in, temp);
+	//std::cout << temp << "\n" << std::endl;
+	if (!temp.empty() && temp.back() == '\r')
+		temp.pop_back();
+	if (temp != "--" + _boundary)
+		throw HttpParser::HttpParsingError();
+	getline(in, temp);
+	//std::cout << temp << "\n" << std::endl;
+	std::string filename = temp.substr(temp.find("filename=") + 10);
+	if (filename.empty())
+		throw HttpParser::HttpParsingError();
+	filename.erase(filename.find('"'));
+	//std::cout << filename << "\n" << std::endl;
+
+
 }
 
 // curl -X POST http://localhost:8085/upload \
 //   -F "file1=@test.txt" \
 //   -F "file2=@b.png"s
-
 
 bool HttpParser::parseBody(std::string& line)
 {
