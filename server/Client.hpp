@@ -33,7 +33,7 @@ private:
 	std::string _msg;
 	HttpParser _parsedHttp;
 	state _parsingState;
-	const cfg::srvCtxCfg& _srvCfg;
+	const cfg::srvCfg& _srvCfg;
 
 	/* Member Functions */
 	uint32_t recvData();
@@ -42,7 +42,7 @@ private:
 public:
 	/* Constructors & Destructors */
 	Client() = delete;
-	Client(int serverFd, int clientFd, const cfg::srvCtxCfg& srvCfg);
+	Client(int serverFd, int clientFd, const cfg::srvCfg& srvCfg);
 	Client(const Client& src) = delete;
 	Client(Client&& src) noexcept;
 	~Client();
