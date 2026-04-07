@@ -210,7 +210,7 @@ static std::pair<int, std::string>	rtn_pair(int code, std::string path)
 	return rtn;
 }
 
-//Improved is also now matching /index.html on / location
+//Improved is also now matching /index.html on / location -> specifix ressource requesting
 static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 {
 	if (loc.empty())
@@ -455,7 +455,7 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 		else
 		{
 			// Momentarily dead code -> resolve_filetype always returns one of two above types
-			_status_code = 415; // Unsupported Media Type
+			set_status_code(415); // Unsupported media typpe
 			success = false;
 		}
 
@@ -470,6 +470,7 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 	return true;
 }
 
+// Question: do I handle the file storing or is this part of the parser and I just return matching response
 //bool	HttpResponse::post_request(const std::string& abs_path)
 //{
 //	
@@ -480,7 +481,7 @@ void HttpResponse::build(void)
 	try
 	{
 		std::pair<int, std::string> res = resolve_path();
-		_status_code = res.first;
+		set_status_code(res.first);
 
 		if (_status_code != 200) {
 			generate_error_page();
@@ -492,7 +493,7 @@ void HttpResponse::build(void)
 		if (access(abs_path.c_str(), R_OK) != 0)
 		{
 			//Not sure if errno is allowd to use by subject
-			_status_code = (errno == EACCES) ? 403 : 404;
+			set_status_code((errno == EACCES) ? 403 : 404);
 			generate_error_page();
 			return;
 		}
@@ -501,7 +502,7 @@ void HttpResponse::build(void)
 		{
 			if (!delete_request(abs_path))
 			{
-				_status_code = 403;
+				set_status_code(403);
 				generate_error_page();
 				return;
 			}
@@ -514,7 +515,7 @@ void HttpResponse::build(void)
 	}
 	catch (const std::exception& e)
 	{
-		_status_code = 500;
+		set_status_code(500);
 		generate_error_page();
 	}
 }
