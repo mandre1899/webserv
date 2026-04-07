@@ -47,6 +47,7 @@ class HttpResponse
 		// Path resolution
 		std::pair<int, std::string>			resolve_path(void); //get absolute path
 		std::string							resolve_content_type(const std::string& abs_path);
+		bool								check_path_secure(const std::string& abs_path);
 		filetype	 						resolve_filetype(const std::string& file_suffix);
 
 		//Directroy listing

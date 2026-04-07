@@ -1,5 +1,9 @@
 #include "HttpResponse.hpp"
 
+// Temporary
+const std::string root_path =
+		"/Volumes/MateoSSD/42Projects/network_programming/webserv_mausperg";
+
 const std::map<std::string, std::string>  HttpResponse::_mime_types = 
 {
 	{".html", "text/html"},
@@ -139,6 +143,17 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 	}
 }
 
+bool	HttpResponse::check_path_secure(const std::string& abs_path)
+{
+	std::filesystem::path expandedPath = abs_path;
+	expandedPath = expandedPath.lexically_normal();
+	if (expandedPath.string().compare(0, root_path.length(), root_path) == 0 &&
+	    (expandedPath.string().length() == root_path.length() ||
+     	expandedPath.string()[root_path.length()] == '/'))
+		return true; // Path is safe
+	return false;
+}
+
 void HttpResponse::set_status_code(int code) //default wrapper
 {
     if (_http_status_map.find(code) == _http_status_map.end()) {
@@ -254,20 +269,19 @@ const std::string	HttpResponse::get_response_str() const
 
 std::pair<int, std::string> HttpResponse::resolve_path(void)
 {
-	const std::string root_path =
-		"/Volumes/MateoSSD/42Projects/network_programming/webserv_mausperg";
-
 	const std::string uri_path = _request.getRequestUri();
 
 	if (_config.location.empty())
 		return rtn_pair(404, std::string());
-
+	
 	for (auto it = _config.location.begin();
 			it != _config.location.end();
 			++it)
 	{
 		const std::string& location_path = it->first;
 		const cfg::locationCtx& location_cfg = it->second;
+
+		std::cout << "Location root: " << location_cfg.root << std::endl;
 
 		if (!loc_uri_comp(location_path, uri_path))
 			continue;
@@ -286,9 +300,9 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
 		else
 		{
-			std::string test = abstract_filename(uri_path);
-			std::cout << test << std::endl;
-			std::string tmp = join_path(root_path + "/" + location_cfg.root, test);
+			//std::string test = abstract_filename(uri_path);
+			//std::cout << test << std::endl;
+			std::string tmp = join_path(root_path + "/" + location_cfg.root, uri_path);
 			return rtn_pair(200, tmp);
 		}
 		return rtn_pair(404, std::string());
@@ -489,6 +503,13 @@ void HttpResponse::build(void)
 		}
 
 		const std::string& abs_path = res.second;
+		
+		if (!check_path_secure(abs_path))
+		{
+			set_status_code(403);
+			generate_error_page();
+			return ;
+		}
 
 		if (access(abs_path.c_str(), R_OK) != 0)
 		{
