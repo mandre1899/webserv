@@ -387,38 +387,78 @@ bool	HttpResponse::is_directory(const std::string& path)
     return S_ISDIR(file_stat.st_mode);
 }
 
-void	HttpResponse::generate_dir_listing(const std::string& dir_path, const std::string& uri_path)
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sstream>
+#include <string>
+
+static std::string html_escape(const std::string& s)
 {
-	std::ostringstream	ss;
+	std::string out;
+	for (size_t i = 0; i < s.size(); ++i)
+	{
+		switch (s[i])
+		{
+			case '&':  out += "&amp;";  break;
+			case '<':  out += "&lt;";   break;
+			case '>':  out += "&gt;";   break;
+			case '"':  out += "&quot;"; break;
+			default:   out += s[i];     break;
+		}
+	}
+	return out;
+}
+
+void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::string& uri_path)
+{
+	std::ostringstream ss;
+
+	std::string base_uri = uri_path;
 
 	ss << "<!DOCTYPE html>\n"
 		<< "<html lang=\"en\">\n"
 		<< "<head>\n"
 		<< "  <meta charset=\"UTF-8\">\n"
 		<< "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-		<< "  <title>"<< uri_path << " - Dir listing </title>\n"
-		<< "  <style>\n"
-		<< "  </style>\n"
+		<< "  <title>" << html_escape(base_uri) << " - Dir listing</title>\n"
 		<< "</head>\n"
 		<< "<body>\n"
 		<< "  <ul>\n";
 
-		DIR *dir = opendir(dir_path.c_str());
-		if (dir != nullptr)
+	DIR* dir = opendir(dir_path.c_str());
+	if (dir != NULL)
+	{
+		struct dirent* entry;
+		while ((entry = readdir(dir)) != NULL)
 		{
-		    struct dirent *next_dir;
-		    while ((next_dir = readdir(dir)) != nullptr)
-		    {
-		        ss << "<li>" 
-		           << "<a" << " href=\"" << next_dir->d_name << "\">" << next_dir->d_name << "</a>"
-		           << "</li>\n";
-		    }
-		    closedir(dir);
+			std::string name = entry->d_name;
+			//Skips listing of current dir -> .
+			if (name == ".")
+				continue;
+			std::string full_fs_path = dir_path;
+			if (!full_fs_path.empty() && full_fs_path[full_fs_path.size() - 1] != '/')
+				full_fs_path += '/';
+			full_fs_path += name;
+			struct stat st;
+			bool is_dir = (stat(full_fs_path.c_str(), &st) == 0 && S_ISDIR(st.st_mode));
+			std::string href = base_uri + name;
+			if (is_dir && href[href.size() - 1] != '/')
+				href += '/';
+			ss << "    <li><a href=\"" + href + "\">"
+				<< name;
+			if (is_dir)
+				ss << "/";
+			ss << "</a></li>\n";
 		}
+		closedir(dir);
+	}
+	else
+		ss << "    <li>Could not open directory</li>\n";
 
 	ss << "  </ul>\n"
 		<< "</body>\n"
 		<< "</html>\n";
+
 	_content_type = "text/html";
 	_body = ss.str();
 	_body_size = _body.size();
