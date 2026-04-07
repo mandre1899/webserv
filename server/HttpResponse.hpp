@@ -26,7 +26,8 @@ class HttpResponse
 		size_t								_body_size;
 		bool                                _is_built;
 		const HttpParser&                   _request;
-		const cfg::srvCtxCfg&				_config;
+		const cfg::srvCfg&					_configs;
+		cfg::vHost							_config; //Evalutated vHost
 
 
 		const static std::map<std::string, std::string>		_mime_types;
@@ -72,8 +73,8 @@ class HttpResponse
 		bool 					is_path_safe(const std::string& abs_path, const std::string& base_path);
 	public:
 		HttpResponse(void) = delete;
-		HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd);
-		HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd);
+		HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd);
+		HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd);
 		HttpResponse(const HttpResponse& obj) = delete;
 		~HttpResponse(void);
 

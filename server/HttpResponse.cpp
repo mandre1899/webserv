@@ -205,13 +205,21 @@ bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 
 //Private Member function - HELPER END
 
-HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd)
-	: _request(static_cast<const HttpParser&>(req)), _config(conf), _socket_fd(clientFd)
-{}
+HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd)
+	: _request(static_cast<const HttpParser&>(req)), _configs(conf), _socket_fd(clientFd)
+{
+	std::string host = req.getHeadersMap().find("Host")->second;
+	int index = _configs.srvNameMap.find(host)->second;
+	_config = _configs.vHost[index];
+}
 
-HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCtxCfg& conf, int clientFd)
-	: _request(req), _config(conf), _socket_fd(clientFd)
-{}
+HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd)
+	: _request(req), _configs(conf), _socket_fd(clientFd)
+{
+	std::string host = req.getHeadersMap().find("Host")->second;
+	int index = _configs.srvNameMap.find(host)->second;
+	_config = _configs.vHost[index];
+}
 
 HttpResponse::~HttpResponse()
 {}
@@ -387,28 +395,6 @@ bool	HttpResponse::is_directory(const std::string& path)
     return S_ISDIR(file_stat.st_mode);
 }
 
-#include <dirent.h>
-#include <sys/stat.h>
-#include <sstream>
-#include <string>
-
-static std::string html_escape(const std::string& s)
-{
-	std::string out;
-	for (size_t i = 0; i < s.size(); ++i)
-	{
-		switch (s[i])
-		{
-			case '&':  out += "&amp;";  break;
-			case '<':  out += "&lt;";   break;
-			case '>':  out += "&gt;";   break;
-			case '"':  out += "&quot;"; break;
-			default:   out += s[i];     break;
-		}
-	}
-	return out;
-}
-
 void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::string& uri_path)
 {
 	std::ostringstream ss;
@@ -420,7 +406,7 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 		<< "<head>\n"
 		<< "  <meta charset=\"UTF-8\">\n"
 		<< "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-		<< "  <title>" << html_escape(base_uri) << " - Dir listing</title>\n"
+		<< "  <title>" << base_uri << " - Dir listing</title>\n"
 		<< "</head>\n"
 		<< "<body>\n"
 		<< "  <ul>\n";
