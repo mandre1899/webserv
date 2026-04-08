@@ -243,12 +243,12 @@ private:
 		}
 		if (nbr > 999)
 			throw std::range_error(buildMsg("This is not a valid http code", ts.getPositon()));
-		confStruct.retConf.emplace();
-		confStruct.retConf->code = static_cast<http_code>(nbr);
+		confStruct.ret.emplace();
+		confStruct.ret->code = static_cast<http_code>(nbr);
 		token t = ts.getNextToken();
 		if (t.type == tType::semi)
 			return;
-		confStruct.retConf->param = t.value;
+		confStruct.ret->param = t.value;
 		ts.expectToken(tType::semi);
 	}
 
@@ -281,7 +281,7 @@ public:
 		_dispatch["error_page"] = [this](T& confStruct, TokenStream& ts) {
 			_errorPage(confStruct, ts);
 			};
-		if constexpr (!std::is_same_v<cfg::locationCtx, T>)
+		if constexpr (!std::is_same_v<cfg::wsLocationCtx, T>)
 		{
 			_dispatch["client_header_buffer_size"] = [this](T& confStruct, TokenStream& ts) {
 				_clientHeaderBufferSize(confStruct, ts);
@@ -302,13 +302,13 @@ public:
 		_dispatch["cgi_index"] = [this](T& confStruct, TokenStream& ts) {
 			_cgiIndex(confStruct, ts);
 			};
-		if constexpr (std::is_same_v<cfg::vHost, T> || std::is_same_v<cfg::locationCtx, T>)
+		if constexpr (std::is_same_v<cfg::vHostCfg, T> || std::is_same_v<cfg::wsLocationCtx, T>)
 		{
 			_dispatch["return"] = [this](T& confStruct, TokenStream& ts) {
 				_retConf(confStruct, ts);
 				};
 		}
-		if constexpr (std::is_same_v<cfg::vHost, T>)
+		if constexpr (std::is_same_v<cfg::vHostCfg, T>)
 		{
 			_dispatch["listen"] = [this](T& confStruct, TokenStream& ts) {
 				_listen(confStruct, ts);
@@ -317,7 +317,7 @@ public:
 				_serverName(confStruct, ts);
 				};
 		}
-		if constexpr (std::is_same_v<cfg::locationCtx, T>)
+		if constexpr (std::is_same_v<cfg::wsLocationCtx, T>)
 		{
 			_dispatch["allow_methods"] = [this](T& confStruct, TokenStream& ts) {
 				_allowMethods(confStruct, ts);

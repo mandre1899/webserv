@@ -33,7 +33,7 @@ void HttpServer::addClient(int serverFd, int clientFd, const cfg::socketCfg& soc
 			return;
 		}
 	}
-	cfg::srvCfg& srvCfg = it->second;
+	const cfg::srvCfg& srvCfg = it->second;
 	event.events = EPOLLIN;
 	event.data.fd = clientFd;
 	_map.insert({ clientFd, Client(serverFd, clientFd, srvCfg) });

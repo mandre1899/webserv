@@ -83,6 +83,7 @@ uint32_t Client::recvData()
 
 uint32_t Client::sendData()
 {
+	std::cout << "test: " << _srvCfg.vHost[0].index << std::endl;
 	const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n<html><h1>Hello from WebServ!</h1></html>";
 	int ret = send(_clientFd, message, 81, 0);
 	Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
