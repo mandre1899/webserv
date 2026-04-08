@@ -123,20 +123,17 @@ void Config::buildSrvCfg(const char* path)
 		std::string id = std::to_string(host.address) + std::to_string(host.port);
 		auto it = _srvConfs.insert({ id, cfg::srvCfg() });
 		cfg::srvCfg& server = it.first->second;
-		if (it.second)
+		if (it.second && host.serverName.empty() && server.srvNameMap.empty())
 		{
-			server.address = host.address;
-			server.port = host.port;
-			if (host.serverName.empty() && server.srvNameMap.empty())
-			{
-				struct in_addr addr;
-				addr.s_addr = host.address;
-				Logger::log<LogLevel::warn>("Conflicting server name \"" + std::string(inet_ntoa(addr)) + ":" + std::to_string(host.port) + "\" " + std::string(path) + " is ignored");
-				continue;
-			}
+			struct in_addr addr;
+			addr.s_addr = host.address;
+			Logger::log<LogLevel::warn>("Conflicting server name \"" + std::string(inet_ntoa(addr)) + ":" + std::to_string(host.port) + "\" " + std::string(path) + " is ignored");
+			continue;
 		}
 		size_t pos = server.vHost.size();
 		server.vHost.push_back(host);
+		server.address = host.address;
+		server.port = host.port;
 		for (size_t j = 0; j < host.serverName.size(); j++)
 		{
 			bool isDubplicate = !server.srvNameMap.insert({ host.serverName[j], pos }).second;
@@ -150,13 +147,13 @@ void Config::buildSocketCfg()
 {
 	for (size_t i = 0; i < this->srvSize(); i++)
 	{
-		cfg::srvCfg srv = this->srvAt(i);
+		const cfg::srvCfg& srv = this->srvAt(i);
 		auto it = _socketCfg.insert({ srv.port, cfg::socketCfg() });
-		cfg::socketCfg& socketCfg = it.first->second;
-		if (it.second)
-			socketCfg.port = srv.port;
+		cfg::socketCfg& socket = it.first->second;
+		socket.port = srv.port;
 		std::string id = std::to_string(srv.address) + std::to_string(srv.port);
-		socketCfg.socketMap.insert({ id, srv });
+		socket.socketMap.insert({ id, srv });
+
 	}
 }
 

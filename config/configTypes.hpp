@@ -77,7 +77,7 @@ namespace cfg
 	struct socketCfg
 	{
 		uint16_t port;
-		std::unordered_map<std::string, srvCfg&> socketMap; // key: ip address, value: srvCfg
+		std::unordered_map<std::string, const srvCfg&> socketMap; // key: ip address, value: srvCfg
 	};
 }
 
