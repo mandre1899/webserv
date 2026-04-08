@@ -27,7 +27,7 @@ void Config::setHttpConfDefaults()
 	_httpConf.clientBodyTimeout = 30;		 // 30s
 }
 
-void Config::setServerConfDefaults(cfg::vHost& servConf)
+void Config::setServerConfDefaults(cfg::vHostCfg& servConf)
 {
 	servConf.root = _httpConf.root;
 	servConf.index = _httpConf.index;
@@ -38,7 +38,7 @@ void Config::setServerConfDefaults(cfg::vHost& servConf)
 	servConf.clientBodyTimeout = _httpConf.clientBodyTimeout;
 }
 
-void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::vHost& servConf)
+void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::vHostCfg& servConf)
 {
 	locConf.root = servConf.root;
 	locConf.index = servConf.index;
@@ -49,7 +49,7 @@ void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::vHost& serv
 	locConf.clientBodyTimeout = servConf.clientBodyTimeout;
 }
 
-void Config::buildLocation(const ctxNode& ctx, cfg::vHost& serverCtx)
+void Config::buildLocation(const ctxNode& ctx, cfg::vHostCfg& serverCtx)
 {
 	std::string path;
 	filePos locationPos;
@@ -72,12 +72,12 @@ void Config::buildLocation(const ctxNode& ctx, cfg::vHost& serverCtx)
 		throw std::runtime_error(buildMsg("Duplicate location \"" + path + "\"", locationPos));;
 }
 
-void Config::buildServer(const ctxNode& ctx, cfg::vHost& servConf)
+void Config::buildServer(const ctxNode& ctx, cfg::vHostCfg& servConf)
 {
 	size_t childPos = 0;
 	TokenStream ts(ctx.param);
 	token t;
-	ValueExtractor<cfg::vHost> ext;
+	ValueExtractor<cfg::vHostCfg> ext;
 
 	t = ts.getNextToken();
 	while (t.type != tType::end)
@@ -107,7 +107,7 @@ void Config::buildHttp(const ctxNode& ctx)
 	}
 	while (childPos < ctx.child.size())
 	{
-		cfg::vHost& servConf = _hostConfs.emplace_back();
+		cfg::vHostCfg& servConf = _hostConfs.emplace_back();
 		setServerConfDefaults(servConf);
 		buildServer(ctx.child[childPos], servConf);
 		childPos++;
@@ -118,7 +118,7 @@ void Config::buildServerConf(const char* path)
 {
 	for (size_t i = 0; i < this->vHostSize(); i++)
 	{
-		cfg::vHost host = this->vHostAt(i);
+		cfg::vHostCfg host = this->vHostAt(i);
 		std::string id = std::to_string(host.address) + std::to_string(host.port);
 
 		cfg::srvCfg tmp;
@@ -153,7 +153,7 @@ void Config::buildServerConf(const char* path)
 	}
 }
 
-const cfg::vHost& Config::vHostAt(size_t idx) const
+const cfg::vHostCfg& Config::vHostAt(size_t idx) const
 {
 	return (_hostConfs.at(idx));
 }
@@ -201,7 +201,7 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 	for (size_t i = 0; i < src.vHostSize(); i++)
 	{
 		os << "-------------------server config-------------------\n";
-		cfg::vHost ctx = src.vHostAt(i);
+		cfg::vHostCfg ctx = src.vHostAt(i);
 		os << "listen: \n";
 		struct in_addr addr;
 		addr.s_addr = ctx.address;
