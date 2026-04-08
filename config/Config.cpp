@@ -130,6 +130,13 @@ void Config::buildServerConf(const char* path)
 		{
 			server.address = host.address;
 			server.port = host.port;
+			if (host.serverName.empty() && server.srvNameMap.empty())
+			{
+				struct in_addr addr;
+				addr.s_addr = host.address;
+				Logger::log<LogLevel::warn>("Conflicting server name \"" + std::string(inet_ntoa(addr)) + ":" + std::to_string(host.port) + "\" " + std::string(path) + " is ignored");
+				continue;
+			}
 		}
 		pos = server.vHost.size();
 		server.vHost.push_back(host);
