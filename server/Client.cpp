@@ -1,7 +1,7 @@
 #include "Client.hpp"
 
 /* Constructors & Destructors */
-Client::Client(int serverFd, int clientFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _srvCfg(srvCfg)
+Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _epollFd(epollFd), _srvCfg(srvCfg)
 {
 	_status = Status::close;
 	_msg = "";
@@ -12,16 +12,17 @@ Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 {
 	_serverFd = src._serverFd;
 	_clientFd = src._clientFd;
+	_epollFd = src._epollFd;
 	_status = src._status;
 	_msg = src._msg;
 	_parsingState = src._parsingState;
 	_parsedHttp = std::move(src._parsedHttp);
 	src._serverFd = -1;
 	src._clientFd = -1;
+	src._epollFd = -1;
 	src._msg = "";
 	src._status = Status::close;
 	src._parsingState = state::error;
-
 }
 
 Client::~Client()

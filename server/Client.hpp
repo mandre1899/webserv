@@ -29,6 +29,7 @@ class Client {
 private:
 	int _serverFd;
 	int _clientFd;
+	int _epollFd;
 	Status _status;
 	std::string _msg;
 	HttpParser _parsedHttp;
@@ -42,7 +43,7 @@ private:
 public:
 	/* Constructors & Destructors */
 	Client() = delete;
-	Client(int serverFd, int clientFd, const cfg::srvCfg& srvCfg);
+	Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg);
 	Client(const Client& src) = delete;
 	Client(Client&& src) noexcept;
 	~Client();
