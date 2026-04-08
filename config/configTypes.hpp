@@ -11,32 +11,32 @@ typedef unsigned short http_code;
 
 namespace cfg
 {
-	struct returnCfg
+	struct wsReturn
 	{
 		http_code code;
 		std::string param;
 	};
 
-	struct allowMethodsCfg
+	struct wsAllowMethods
 	{
 		bool isGet;
 		bool isPost;
 		bool isDelete;
 	};
 
-	struct errorPageCfg
+	struct wsErrorPage
 	{
 		http_code code;
 		std::string path;
 	};
 
 	// corresponds to the http{} scope in the conf file
-	struct httpCtx
+	struct wsHttpCtx
 	{
 		std::string root;
 		std::string index;
 		bool autoIndex;
-		std::optional<errorPageCfg>  errorPage;
+		std::optional<wsErrorPage>  errorPage;
 		size_t clientHeaderBufferSize;
 		size_t clientHeaderTimeout;
 		size_t clientMaxBodySize;
@@ -45,25 +45,25 @@ namespace cfg
 		std::string cgiIndex;
 	};
 
-	struct sharedCfg : public httpCtx
+	struct wsShared : public wsHttpCtx
 	{
-		std::optional<returnCfg> retConf;
+		std::optional<wsReturn> ret;
 	};
 
 	// corresponds to the location{} scope in the conf file
-	struct locationCtx : public sharedCfg
+	struct wsLocationCtx : public wsShared
 	{
 		std::string uploadStore;
-		allowMethodsCfg allowMethods;
+		wsAllowMethods allowMethods;
 	};
 
 	// corresponds to the server{} scope in the conf file
-	struct vHostCfg : public sharedCfg
+	struct vHostCfg : public wsShared
 	{
 		in_addr_t address;
 		uint16_t port = 80;
 		std::vector<std::string> serverName;
-		std::unordered_map<std::string, locationCtx> location;
+		std::unordered_map<std::string, wsLocationCtx> location;
 	};
 
 	struct srvCfg

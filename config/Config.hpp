@@ -20,7 +20,7 @@
 class Config
 {
 private:
-	cfg::httpCtx _httpConf;
+	cfg::wsHttpCtx _httpConf;
 	std::vector<cfg::vHostCfg> _hostConfs;
 	std::unordered_map<std::string, cfg::srvCfg> _srvConfs; // key: ip address + port | value: cfg::srvCfg
 	std::unordered_map<uint16_t, cfg::socketCfg> _socketCfg; // key: port | value: cfg::socketCfg
@@ -29,11 +29,12 @@ private:
 	/* Member Functions */
 	void setHttpConfDefaults();
 	void setServerConfDefaults(cfg::vHostCfg& servConf);
-	void setLocationConfDefaults(cfg::locationCtx& locConf, cfg::vHostCfg& servConf);
+	void setLocationConfDefaults(cfg::wsLocationCtx& locConf, cfg::vHostCfg& servConf);
 	void buildLocation(const ctxNode& ctx, cfg::vHostCfg& serverCtx);
-	void buildServer(const ctxNode& ctx, cfg::vHostCfg& serverCtx);
+	void build_vHost(const ctxNode& ctx, cfg::vHostCfg& serverCtx);
 	void buildHttp(const ctxNode& ctx);
-	void buildServerConf(const char* path);
+	void buildSrvCfg(const char* path);
+	void buildSocketCfg();
 
 public:
 	/* Constructors & Destructors */

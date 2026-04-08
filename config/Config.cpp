@@ -7,7 +7,8 @@ Config::Config(const char* path)
 	ContextNode node = ContextNode(tokens);
 	setHttpConfDefaults();
 	buildHttp(node.getRootNode());
-	buildServerConf(path);
+	buildSrvCfg(path);
+	buildSocketCfg();
 	Logger::log<LogLevel::debug>("Config::Config()\n", *this);
 }
 
@@ -38,7 +39,7 @@ void Config::setServerConfDefaults(cfg::vHostCfg& servConf)
 	servConf.clientBodyTimeout = _httpConf.clientBodyTimeout;
 }
 
-void Config::setLocationConfDefaults(cfg::locationCtx& locConf, cfg::vHostCfg& servConf)
+void Config::setLocationConfDefaults(cfg::wsLocationCtx& locConf, cfg::vHostCfg& servConf)
 {
 	locConf.root = servConf.root;
 	locConf.index = servConf.index;
@@ -53,10 +54,10 @@ void Config::buildLocation(const ctxNode& ctx, cfg::vHostCfg& serverCtx)
 {
 	std::string path;
 	filePos locationPos;
-	cfg::locationCtx locConf;
+	cfg::wsLocationCtx locConf;
 	TokenStream ts = ctx.param;
 	token t;
-	ValueExtractor<cfg::locationCtx> ext;
+	ValueExtractor<cfg::wsLocationCtx> ext;
 
 	setLocationConfDefaults(locConf, serverCtx);
 	path = ts.getNextToken().value;
@@ -72,7 +73,7 @@ void Config::buildLocation(const ctxNode& ctx, cfg::vHostCfg& serverCtx)
 		throw std::runtime_error(buildMsg("Duplicate location \"" + path + "\"", locationPos));;
 }
 
-void Config::buildServer(const ctxNode& ctx, cfg::vHostCfg& servConf)
+void Config::build_vHost(const ctxNode& ctx, cfg::vHostCfg& servConf)
 {
 	size_t childPos = 0;
 	TokenStream ts(ctx.param);
@@ -97,7 +98,7 @@ void Config::buildHttp(const ctxNode& ctx)
 	size_t childPos = 0;
 	TokenStream ts = ctx.param;
 	token t;
-	ValueExtractor<cfg::httpCtx> ext;
+	ValueExtractor<cfg::wsHttpCtx> ext;
 
 	t = ts.getNextToken();
 	while (t.type != tType::end)
@@ -109,23 +110,19 @@ void Config::buildHttp(const ctxNode& ctx)
 	{
 		cfg::vHostCfg& servConf = _hostConfs.emplace_back();
 		setServerConfDefaults(servConf);
-		buildServer(ctx.child[childPos], servConf);
+		build_vHost(ctx.child[childPos], servConf);
 		childPos++;
 	}
 }
 
-void Config::buildServerConf(const char* path)
+void Config::buildSrvCfg(const char* path)
 {
 	for (size_t i = 0; i < this->vHostSize(); i++)
 	{
 		cfg::vHostCfg host = this->vHostAt(i);
 		std::string id = std::to_string(host.address) + std::to_string(host.port);
-
-		cfg::srvCfg tmp;
-		auto it = _srvConfs.insert({ id, tmp });
-
+		auto it = _srvConfs.insert({ id, cfg::srvCfg() });
 		cfg::srvCfg& server = it.first->second;
-		size_t pos = 0;
 		if (it.second)
 		{
 			server.address = host.address;
@@ -138,7 +135,7 @@ void Config::buildServerConf(const char* path)
 				continue;
 			}
 		}
-		pos = server.vHost.size();
+		size_t pos = server.vHost.size();
 		server.vHost.push_back(host);
 		for (size_t j = 0; j < host.serverName.size(); j++)
 		{
@@ -147,11 +144,14 @@ void Config::buildServerConf(const char* path)
 				throw std::runtime_error("Conflicting server name \"" + host.serverName[j] + "\" " + std::string(path));
 		}
 	}
+}
+
+void Config::buildSocketCfg()
+{
 	for (size_t i = 0; i < this->srvSize(); i++)
 	{
 		cfg::srvCfg srv = this->srvAt(i);
-		cfg::socketCfg tmp;
-		auto it = _socketCfg.insert({ srv.port, tmp });
+		auto it = _socketCfg.insert({ srv.port, cfg::socketCfg() });
 		cfg::socketCfg& socketCfg = it.first->second;
 		if (it.second)
 			socketCfg.port = srv.port;
@@ -242,20 +242,20 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 			os << "cgiPath: " << ctx.cgiPath << std::endl;
 		if (!ctx.cgiIndex.empty())
 			os << "cgiIndex: " << ctx.cgiIndex << std::endl;
-		if (ctx.retConf.has_value())
+		if (ctx.ret.has_value())
 		{
 			os << "return: \n";
-			os << "   code: " << ctx.retConf->code << std::endl;
-			if (!ctx.retConf->param.empty())
-				os << "         param: " << ctx.retConf->param << std::endl;
+			os << "   code: " << ctx.ret->code << std::endl;
+			if (!ctx.ret->param.empty())
+				os << "         param: " << ctx.ret->param << std::endl;
 		}
 		if (!ctx.location.empty())
 		{
 			os << "location: ";
-			for (std::unordered_map<std::string, cfg::locationCtx>::const_iterator it = ctx.location.begin(); it != ctx.location.end(); ++it)
+			for (std::unordered_map<std::string, cfg::wsLocationCtx>::const_iterator it = ctx.location.begin(); it != ctx.location.end(); ++it)
 			{
 				os << "\n   path: " << it->first << std::endl;
-				const cfg::locationCtx& loc = it->second;
+				const cfg::wsLocationCtx& loc = it->second;
 
 				if (!loc.root.empty())
 					os << "      root: " << loc.root << std::endl;
@@ -268,12 +268,12 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 					os << "         code: " << loc.errorPage->code << std::endl;
 					os << "         path: " << loc.errorPage->path << std::endl;
 				}
-				if (loc.retConf.has_value())
+				if (loc.ret.has_value())
 				{
 					os << "      return: \n";
-					os << "         code: " << loc.retConf->code << std::endl;
-					if (!loc.retConf->param.empty())
-						os << "         param: " << loc.retConf->param << std::endl;
+					os << "         code: " << loc.ret->code << std::endl;
+					if (!loc.ret->param.empty())
+						os << "         param: " << loc.ret->param << std::endl;
 				}
 				if (!loc.cgiPath.empty())
 					os << "      cgiPath: " << loc.cgiPath << std::endl;
