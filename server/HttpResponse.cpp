@@ -209,42 +209,28 @@ HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientF
 	: _request(static_cast<const HttpParser&>(req)), _configs(conf), _socket_fd(clientFd)
 {
 	const auto& headers = req.getHeadersMap();
-	auto hostIt = headers.find("Host");
-	if (hostIt == headers.end() || hostIt->second.empty())
-		_config = _configs.vHost[0];
+	std::string hostValue = headers.find("Host")->second;
+	//Erase port specifier ":8080"
+	int test = hostValue.find(":");
+	if (test != -1)
+		hostValue.erase(test);
+	if (_configs.srvNameMap.find(hostValue) != _configs.srvNameMap.end())
+		_config = _configs.vHost[_configs.srvNameMap.find(hostValue)->second];
 	else
-	{
-		const std::string& host = hostIt->second;
-		auto srvIt = _configs.srvNameMap.find(host);
-		if (srvIt == _configs.srvNameMap.end())
-			_config = _configs.vHost[0];
-		int index = srvIt->second;
-		if (index < 0 || static_cast<size_t>(index) >= _configs.vHost.size())
-			_config = _configs.vHost[0];
-		else
-			_config = _configs.vHost[index];
-	}
+		_config = _configs.vHost[0];
 }
 
 HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd)
 	: _request(req), _configs(conf), _socket_fd(clientFd)
 {
 	const auto& headers = req.getHeadersMap();
-	auto hostIt = headers.find("Host");
-	if (hostIt == headers.end() || hostIt->second.empty())
-		_config = _configs.vHost[0];
+	std::string hostValue = headers.find("Host")->second;
+	//Erase port specifier ":8080"
+	hostValue.erase(hostValue.find(":"));
+	if (_configs.srvNameMap.find(hostValue) != _configs.srvNameMap.end())
+		_config = _configs.vHost[_configs.srvNameMap.find(hostValue)->second];
 	else
-	{
-		const std::string& host = hostIt->second;
-		auto srvIt = _configs.srvNameMap.find(host);
-		if (srvIt == _configs.srvNameMap.end())
-			_config = _configs.vHost[0];
-		int index = srvIt->second;
-		if (index < 0 || static_cast<size_t>(index) >= _configs.vHost.size())
-			_config = _configs.vHost[0];
-		else
-			_config = _configs.vHost[index];
-	}
+		_config = _configs.vHost[0];
 }
 
 HttpResponse::~HttpResponse()
@@ -313,7 +299,7 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 			++it)
 	{
 		const std::string& location_path = it->first;
-		const cfg::locationCtx& location_cfg = it->second;
+		const cfg::wsLocationCtx& location_cfg = it->second;
 
 		std::cout << "Location root: " << location_cfg.root << std::endl;
 
@@ -322,7 +308,7 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 
 		// Check method for location
 		method_type method = _request.getMethod();
-		const cfg::allowMethodsCfg& allowed = location_cfg.allowMethods;
+		const cfg::wsAllowMethods& allowed = location_cfg.allowMethods;
 
 		if ((method == method_type::GET && !allowed.isGet) ||
 				(method == method_type::POST && !allowed.isPost) ||
@@ -330,15 +316,14 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 			return rtn_pair(405, std::string());
 
 		// For now using the hardcoded base path (must fix!)
+		if (!location_cfg.index.empty() && _request.getRequestUri() == location_path)
+			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
+		std::string tmp = join_path(root_path + "/" + location_cfg.root, uri_path);
+		std::cout << "Check for: " << tmp <<std::endl;
+		if (access(tmp.c_str(), R_OK) == 0)
+			return rtn_pair(200, tmp);
 		if (!location_cfg.index.empty())
 			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
-		else
-		{
-			//std::string test = abstract_filename(uri_path);
-			//std::cout << test << std::endl;
-			std::string tmp = join_path(root_path + "/" + location_cfg.root, uri_path);
-			return rtn_pair(200, tmp);
-		}
 		return rtn_pair(404, std::string());
 	}
 	if (_config.errorPage)
@@ -498,10 +483,7 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 bool	HttpResponse::get_request(const std::string& abs_path)
 {
 	if(is_directory(abs_path))
-	{
-		std::cout << "allo" << std::endl;
 		generate_dir_listing(abs_path, _request.getRequestUri());
-	}
 	else
 	{
 		const std::string file_suffix = resolve_file_suffix(abs_path);
@@ -511,13 +493,9 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 
 		bool success;
 		if (type == STATIC_FILE)
-		{
 			success = read_file_to_body(abs_path);
-		}
 		else if (type == DYNAMIC_FILE)
-		{
 			success = execute_cgi_proc(abs_path, file_suffix);
-		}
 		else
 		{
 			// Momentarily dead code -> resolve_filetype always returns one of two above types
@@ -547,6 +525,7 @@ void HttpResponse::build(void)
 	try
 	{
 		std::pair<int, std::string> res = resolve_path();
+		std::cout << "abs_path: " << res.second << std::endl;
 		set_status_code(res.first);
 
 		if (_status_code != 200) {

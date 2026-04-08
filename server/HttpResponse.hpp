@@ -27,7 +27,7 @@ class HttpResponse
 		bool                                _is_built;
 		const HttpParser&                   _request;
 		const cfg::srvCfg&					_configs;
-		cfg::vHost							_config; //Evalutated vHost
+		cfg::vHostCfg						_config; //Evalutated vHost
 
 
 		const static std::map<std::string, std::string>		_mime_types;
