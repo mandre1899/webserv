@@ -70,18 +70,18 @@ private:
 			return value;
 		switch (unit)
 		{
-			case 'k':
-				value *= KILO;
-				break;
-			case 'M':
-				value *= MEGA;
-				break;
-			case 'G':
-				value *= GIGA;
-				break;
-			default:
-				throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
-				break;
+		case 'k':
+			value *= KILO;
+			break;
+		case 'M':
+			value *= MEGA;
+			break;
+		case 'G':
+			value *= GIGA;
+			break;
+		default:
+			throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
+			break;
 		}
 		return value;
 	}
@@ -302,13 +302,13 @@ public:
 		_dispatch["cgi_index"] = [this](T& confStruct, TokenStream& ts) {
 			_cgiIndex(confStruct, ts);
 			};
-		if constexpr (std::is_same_v<cfg::vHost, T> || std::is_same_v<cfg::locationCtx, T>)
+		if constexpr (std::is_same_v<cfg::vHostCfg, T> || std::is_same_v<cfg::locationCtx, T>)
 		{
 			_dispatch["return"] = [this](T& confStruct, TokenStream& ts) {
 				_retConf(confStruct, ts);
 				};
 		}
-		if constexpr (std::is_same_v<cfg::vHost, T>)
+		if constexpr (std::is_same_v<cfg::vHostCfg, T>)
 		{
 			_dispatch["listen"] = [this](T& confStruct, TokenStream& ts) {
 				_listen(confStruct, ts);

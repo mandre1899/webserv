@@ -58,7 +58,7 @@ namespace cfg
 	};
 
 	// corresponds to the server{} scope in the conf file
-	struct vHost : public sharedCfg
+	struct vHostCfg : public sharedCfg
 	{
 		in_addr_t address;
 		uint16_t port = 80;
@@ -71,7 +71,7 @@ namespace cfg
 		in_addr_t address;
 		uint16_t port;
 		std::unordered_map<std::string, int> srvNameMap; // key: serverName, value: vHost index
-		std::vector<vHost> vHost;
+		std::vector<vHostCfg> vHost;
 	};
 
 	struct socketCfg
