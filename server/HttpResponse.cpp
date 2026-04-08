@@ -301,8 +301,6 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		const std::string& location_path = it->first;
 		const cfg::wsLocationCtx& location_cfg = it->second;
 
-		std::cout << "Location root: " << location_cfg.root << std::endl;
-
 		if (!loc_uri_comp(location_path, uri_path))
 			continue;
 
