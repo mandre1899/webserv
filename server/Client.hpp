@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sys/epoll.h> 
 #include <unistd.h>
+#include <chrono>
 #include "config/configTypes.hpp"
 #include "utils/Logger.hpp"
 #include "HttpParser.hpp"
@@ -30,6 +31,7 @@ private:
 	int _serverFd;
 	int _clientFd;
 	int _epollFd;
+	std::chrono::time_point<std::chrono::system_clock> _timeout;
 	Status _status;
 	std::string _msg;
 	HttpParser _parsedHttp;
@@ -57,6 +59,7 @@ public:
 
 	/* Getters & Setters */
 	int getFd() const;
+	std::chrono::time_point<std::chrono::system_clock> getTimeout() const;
 };
 
 #endif // CLIENT_HPP

@@ -39,17 +39,21 @@ void HttpServer::addClient(int serverFd, int clientFd, const cfg::socketCfg& soc
 	_map.insert({ clientFd, Client(serverFd, clientFd, _epollFd, srvCfg) });
 	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &event))
 		throw std::runtime_error("Failed to add file descriptor to epoll");
+	const auto now = std::chrono::system_clock::now();
+	_prioQ.push({ now, clientFd });
 	Logger::log<LogLevel::debug>("HttpServer::addClient() - Client added with FD ", clientFd);
 }
 
-void HttpServer::removeClient(int clientFd)
+bool HttpServer::removeClient(int clientFd)
 {
 	struct epoll_event event;
 
 	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, &event))
 		throw std::runtime_error("Failed to delete file descriptor to epoll");
-	_map.erase(clientFd);
-	Logger::log<LogLevel::debug>("HttpServer::removeClient - Removed client with FD ", clientFd);
+	bool isErase = static_cast<bool>(_map.erase(clientFd));
+	if (isErase)
+		Logger::log<LogLevel::debug>("HttpServer::removeClient - Removed client with FD ", clientFd);
+	return (isErase);
 }
 
 void HttpServer::createSockets(Config& conf)
@@ -69,10 +73,30 @@ void HttpServer::createSockets(Config& conf)
 	}
 }
 
+void HttpServer::checkClientTimeout()
+{
+	auto now = std::chrono::system_clock::now();
+	while (!_prioQ.empty() && _prioQ.top().timeout > now)
+	{
+		int cFd = _prioQ.top().clientFd;
+		auto it = _map.find(cFd);
+		if (it != _map.end())
+		{
+			Client& c = std::get<Client>(it->second);
+			if (c.getTimeout() > now)
+				removeClient(cFd);
+			else
+				_prioQ.push({ c.getTimeout(), cFd });
+		}
+		_prioQ.pop();
+		now = std::chrono::system_clock::now();
+	}
+}
+
 void HttpServer::run()
 {
 	struct epoll_event events[MAX_EVENTS];
-	int eventCount = epoll_wait(_epollFd, events, MAX_EVENTS, 30000);
+	int eventCount = epoll_wait(_epollFd, events, MAX_EVENTS, 1000);
 	if (eventCount == -1)
 		throw "System error occurred in the epoll_wait loop";
 	for (int i = 0; i < eventCount; i++)
@@ -93,8 +117,15 @@ void HttpServer::run()
 				removeClient(events[i].data.fd);
 		}
 	}
+	//checkClientTimeout();
 }
 
 /* Basic Operators */
 
 /* Getters & Setters */
+
+
+bool sessionTime::operator>(const sessionTime& rhs) const
+{
+	return (timeout > rhs.timeout);
+}
