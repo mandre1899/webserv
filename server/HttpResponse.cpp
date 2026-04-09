@@ -1,8 +1,24 @@
 #include "HttpResponse.hpp"
 
+#include <filesystem>
 // Temporary
-const std::string root_path =
-		"/Volumes/MateoSSD/42Projects/network_programming/webserv_mausperg";
+
+static std::string init_root_path()
+{
+	std::filesystem::path tmpPathWebserv = std::string("./webserv");
+
+	std::string abs = std::filesystem::absolute(tmpPathWebserv).string();
+
+	std::size_t pos = abs.find('.');
+	if (pos != std::string::npos)
+		abs.erase(pos);
+	abs.erase(abs.find_last_of("/"));
+
+	return abs;
+}
+
+//Absolute Path to the binary
+std::string root_path = init_root_path();
 
 const std::map<std::string, std::string>  HttpResponse::_mime_types = 
 {
@@ -520,6 +536,7 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 
 void HttpResponse::build(void)
 {
+	std::cout << "Root Path: " << root_path << std::endl;
 	try
 	{
 		std::pair<int, std::string> res = resolve_path();
