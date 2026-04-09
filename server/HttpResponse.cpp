@@ -5,7 +5,7 @@
 
 static std::string init_root_path()
 {
-	std::filesystem::path tmpPathWebserv = std::string("./webserv");
+	std::filesystem::path tmpPathWebserv = std::string(g_execName);
 
 	std::string abs = std::filesystem::absolute(tmpPathWebserv).string();
 

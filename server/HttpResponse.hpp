@@ -11,6 +11,8 @@
 #include "sys/stat.h"
 #include <dirent.h>
 
+extern const char * g_execName;
+
 enum filetype {
 	STATIC_FILE = 0,
 	DYNAMIC_FILE,
