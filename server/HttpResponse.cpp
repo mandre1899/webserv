@@ -195,34 +195,62 @@ static std::vector<char*> parse_header_to_env(std::map<std::string, std::string>
 	return env;
 }
 
-bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::string& filetype)
+bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::string& filetype)
 {
-	static const std::string	pyExec = {"/usr/bin/python3"};
-	char *execPath = nullptr;
-	char *scriptPath = const_cast<char*>(abs_path.c_str());
-	char **env;
+	static const std::string pyExec = "/usr/bin/python3";
+	char* execPath = NULL;
+	char* scriptPath = const_cast<char*>(abs_path.c_str());
+	int p[2];
 
+	if (pipe(p) == -1)
+		return false;
 	set_status_code(200);
 	if (filetype == ".py")
-		execPath = const_cast<char *>(pyExec.c_str());
-	char *const argv[] = {execPath, scriptPath, NULL};
-	std::vector<char *> tmp = parse_header_to_env(_request.getHeadersMap());
-	env = tmp.data();
+		execPath = const_cast<char*>(pyExec.c_str());
+	else
+	{
+		close(p[0]);
+		close(p[1]);
+		return false;
+	}
 	int pid = fork();
+	if (pid < 0)
+	{
+		close(p[0]);
+		close(p[1]);
+		return false;
+	}
 	if (pid == 0)
 	{
-		dup2(_socket_fd, STDOUT_FILENO);
+		char *const argv[] = {execPath, scriptPath, NULL};
+		std::vector<char*> tmp = parse_header_to_env(_request.getHeadersMap());
+		char** env = tmp.data();
+		close(p[0]);
+		if (dup2(p[1], STDOUT_FILENO) == -1)
+			_exit(1);
+		close(p[1]);
 		execve(execPath, argv, env);
+		_exit(1);
+	}
+	close(p[1]);
+	epoll_event ev;
+	ev.events = EPOLLIN | EPOLLRDHUP;
+	ev.data.fd = _socket_fd;
+	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[0], &ev) == -1)
+	{
+		close(p[0]);
+		return false;
 	}
 	_cgi_pid = pid;
+	_pipe_read = p[0];
 	return true;
 }
 
 
 //Private Member function - HELPER END
 
-HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd)
-	: _request(static_cast<const HttpParser&>(req)), _configs(conf), _socket_fd(clientFd)
+HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd, int epfd)
+	: _request(static_cast<const HttpParser&>(req)), _configs(conf), _socket_fd(clientFd), _epfd(epfd)
 {
 	const auto& headers = req.getHeadersMap();
 	std::string hostValue = headers.find("Host")->second;
@@ -236,8 +264,8 @@ HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientF
 		_config = _configs.vHost[0];
 }
 
-HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd)
-	: _request(req), _configs(conf), _socket_fd(clientFd)
+HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd, int epfd)
+	: _request(req), _configs(conf), _socket_fd(clientFd), _epfd(epfd)
 {
 	const auto& headers = req.getHeadersMap();
 	std::string hostValue = headers.find("Host")->second;

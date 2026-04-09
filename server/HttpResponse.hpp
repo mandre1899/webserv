@@ -5,6 +5,7 @@
 #include <sstream>
 #include "./HttpParser.hpp"
 #include "config/configTypes.hpp"
+#include <sys/epoll.h>
 #include <cstdlib>
 #include <string>
 #include "config/Config.hpp"
@@ -39,6 +40,10 @@ class HttpResponse
 		const static std::map<int, std::string>         	_status_messages;
 		int													_socket_fd;
 		int													_cgi_pid;
+
+		//CGI specific
+		int									_epfd;
+		int									_pipe_read; // pipe read end
 
 		// Helper functions
 		std::string					abstract_filename(const std::string& path);
@@ -77,8 +82,8 @@ class HttpResponse
 		bool 					is_path_safe(const std::string& abs_path, const std::string& base_path);
 	public:
 		HttpResponse(void) = delete;
-		HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd);
-		HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd);
+		HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd, int epfd);
+		HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd, int epfd);
 		HttpResponse(const HttpResponse& obj) = delete;
 		~HttpResponse(void);
 
