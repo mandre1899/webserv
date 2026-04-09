@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sys/epoll.h> 
 #include <unistd.h>
+#include <chrono>
 #include "config/configTypes.hpp"
 #include "utils/Logger.hpp"
 #include "HttpParser.hpp"
@@ -29,6 +30,8 @@ class Client {
 private:
 	int _serverFd;
 	int _clientFd;
+	int _epollFd;
+	std::chrono::time_point<std::chrono::system_clock> _timeout;
 	Status _status;
 	std::string _msg;
 	HttpParser _parsedHttp;
@@ -42,7 +45,7 @@ private:
 public:
 	/* Constructors & Destructors */
 	Client() = delete;
-	Client(int serverFd, int clientFd, const cfg::srvCfg& srvCfg);
+	Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg);
 	Client(const Client& src) = delete;
 	Client(Client&& src) noexcept;
 	~Client();
@@ -56,6 +59,7 @@ public:
 
 	/* Getters & Setters */
 	int getFd() const;
+	std::chrono::time_point<std::chrono::system_clock> getTimeout() const;
 };
 
 #endif // CLIENT_HPP

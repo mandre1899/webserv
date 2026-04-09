@@ -7,6 +7,9 @@
 #include <utility>
 #include <sys/epoll.h> 
 #include <variant>
+#include <functional>
+#include <queue>
+#include <chrono>
 #include "config/Config.hpp"
 #include "server/Client.hpp"
 #include "server/TcpSocket.hpp"
@@ -14,14 +17,23 @@
 
 #define MAX_EVENTS 5
 
+struct sessionTime
+{
+	std::chrono::time_point<std::chrono::system_clock> timeout;
+	int clientFd;
+	bool operator>(const sessionTime& rhs) const;
+};
+
 class HttpServer {
 private:
 	int _epollFd;
 	std::unordered_map<int, std::variant<TcpSocket, Client>> _map{};
+	std::priority_queue<sessionTime, std::vector<sessionTime>, std::greater<sessionTime>> _prioQ;
 
 	/* Member Functions */
 	void addClient(int serverFd, int clientFd, const cfg::socketCfg& socCfg);
-	void removeClient(int clientFd);
+	bool removeClient(int clientFd);
+	void checkClientTimeout();
 
 public:
 	/* Constructors & Destructors */
