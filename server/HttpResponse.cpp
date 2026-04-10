@@ -201,6 +201,7 @@ state HttpResponse::handle_cgi_proc()
 	while (true)
 	{
 		ssize_t read_bytes = read(_pipe_read, buf, sizeof(buf));
+		Logger::log<LogLevel::info>("Read ", read_bytes, " from pipe");
 		if (read_bytes > 0)
 		{
 			_body.append(buf, static_cast<std::size_t>(read_bytes));
@@ -218,6 +219,7 @@ state HttpResponse::handle_cgi_proc()
 		if (errno == EINTR)
 			continue; // Not sure about error handeling
 		//Pipe ressource and poll loop cleanup
+		Logger::log<LogLevel::error>("Read from CGI output pipe failed");
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 		close(_pipe_read);
 		_pipe_read = -1;
@@ -233,6 +235,7 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	static const std::string phpExec = "/usr/bin/php";
 	char* execPath = NULL;
 	char* scriptPath = const_cast<char*>(abs_path.c_str());
+	
 	int p[2];
 
 	set_status_code(200);
@@ -242,6 +245,7 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 		execPath = const_cast<char*>(phpExec.c_str());
 	if (pipe(p) == -1)
 	{
+		Logger::log<LogLevel::error>("Pipe creation failed");
 		close(p[0]);
 		close(p[1]);
 		return false;
@@ -249,6 +253,7 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	int pid = fork();
 	if (pid < 0)
 	{
+		Logger::log<LogLevel::error>("fork() failed");
 		close(p[0]);
 		close(p[1]);
 		return false;
@@ -263,6 +268,7 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 			_exit(1);
 		close(p[1]);
 		execve(execPath, argv, env);
+		Logger::log<LogLevel::error>("Execve failed");
 		_exit(1);
 	}
 	close(p[1]);
@@ -271,6 +277,7 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	ev.data.fd = _socket_fd;
 	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[0], &ev) == -1)
 	{
+		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
 		close(p[0]);
 		return false;
 	}
@@ -283,21 +290,25 @@ void	HttpResponse::evaluate_vHost()
 {
 	const auto& headers = _request->getHeadersMap();
 	if (headers.empty())
+	{
+		Logger::log<LogLevel::warn>("Request headers empty");
 		return ;
+	}
 	std::string hostValue = headers.find("Host")->second;
 	//Erase port specifier ":8080"
 	hostValue.erase(hostValue.find(":"));
-	if (_configs->srvNameMap.find(hostValue) != _configs->srvNameMap.end())
-		_config = _configs->vHost[_configs->srvNameMap.find(hostValue)->second];
+	auto server = _configs->srvNameMap.find(hostValue);
+	if (server != _configs->srvNameMap.end())
+		_config = _configs->vHost[server->second];
 	else
 		_config = _configs->vHost[0];
-	//std vHost already set to index[0] in the constructor
+	Logger::log<LogLevel::info>("Client connected to virtual server: ", _config.serverName[0]);
 }
 
 
 //Private Member function - HELPER END
 
-HttpResponse::HttpResponse(void)
+HttpResponse::HttpResponse(void) : _cgi_pid(-1), _pipe_read(-1)
 {}
 
 
@@ -438,7 +449,6 @@ void HttpResponse::generate_error_page(void)
 		status_text = it->second;
 	else
 		status_text = "Error not found in the map";
-
 	std::ostringstream body;
 
 	set_content_type("text/html");
@@ -464,6 +474,7 @@ void HttpResponse::generate_error_page(void)
 
 	_body = body.str();
 	_body_size = _body.size();
+	Logger::log<LogLevel::info>("Server responding with error code: ", _status_code);
 }
 
 //directory listing
@@ -536,17 +547,31 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 bool	HttpResponse::delete_request(const std::string& abs_path)
 {
 	struct stat path_stat;
-    if (stat(abs_path.c_str(), &path_stat) != 0)
-        return false;
-	//If its directory do not delete ???
-    if (S_ISDIR(path_stat.st_mode))
+	if (stat(abs_path.c_str(), &path_stat) != 0)
 		return false;
-
-	if (unlink(abs_path.c_str()) == 0)
+	if (S_ISDIR(path_stat.st_mode))
 	{
+		//No recursive deletion
+		if (rmdir(abs_path.c_str()) != 0)
+		{
+			if (errno == 39)
+				Logger::log<LogLevel::error>("Dir removal failed with code: ", errno, " (no recursive folder deletion allowed!)");
+			else
+				Logger::log<LogLevel::error>("Dir removal failed with code: ", errno, " (check for permissions of program executing user!)");
+			return false;
+		}
+		Logger::log<LogLevel::info>("Deleted dir: ", abs_path);
+		_body = "<html lang=\"en-US\">\n<body>\n<h1>Directory \"" + abstract_filename(abs_path) + "/" + "\" deleted.</h1>\n</body>\n</html>";
+		return true;
+	}
+	else if (unlink(abs_path.c_str()) == 0)
+	{
+		Logger::log<LogLevel::info>("Deleted file: ", abs_path);
 		_body = "<html lang=\"en-US\">\n<body>\n<h1>File \"" + abstract_filename(abs_path) + "\" deleted.</h1>\n</body>\n</html>";
 		return true;
 	}
+	else
+		Logger::log<LogLevel::error>("File removal failed with code: ", errno, " (check for permissions of program executing user!)");
 	return false;
 }
 
@@ -603,9 +628,12 @@ state	HttpResponse::build(HttpParser *req, const cfg::srvCfg* conf, int clientFd
 	try
 	{
 		std::pair<int, std::string> res = resolve_path();
-		set_status_code(res.first);
+		
+		Logger::log<LogLevel::info>("Absolute path of requested file: ", res.second);
 
-		if (_status_code != 200) {
+		set_status_code(res.first);
+		if (_status_code != 200)
+		{
 			generate_error_page();
 			return state::response_sending;
 		}
@@ -621,7 +649,7 @@ state	HttpResponse::build(HttpParser *req, const cfg::srvCfg* conf, int clientFd
 
 		if (access(abs_path.c_str(), R_OK) != 0)
 		{
-			//Not sure if errno is allowd to use by subject
+			//Not sure if errno is allowed to use by subject
 			set_status_code((errno == EACCES) ? 403 : 404);
 			generate_error_page();
 			return state::response_sending;

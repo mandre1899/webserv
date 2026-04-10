@@ -13,6 +13,7 @@
 #include "sys/stat.h"
 #include <dirent.h>
 #include "StateMachines.hpp"
+#include <unistd.h>
 
 extern const char * g_execName;
 
