@@ -17,6 +17,8 @@
 
 #define MAX_EVENTS 5
 
+extern volatile std::sig_atomic_t g_stopServerSignal;
+
 struct sessionTime
 {
 	std::chrono::time_point<std::chrono::system_clock> timeout;

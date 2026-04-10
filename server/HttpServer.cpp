@@ -98,7 +98,11 @@ void HttpServer::run()
 	struct epoll_event events[MAX_EVENTS];
 	int eventCount = epoll_wait(_epollFd, events, MAX_EVENTS, 1000);
 	if (eventCount == -1)
-		throw "System error occurred in the epoll_wait loop";
+	{
+		if (g_stopServerSignal)
+			return;
+		throw std::runtime_error("System error occurred in the epoll_wait loop");
+	}
 	for (int i = 0; i < eventCount; i++)
 	{
 		auto it = _map.find(events[i].data.fd);

@@ -2,11 +2,28 @@
 #include "server/HttpServer.hpp"
 #include <cstring>
 #include <iostream>
+#include <csignal>
 #include "utils/Logger.hpp"
 #include "config/Config.hpp"
 
+volatile std::sig_atomic_t g_stopServerSignal = 0;
+
+void sigactionHandler(int signalId)
+{
+	(void)signalId;
+	g_stopServerSignal = 1;
+}
+
+void setupSignalHandler()
+{
+	std::signal(SIGINT, sigactionHandler);
+	std::signal(SIGQUIT, sigactionHandler);
+	std::signal(SIGTERM, sigactionHandler);
+}
+
 int	main(int argc, char** argv)
 {
+	setupSignalHandler();
 	if (argc == 1)
 	{
 		Logger::log<LogLevel::error>("No configuration file provided, not enough arguments.");
@@ -25,7 +42,7 @@ int	main(int argc, char** argv)
 		HttpServer server;
 
 		server.createSockets(config);
-		while (true)
+		while (!g_stopServerSignal)
 			server.run();
 	}
 	catch (const std::exception& e)
