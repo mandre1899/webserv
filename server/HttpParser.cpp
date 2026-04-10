@@ -189,7 +189,7 @@ std::string HttpParser::getHttpVersion() const
 {
 	return (_http_version);
 }
-auto HttpParser::getHeadersMap() const
+std::map<std::string, std::string>	HttpParser::getHeadersMap() const
 {
 	return (_headers_map);
 }

@@ -1,27 +1,30 @@
 #include "Client.hpp"
 
 /* Constructors & Destructors */
-Client::Client(int serverFd, int clientFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _srvCfg(srvCfg)
+Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _epollFd(epollFd), _srvCfg(srvCfg)
 {
 	_status = Status::close;
 	_msg = "";
 	_parsingState = state::parsing_request_line;
+	_timeout = std::chrono::system_clock::now();
 }
 
 Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 {
 	_serverFd = src._serverFd;
 	_clientFd = src._clientFd;
+	_epollFd = src._epollFd;
 	_status = src._status;
 	_msg = src._msg;
 	_parsingState = src._parsingState;
 	_parsedHttp = std::move(src._parsedHttp);
+	_timeout = src._timeout;
 	src._serverFd = -1;
 	src._clientFd = -1;
+	src._epollFd = -1;
 	src._msg = "";
 	src._status = Status::close;
 	src._parsingState = state::error;
-
 }
 
 Client::~Client()
@@ -81,11 +84,14 @@ uint32_t Client::recvData()
 	return (EPOLLIN);
 }
 
+#include "HttpResponse.hpp"
+
 uint32_t Client::sendData()
 {
-	std::cout << "test: " << _srvCfg.vHost[0].index << std::endl;
-	const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n<html><h1>Hello from WebServ!</h1></html>";
-	int ret = send(_clientFd, message, 81, 0);
+	HttpResponse	res(_parsedHttp, _srvCfg, _clientFd);
+	res.build();
+	std::string msg = res.get_response_str();
+	int ret = send(_clientFd, msg.c_str(), msg.size(), 0);
 	Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
 	return (EPOLLHUP);
 }
@@ -114,4 +120,10 @@ uint32_t Client::handleConnection(uint32_t event)
 int Client::getFd() const
 {
 	return (_clientFd);
+}
+
+
+std::chrono::time_point<std::chrono::system_clock> Client::getTimeout() const
+{
+	return (_timeout);
 }
