@@ -5,6 +5,8 @@
 #include <sstream>
 #include "./HttpParser.hpp"
 #include "config/configTypes.hpp"
+#include <cstdlib>
+#include <string>
 #include "config/Config.hpp"
 #include "sys/stat.h"
 #include <dirent.h>
