@@ -84,13 +84,10 @@ uint32_t Client::recvData()
 	return (EPOLLIN);
 }
 
-#include "HttpResponse.hpp"
-
 uint32_t Client::sendData()
 {
-	HttpResponse	res(_parsedHttp, _srvCfg, _clientFd);
-	res.build();
-	std::string msg = res.get_response_str();
+	_response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
+	std::string msg = _response.get_response_str();
 	int ret = send(_clientFd, msg.c_str(), msg.size(), 0);
 	Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
 	return (EPOLLHUP);

@@ -223,7 +223,7 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	if (pid == 0)
 	{
 		char *const argv[] = {execPath, scriptPath, NULL};
-		std::vector<char*> tmp = parse_header_to_env(_request.getHeadersMap());
+		std::vector<char*> tmp = parse_header_to_env(_request->getHeadersMap());
 		char** env = tmp.data();
 		close(p[0]);
 		if (dup2(p[1], STDOUT_FILENO) == -1)
@@ -236,7 +236,7 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	epoll_event ev;
 	ev.events = EPOLLIN | EPOLLRDHUP;
 	ev.data.fd = _socket_fd;
-	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[0], &ev) == -1)
+	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[1], &ev) == -1)
 	{
 		close(p[0]);
 		return false;
@@ -246,38 +246,26 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	return true;
 }
 
-
-//Private Member function - HELPER END
-
-HttpResponse::HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd, int epfd)
-	: _request(static_cast<const HttpParser&>(req)), _configs(conf), _socket_fd(clientFd), _epfd(epfd)
+void	HttpResponse::evaluate_vHost()
 {
-	const auto& headers = req.getHeadersMap();
-	std::string hostValue = headers.find("Host")->second;
-	//Erase port specifier ":8080"
-	int test = hostValue.find(":");
-	if (test != -1)
-		hostValue.erase(test);
-	if (_configs.srvNameMap.find(hostValue) != _configs.srvNameMap.end())
-		_config = _configs.vHost[_configs.srvNameMap.find(hostValue)->second];
-	else
-		_config = _configs.vHost[0];
-}
-
-HttpResponse::HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd, int epfd)
-	: _request(req), _configs(conf), _socket_fd(clientFd), _epfd(epfd)
-{
-	const auto& headers = req.getHeadersMap();
+	const auto& headers = _request->getHeadersMap();
+	if (headers.empty())
+		return ;
 	std::string hostValue = headers.find("Host")->second;
 	//Erase port specifier ":8080"
 	hostValue.erase(hostValue.find(":"));
-	if (_configs.srvNameMap.find(hostValue) != _configs.srvNameMap.end())
-		_config = _configs.vHost[_configs.srvNameMap.find(hostValue)->second];
-	else
-		_config = _configs.vHost[0];
+	if (_configs->srvNameMap.find(hostValue) != _configs->srvNameMap.end())
+		_config = _configs->vHost[_configs->srvNameMap.find(hostValue)->second];
+	//std vHost already set to index[0] in the constructor
 }
 
-HttpResponse::~HttpResponse()
+
+//Private Member function - HELPER END
+
+HttpResponse::HttpResponse(void)
+{}
+
+HttpResponse::~HttpResponse(void)
 {}
 
 // Con - & De- structor END
@@ -333,7 +321,7 @@ const std::string	HttpResponse::get_response_str() const
 
 std::pair<int, std::string> HttpResponse::resolve_path(void)
 {
-	const std::string uri_path = _request.getRequestUri();
+	const std::string uri_path = _request->getRequestUri();
 
 	if (_config.location.empty())
 		return rtn_pair(404, std::string());
@@ -349,7 +337,7 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 			continue;
 
 		// Check method for location
-		method_type method = _request.getMethod();
+		method_type method = _request->getMethod();
 		const cfg::wsAllowMethods& allowed = location_cfg.allowMethods;
 
 		if ((method == method_type::GET && !allowed.isGet) ||
@@ -358,7 +346,7 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 			return rtn_pair(405, std::string());
 
 		// For now using the hardcoded base path (must fix!)
-		if (!location_cfg.index.empty() && _request.getRequestUri() == location_path)
+		if (!location_cfg.index.empty() && _request->getRequestUri() == location_path)
 			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
 		std::string tmp = join_path(root_path + "/" + location_cfg.root, uri_path);
 		std::cout << "Check for: " << tmp <<std::endl;
@@ -525,7 +513,7 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 bool	HttpResponse::get_request(const std::string& abs_path)
 {
 	if(is_directory(abs_path))
-		generate_dir_listing(abs_path, _request.getRequestUri());
+		generate_dir_listing(abs_path, _request->getRequestUri());
 	else
 	{
 		const std::string file_suffix = resolve_file_suffix(abs_path);
@@ -550,9 +538,11 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 			generate_error_page();
 			return false;
 		}
+		set_default_headers();
+		_is_built = true;
+		if (type == DYNAMIC_FILE)
+			return false; //To set state machine flag to proccessing
 	}
-	set_default_headers();
-	_is_built = true;
 	return true;
 }
 
@@ -562,9 +552,13 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 //	
 //}
 
-void HttpResponse::build(void)
+state	HttpResponse::build(HttpParser *req, const cfg::srvCfg* conf, int clientFd, int epfd)
 {
-	std::cout << "Root Path: " << root_path << std::endl;
+	_request = req;
+	_configs = conf;
+	_socket_fd = clientFd;
+	_epfd = epfd;
+	evaluate_vHost();
 	try
 	{
 		std::pair<int, std::string> res = resolve_path();
@@ -573,7 +567,7 @@ void HttpResponse::build(void)
 
 		if (_status_code != 200) {
 			generate_error_page();
-			return;
+			return state::response_sending;
 		}
 
 		const std::string& abs_path = res.second;
@@ -582,7 +576,7 @@ void HttpResponse::build(void)
 		{
 			set_status_code(403);
 			generate_error_page();
-			return ;
+			return state::response_sending;
 		}
 
 		if (access(abs_path.c_str(), R_OK) != 0)
@@ -590,27 +584,31 @@ void HttpResponse::build(void)
 			//Not sure if errno is allowd to use by subject
 			set_status_code((errno == EACCES) ? 403 : 404);
 			generate_error_page();
-			return;
+			return state::response_sending;
 		}
 
-		if (method_type::DELETE == _request.getMethod())
+		if (method_type::DELETE == _request->getMethod())
 		{
 			if (!delete_request(abs_path))
 			{
 				set_status_code(403);
 				generate_error_page();
-				return;
+				return state::response_sending;
 			}
 
 		}
 		//else if (method_type::POST == _request.getMethod()) // Return a success message(depending on state)
 		//	post_request(abs_path);
-		else if (method_type::GET == _request.getMethod())
-			get_request(abs_path);
+		else if (method_type::GET == _request->getMethod())
+		{
+			if (!get_request(abs_path))
+				return state::response_proccessing; //CGI is running
+		}
 	}
 	catch (const std::exception& e)
 	{
 		set_status_code(500);
 		generate_error_page();
 	}
+	return state::response_sending;
 }

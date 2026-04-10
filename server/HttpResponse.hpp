@@ -11,6 +11,7 @@
 #include "config/Config.hpp"
 #include "sys/stat.h"
 #include <dirent.h>
+#include "StateMachines.hpp"
 
 extern const char * g_execName;
 
@@ -23,15 +24,15 @@ enum filetype {
 class HttpResponse
 {
 	private:
-		int                                 _status_code;
-		std::string                         _http_version;
-		std::string                         _content_type;
+		int									_status_code;
+		std::string							_http_version;
+		std::string							_content_type;
 		std::map<std::string, std::string>  _headers;
-		std::string                         _body;
+		std::string							_body;
 		size_t								_body_size;
-		bool                                _is_built;
-		const HttpParser&                   _request;
-		const cfg::srvCfg&					_configs;
+		bool								_is_built;
+		HttpParser*							_request;
+		const cfg::srvCfg*					_configs;
 		cfg::vHostCfg						_config; //Evalutated vHost
 
 
@@ -53,6 +54,7 @@ class HttpResponse
 		bool						execute_cgi_proc(const std::string& abs_path, const std::string& filetype);
 		HttpResponse&				set_content_type(const std::string& type);
 		HttpResponse&				add_header(const std::string& key, const std::string& val);
+		void						evaluate_vHost(void);
 
 		// Path resolution
 		std::pair<int, std::string>			resolve_path(void); //get absolute path
@@ -81,13 +83,12 @@ class HttpResponse
 		bool					is_built(void) const;
 		bool 					is_path_safe(const std::string& abs_path, const std::string& base_path);
 	public:
-		HttpResponse(void) = delete;
-		HttpResponse(const HttpParser &req, const cfg::srvCfg& conf, int clientFd, int epfd);
-		HttpResponse(HttpParser &req, const cfg::srvCfg& conf, int clientFd, int epfd);
+		HttpResponse(void);
 		HttpResponse(const HttpResponse& obj) = delete;
+		HttpResponse&			operator=(const HttpResponse& obj) = delete;
 		~HttpResponse(void);
 
-		void					build(void);
+		state					build(HttpParser *req, const cfg::srvCfg* conf, int clientFd, int epfd);
 		const std::string		get_response_str(void) const; //Returns the response as string
 
 		// Setters
