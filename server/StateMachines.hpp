@@ -1,6 +1,8 @@
 #ifndef STATE_MACHINES_H
 # define STATE_MACHINES_H
 
+#define CGI_TIMEOUT_TIME 30
+
 enum class Status {
 	recive,
 	send,

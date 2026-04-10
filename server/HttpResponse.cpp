@@ -13,7 +13,7 @@ static std::string init_root_path()
 	if (pos != std::string::npos)
 		abs.erase(pos);
 	abs.erase(abs.find_last_of("/"));
-
+	
 	return abs;
 }
 
@@ -195,19 +195,52 @@ static std::vector<char*> parse_header_to_env(std::map<std::string, std::string>
 	return env;
 }
 
+state HttpResponse::handle_cgi_proc()
+{
+	char buf[256];
+	while (true)
+	{
+		ssize_t read_bytes = read(_pipe_read, buf, sizeof(buf));
+		if (read_bytes > 0)
+		{
+			_body.append(buf, static_cast<std::size_t>(read_bytes));
+			_body_size += read_bytes;
+			continue;
+		}
+		if (read_bytes == 0)
+		{
+			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
+			close(_pipe_read);
+			set_default_headers();
+			_pipe_read = -1;
+			return state::response_sending;
+		}
+		if (errno == EINTR)
+			continue; // Not sure about error handeling
+		//Pipe ressource and poll loop cleanup
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
+		close(_pipe_read);
+		_pipe_read = -1;
+		set_status_code(500); //Internal server error on CGI failure
+		generate_error_page();
+		return state::response_sending; 
+	}
+}
+
 bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::string& filetype)
 {
 	static const std::string pyExec = "/usr/bin/python3";
+	static const std::string phpExec = "/usr/bin/php";
 	char* execPath = NULL;
 	char* scriptPath = const_cast<char*>(abs_path.c_str());
 	int p[2];
 
-	if (pipe(p) == -1)
-		return false;
 	set_status_code(200);
 	if (filetype == ".py")
 		execPath = const_cast<char*>(pyExec.c_str());
-	else
+	if (filetype == ".php")
+		execPath = const_cast<char*>(phpExec.c_str());
+	if (pipe(p) == -1)
 	{
 		close(p[0]);
 		close(p[1]);
@@ -233,10 +266,10 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 		_exit(1);
 	}
 	close(p[1]);
-	epoll_event ev;
+	epoll_event	ev;
 	ev.events = EPOLLIN | EPOLLRDHUP;
 	ev.data.fd = _socket_fd;
-	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[1], &ev) == -1)
+	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[0], &ev) == -1)
 	{
 		close(p[0]);
 		return false;
@@ -256,6 +289,8 @@ void	HttpResponse::evaluate_vHost()
 	hostValue.erase(hostValue.find(":"));
 	if (_configs->srvNameMap.find(hostValue) != _configs->srvNameMap.end())
 		_config = _configs->vHost[_configs->srvNameMap.find(hostValue)->second];
+	else
+		_config = _configs->vHost[0];
 	//std vHost already set to index[0] in the constructor
 }
 
@@ -265,8 +300,15 @@ void	HttpResponse::evaluate_vHost()
 HttpResponse::HttpResponse(void)
 {}
 
+
 HttpResponse::~HttpResponse(void)
-{}
+{
+	//RAII
+	if (_cgi_pid != -1)
+		kill(_cgi_pid, SIGKILL);
+	if (_pipe_read != -1)
+		close (_pipe_read);
+}
 
 // Con - & De- structor END
 static std::pair<int, std::string>	rtn_pair(int code, std::string path)
@@ -327,8 +369,7 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		return rtn_pair(404, std::string());
 	
 	for (auto it = _config.location.begin();
-			it != _config.location.end();
-			++it)
+			it != _config.location.end(); ++it)
 	{
 		const std::string& location_path = it->first;
 		const cfg::wsLocationCtx& location_cfg = it->second;
@@ -349,7 +390,6 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		if (!location_cfg.index.empty() && _request->getRequestUri() == location_path)
 			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
 		std::string tmp = join_path(root_path + "/" + location_cfg.root, uri_path);
-		std::cout << "Check for: " << tmp <<std::endl;
 		if (access(tmp.c_str(), R_OK) == 0)
 			return rtn_pair(200, tmp);
 		if (!location_cfg.index.empty())
@@ -557,12 +597,12 @@ state	HttpResponse::build(HttpParser *req, const cfg::srvCfg* conf, int clientFd
 	_request = req;
 	_configs = conf;
 	_socket_fd = clientFd;
+	_body_size = 0;
 	_epfd = epfd;
 	evaluate_vHost();
 	try
 	{
 		std::pair<int, std::string> res = resolve_path();
-		std::cout << "abs_path: " << res.second << std::endl;
 		set_status_code(res.first);
 
 		if (_status_code != 200) {

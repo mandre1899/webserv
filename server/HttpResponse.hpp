@@ -7,6 +7,7 @@
 #include "config/configTypes.hpp"
 #include <sys/epoll.h>
 #include <cstdlib>
+#include <signal.h>
 #include <string>
 #include "config/Config.hpp"
 #include "sys/stat.h"
@@ -45,7 +46,6 @@ class HttpResponse
 		//CGI specific
 		int									_epfd;
 		int									_pipe_read; // pipe read end
-
 		// Helper functions
 		std::string					abstract_filename(const std::string& path);
 		std::string					get_status_message(int code) const;
@@ -90,6 +90,7 @@ class HttpResponse
 
 		state					build(HttpParser *req, const cfg::srvCfg* conf, int clientFd, int epfd);
 		const std::string		get_response_str(void) const; //Returns the response as string
+		state					handle_cgi_proc(void);
 
 		// Setters
 		void					set_status_code(int code);
