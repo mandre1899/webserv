@@ -664,7 +664,8 @@ state	HttpResponse::build(HttpParser *req, const cfg::srvCfg* conf, int clientFd
 
 		set_status_code(res.first);
 		//Simple redirect
-		if (_status_code == 301)
+		if (_status_code == 301 || _status_code == 302 ||
+				_status_code == 303)
 		{
 			_headers["location"]= res.second;
 			return state::response_sending;
