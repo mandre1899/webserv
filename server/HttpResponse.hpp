@@ -6,6 +6,7 @@
 #include "./HttpParser.hpp"
 #include "config/configTypes.hpp"
 #include <sys/epoll.h>
+#include <sys/wait.h>
 #include <cstdlib>
 #include <signal.h>
 #include <string>

@@ -197,6 +197,7 @@ static std::vector<char*> parse_header_to_env(std::map<std::string, std::string>
 
 state HttpResponse::handle_cgi_proc()
 {
+	std::cout << "Hello" << std::endl;
 	char buf[256];
 	while (true)
 	{
@@ -212,8 +213,18 @@ state HttpResponse::handle_cgi_proc()
 		{
 			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 			close(_pipe_read);
-			set_default_headers();
 			_pipe_read = -1;
+			int status = 0;
+			waitpid(_cgi_pid, &status, WNOHANG);
+			std::cout << "Status: " << status << std::endl;
+			if (status != 0) {
+				_cgi_pid = -1;
+				set_status_code(500);
+				generate_error_page();
+				set_default_headers();
+				return state::response_sending;
+			}
+			set_default_headers();
 			return state::response_sending;
 		}
 		if (errno == EINTR)
@@ -266,6 +277,8 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 		close(p[0]);
 		if (dup2(p[1], STDOUT_FILENO) == -1)
 			_exit(1);
+		if (dup2(p[1], STDERR_FILENO) == -1)
+			_exit(1);
 		close(p[1]);
 		execve(execPath, argv, env);
 		Logger::log<LogLevel::error>("Execve failed");
@@ -283,6 +296,7 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	}
 	_cgi_pid = pid;
 	_pipe_read = p[0];
+	std::cout << "Hello" << std::endl;
 	return true;
 }
 
