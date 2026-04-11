@@ -197,15 +197,15 @@ static std::vector<char*> parse_header_to_env(std::map<std::string, std::string>
 
 state HttpResponse::handle_cgi_proc()
 {
-	char buf[256];
+	char buf[4096];
 	while (true)
 	{
 		ssize_t read_bytes = read(_pipe_read, buf, sizeof(buf));
-		Logger::log<LogLevel::info>("Read ", read_bytes, " from pipe");
 		if (read_bytes > 0)
 		{
+			Logger::log<LogLevel::info>("Read ", read_bytes, " bytes from CGI pipe");
 			_body.append(buf, static_cast<std::size_t>(read_bytes));
-			_body_size += read_bytes;
+			_body_size += static_cast<std::size_t>(read_bytes);
 			continue;
 		}
 		if (read_bytes == 0)
@@ -214,9 +214,26 @@ state HttpResponse::handle_cgi_proc()
 			close(_pipe_read);
 			_pipe_read = -1;
 			int status = 0;
-			waitpid(_cgi_pid, &status, WNOHANG);
-			if (status != 0) {
+			pid_t ret = waitpid(_cgi_pid, &status, WNOHANG);
+			if (ret == -1)
+			{
+				Logger::log<LogLevel::error>("waitpid failed for CGI child");
 				_cgi_pid = -1;
+				set_status_code(500);
+				generate_error_page();
+				set_default_headers();
+				return state::response_sending;
+			}
+			if (ret > 0)
+			{
+				_cgi_pid = -1;
+
+				if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+				{
+					set_default_headers();
+					return state::response_sending;
+				}
+				Logger::log<LogLevel::error>("CGI exited with status: ", WEXITSTATUS(status));
 				set_status_code(500);
 				generate_error_page();
 				set_default_headers();
@@ -225,22 +242,20 @@ state HttpResponse::handle_cgi_proc()
 			set_default_headers();
 			return state::response_sending;
 		}
-		if (errno == EINTR)
-			continue; // Not sure about error handeling
-		//Pipe ressource and poll loop cleanup
-		Logger::log<LogLevel::error>("Read from CGI output pipe failed");
+		Logger::log<LogLevel::error>("Read failed status: ", errno);
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 		close(_pipe_read);
 		_pipe_read = -1;
-		set_status_code(500); //Internal server error on CGI failure
+		_cgi_pid = -1;
+		set_status_code(500);
 		generate_error_page();
-		return state::response_sending; 
+		set_default_headers();
+		return state::response_sending;
 	}
 }
 
 bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::string& filetype)
-{
-	static const std::string pyExec = "/usr/bin/python3";
+{ static const std::string pyExec = "/usr/bin/python3";
 	static const std::string phpExec = "/usr/bin/php";
 	char* execPath = NULL;
 	char* scriptPath = const_cast<char*>(abs_path.c_str());
@@ -307,7 +322,9 @@ void	HttpResponse::evaluate_vHost()
 	}
 	std::string hostValue = headers.find("Host")->second;
 	//Erase port specifier ":8080"
-	hostValue.erase(hostValue.find(":"));
+	size_t portPrefix = hostValue.find(":");
+	if (portPrefix != std::string::npos)
+		hostValue.erase(portPrefix);
 	auto server = _configs->srvNameMap.find(hostValue);
 	if (server != _configs->srvNameMap.end())
 		_config = _configs->vHost[server->second];
