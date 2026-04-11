@@ -197,7 +197,6 @@ static std::vector<char*> parse_header_to_env(std::map<std::string, std::string>
 
 state HttpResponse::handle_cgi_proc()
 {
-	std::cout << "Hello" << std::endl;
 	char buf[256];
 	while (true)
 	{
@@ -216,7 +215,6 @@ state HttpResponse::handle_cgi_proc()
 			_pipe_read = -1;
 			int status = 0;
 			waitpid(_cgi_pid, &status, WNOHANG);
-			std::cout << "Status: " << status << std::endl;
 			if (status != 0) {
 				_cgi_pid = -1;
 				set_status_code(500);
@@ -296,7 +294,6 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::stri
 	}
 	_cgi_pid = pid;
 	_pipe_read = p[0];
-	std::cout << "Hello" << std::endl;
 	return true;
 }
 
