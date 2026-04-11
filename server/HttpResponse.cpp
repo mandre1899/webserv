@@ -254,19 +254,15 @@ state HttpResponse::handle_cgi_proc()
 	}
 }
 
-bool HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::string& filetype)
-{ static const std::string pyExec = "/usr/bin/python3";
-	static const std::string phpExec = "/usr/bin/php";
+bool HttpResponse::execute_cgi_proc(const std::string& abs_path)
+{
+	static const std::string execLocPath = _curr_loc.cgiPath;
 	char* execPath = NULL;
 	char* scriptPath = const_cast<char*>(abs_path.c_str());
-	
 	int p[2];
 
 	set_status_code(200);
-	if (filetype == ".py")
-		execPath = const_cast<char*>(pyExec.c_str());
-	if (filetype == ".php")
-		execPath = const_cast<char*>(phpExec.c_str());
+	execPath = const_cast<char*>(execLocPath.c_str());
 	if (pipe(p) == -1)
 	{
 		Logger::log<LogLevel::error>("Pipe creation failed");
@@ -415,6 +411,8 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 
 		if (!loc_uri_comp(location_path, uri_path))
 			continue;
+
+		_curr_loc = location_cfg; //Needed in some contexts
 
 		if (location_cfg.ret.has_value())
 			return rtn_pair(301, location_cfg.ret->param);
@@ -621,7 +619,7 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 		if (type == STATIC_FILE)
 			success = read_file_to_body(abs_path);
 		else if (type == DYNAMIC_FILE)
-			success = execute_cgi_proc(abs_path, file_suffix);
+			success = execute_cgi_proc(abs_path);
 		else
 		{
 			// Momentarily dead code -> resolve_filetype always returns one of two above types
@@ -659,7 +657,6 @@ state	HttpResponse::build(HttpParser *req, const cfg::srvCfg* conf, int clientFd
 	try
 	{
 		std::pair<int, std::string> res = resolve_path();
-		
 		Logger::log<LogLevel::info>("Absolute path of requested file: ", res.second);
 
 		set_status_code(res.first);
