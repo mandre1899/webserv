@@ -416,6 +416,9 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		if (!loc_uri_comp(location_path, uri_path))
 			continue;
 
+		if (location_cfg.ret.has_value())
+			return rtn_pair(301, location_cfg.ret->param);
+
 		// Check method for location
 		method_type method = _request->getMethod();
 		const cfg::wsAllowMethods& allowed = location_cfg.allowMethods;
@@ -660,6 +663,12 @@ state	HttpResponse::build(HttpParser *req, const cfg::srvCfg* conf, int clientFd
 		Logger::log<LogLevel::info>("Absolute path of requested file: ", res.second);
 
 		set_status_code(res.first);
+		//Simple redirect
+		if (_status_code == 301)
+		{
+			_headers["location"]= res.second;
+			return state::response_sending;
+		}
 		if (_status_code != 200)
 		{
 			generate_error_page();
