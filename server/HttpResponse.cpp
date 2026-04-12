@@ -415,7 +415,7 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		_curr_loc = location_cfg; //Needed in some contexts
 
 		if (location_cfg.ret.has_value())
-			return rtn_pair(301, location_cfg.ret->param);
+			return rtn_pair(location_cfg.ret->code, location_cfg.ret->param);
 
 		// Check method for location
 		method_type method = _request->getMethod();
@@ -715,3 +715,4 @@ state	HttpResponse::build(HttpParser *req, const cfg::srvCfg* conf, int clientFd
 	}
 	return state::response_sending;
 }
+
