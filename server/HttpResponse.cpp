@@ -139,6 +139,7 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 	struct stat file_stat;
 	if (stat(abs_path.c_str(), &file_stat) != 0) {
 		set_status_code(404);
+		generate_error_page();
 		return false;
 	}
 	std::ifstream file;
@@ -555,9 +556,14 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 	{
 		_status_code = 403;
 		generate_error_page();
-		std::cout << "ASD: " << _curr_loc.errorPage->path << std::endl;
 		if (_curr_loc.errorPage->code == 403)
-			read_file_to_body(join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path));
+		{
+			if (!read_file_to_body(join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path)))
+			{
+				_status_code = 403;
+				generate_error_page();
+			}
+		}
 		return ;
 	}
 
