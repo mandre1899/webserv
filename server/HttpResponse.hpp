@@ -49,15 +49,15 @@ class HttpResponse
 		int									_epfd;
 		int									_pipe_read; // pipe read end
 		// Helper functions
-		std::string					abstract_filename(const std::string& path);
-		std::string					get_status_message(int code) const;
-		std::string					get_file_extension(const std::string& path) const;
-		bool						read_file_to_body(const std::string& abs_path); //reads the file to the _body member string
-		bool						execute_cgi_proc(const std::string& abs_path);
-		HttpResponse&				set_content_type(const std::string& type);
-		HttpResponse&				add_header(const std::string& key, const std::string& val);
-		void						evaluate_vHost(void);
-
+		std::string													abstract_filename(const std::string& path);
+		std::string													get_status_message(int code) const;
+		std::string													get_file_extension(const std::string& path) const;
+		bool														read_file_to_body(const std::string& abs_path); //reads the file to the _body member string
+		bool														execute_cgi_proc(const std::string& abs_path);
+		HttpResponse&												set_content_type(const std::string& type);
+		HttpResponse&												add_header(const std::string& key, const std::string& val);
+		void														evaluate_vHost(void);
+		std::optional<std::pair<std::string, cfg::wsLocationCtx>>	get_most_specific_location(const std::string &uri_path);
 		// Path resolution
 		std::pair<int, std::string>			resolve_path(void); //get absolute path
 		std::string							resolve_content_type(const std::string& abs_path);
