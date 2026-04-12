@@ -558,6 +558,7 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 		generate_error_page();
 		if (_curr_loc.errorPage->code == 403)
 		{
+			//Fallback if custom error page is not found
 			if (!read_file_to_body(join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path)))
 			{
 				_status_code = 403;
