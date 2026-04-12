@@ -551,6 +551,16 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 
 	std::string base_uri = uri_path;
 
+	if (_curr_loc.autoIndex == false)
+	{
+		_status_code = 403;
+		generate_error_page();
+		std::cout << "ASD: " << _curr_loc.errorPage->path << std::endl;
+		if (_curr_loc.errorPage->code == 403)
+			read_file_to_body(join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path));
+		return ;
+	}
+
 	ss << "<!DOCTYPE html>\n"
 		<< "<html lang=\"en\">\n"
 		<< "<head>\n"
