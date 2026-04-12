@@ -162,6 +162,9 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 
 bool	HttpResponse::check_path_secure(const std::string& abs_path)
 {
+	//When config specifies a root location we can't check
+	if (_curr_loc.root[0] == '/')
+		return true;
 	std::filesystem::path expandedPath = abs_path;
 	expandedPath = expandedPath.lexically_normal();
 	if (expandedPath.string().compare(0, root_path.length(), root_path) == 0 &&
@@ -436,6 +439,7 @@ std::optional<std::pair<std::string, cfg::wsLocationCtx>>	HttpResponse::get_most
 std::pair<int, std::string> HttpResponse::resolve_path(void)
 {
 	std::string uri_path = _request->getRequestUri();
+	bool		is_abs_root = true; // In config its ./ or /
 
 	if (_config.location.empty())
 		return rtn_pair(404, std::string());
@@ -444,6 +448,11 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	if (!location)
 		return rtn_pair(404, std::string());
 	_curr_loc = location->second;
+
+	//Just so relative and absolute paths can be defined in config
+	if (_curr_loc.root[0] == '.')
+		is_abs_root = false;
+
 
 	if (_curr_loc.ret.has_value())
 		return rtn_pair(_curr_loc.ret->code, _curr_loc.ret->param);
@@ -458,15 +467,28 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 
 	//When exact configured location is requested
 	if (!_curr_loc.index.empty() && _request->getRequestUri() == location->first)
-		return rtn_pair(200, join_paths(root_path, _curr_loc.root, _curr_loc.index));
+	{
+		if (is_abs_root == false)
+			return rtn_pair(200, join_paths(root_path, _curr_loc.root, _curr_loc.index));
+		else
+			return rtn_pair(200, join_paths(_curr_loc.root, _curr_loc.index));
+	}
 	//When exact file is requested on location
-	std::string tmp = join_paths(root_path, _curr_loc.root, uri_path.erase(0, location->first.length()));
+	std::string tmp;
+	if (is_abs_root == false)
+		tmp = join_paths(root_path, _curr_loc.root, uri_path.erase(0, location->first.length()));
+	else
+		tmp = join_paths(_curr_loc.root, uri_path.erase(0, location->first.length()));
 	if (access(tmp.c_str(), R_OK) == 0)
 		return rtn_pair(200, tmp);
 	//Location specific error page
 	if (_curr_loc.errorPage)
 	{
-		std::string specifiedErrPage = join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path);
+		std::string specifiedErrPage;
+		if (is_abs_root == false)
+			 specifiedErrPage = join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path);
+		else
+			 specifiedErrPage = join_paths(_curr_loc.root, _curr_loc.errorPage->path);
 		if (access(specifiedErrPage.c_str(), R_OK) == 0)
 			return rtn_pair(404, specifiedErrPage);
 	}
@@ -771,7 +793,8 @@ const std::string	HttpResponse::get_response_str() const
 	for (const auto& a : _headers)
 		tmp << a.first << ": " << a.second << "\r\n";
 	tmp << "\r\n";
-	tmp << _body;
+	if (!_body.empty())
+		tmp << _body;
 	return tmp.str();
 }
 
