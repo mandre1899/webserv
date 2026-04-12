@@ -167,8 +167,8 @@ bool	HttpResponse::check_path_secure(const std::string& abs_path)
 		return true;
 	std::filesystem::path expandedPath = abs_path;
 	expandedPath = expandedPath.lexically_normal();
-	if (expandedPath.string().compare(0, root_path.length(), root_path) == 0 &&
-	    (expandedPath.string().length() == root_path.length() ||
+	if (expandedPath.string().compare(root_path.length(), _curr_loc.root.length(), _curr_loc.root) == 0 &&
+	    ((expandedPath.string().length() - root_path.length()) == root_path.length() ||
      	expandedPath.string()[root_path.length()] == '/'))
 		return true; // Path is safe
 	return false;
@@ -557,6 +557,7 @@ void HttpResponse::generate_error_page(void)
 
 	_body = body.str();
 	_body_size = _body.size();
+	set_default_headers();
 	Logger::log<LogLevel::info>("Server responding with error code: ", _status_code);
 }
 
