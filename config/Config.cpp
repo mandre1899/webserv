@@ -123,7 +123,7 @@ void Config::buildSrvCfg(const char* path)
 		std::string id = std::to_string(host.address) + std::to_string(host.port);
 		auto it = _srvConfs.insert({ id, cfg::srvCfg() });
 		cfg::srvCfg& server = it.first->second;
-		if (it.second && host.serverName.empty() && server.srvNameMap.empty())
+		if (!it.second && host.serverName.empty())
 		{
 			struct in_addr addr;
 			addr.s_addr = host.address;
