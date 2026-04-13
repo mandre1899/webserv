@@ -6,6 +6,7 @@
 #include "configTypes.hpp"
 #include "TokenStream.hpp"
 #include "ContextNode.hpp"
+#include "configUtils.hpp"
 
 
 #define KILO 1000
@@ -88,7 +89,7 @@ private:
 
 	void _root(T& confStruct, TokenStream& ts)
 	{
-		confStruct.root = ts.getNextValue();
+		confStruct.root = normalizePath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
@@ -272,7 +273,7 @@ private:
 
 	void _uploadStore(T& confStruct, TokenStream& ts)
 	{
-		confStruct.uploadStore = ts.getNextValue();
+		confStruct.uploadStore = normalizePath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 

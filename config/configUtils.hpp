@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <string>
+#include <stdexcept>
 
 struct filePos
 {
@@ -12,6 +13,7 @@ struct filePos
 };
 
 std::string buildMsg(std::string msg, const filePos& pos);
+std::string normalizePath(const std::string& path, const filePos& pos);
 
 #endif // CONFIGUTILS_HPP
 
