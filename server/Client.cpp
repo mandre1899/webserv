@@ -84,22 +84,33 @@ uint32_t Client::recvData()
 	return (EPOLLIN);
 }
 
-#include "HttpResponse.hpp"
-
 uint32_t Client::sendData()
 {
-	HttpResponse	res(_parsedHttp, _srvCfg, _clientFd);
-	res.build();
-	std::string msg = res.get_response_str();
-	int ret = send(_clientFd, msg.c_str(), msg.size(), 0);
-	Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
-	return (EPOLLHUP);
+	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
+	if (_parsingState == state::parsing_done)
+		_parsingState = _response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
+	else if (_parsingState == state::response_proccessing)
+		_parsingState = _response.handle_cgi_proc();
+	if (_parsingState != state::response_proccessing)
+	{
+		std::string msg = _response.get_response_str();
+		int ret = send(_clientFd, msg.c_str(), msg.size(), 0);
+		Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
+		return (EPOLLHUP); // In future EPOLLOUT as long as I have to send data that is in buffer
+	}
+	return (EPOLLIN);
 }
 
 uint32_t Client::handleConnection(uint32_t event)
 {
 	if (event & EPOLLIN)
-		return (recvData());
+	{
+		// I need to check if a pipe is processing
+		if (_parsingState != state::response_proccessing)
+			return (recvData());
+		else
+			return (sendData());
+	}
 	if (event & EPOLLPRI)
 		throw "Unexpectet call"; //todo
 	if (event & EPOLLOUT)

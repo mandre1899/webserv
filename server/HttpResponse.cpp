@@ -5,7 +5,7 @@
 
 static std::string init_root_path()
 {
-	std::filesystem::path tmpPathWebserv = std::string("./webserv");
+	std::filesystem::path tmpPathWebserv = std::string(g_execName);
 
 	std::string abs = std::filesystem::absolute(tmpPathWebserv).string();
 
@@ -139,6 +139,7 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 	struct stat file_stat;
 	if (stat(abs_path.c_str(), &file_stat) != 0) {
 		set_status_code(404);
+		generate_error_page();
 		return false;
 	}
 	std::ifstream file;
@@ -162,10 +163,13 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 
 bool	HttpResponse::check_path_secure(const std::string& abs_path)
 {
+	//When config specifies a root location we can't check
+	if (_curr_loc.root[0] == '/')
+		return true;
 	std::filesystem::path expandedPath = abs_path;
 	expandedPath = expandedPath.lexically_normal();
-	if (expandedPath.string().compare(0, root_path.length(), root_path) == 0 &&
-		(expandedPath.string().length() == root_path.length() ||
+	if (expandedPath.string().compare(root_path.length(), _curr_loc.root.length(), _curr_loc.root) == 0 &&
+		((expandedPath.string().length() - root_path.length()) == root_path.length() ||
 			expandedPath.string()[root_path.length()] == '/'))
 		return true; // Path is safe
 	return false;
@@ -196,62 +200,155 @@ static std::vector<char*> parse_header_to_env(std::map<std::string, std::string>
 	return env;
 }
 
-bool	HttpResponse::execute_cgi_proc(const std::string& abs_path, const std::string& filetype)
+state HttpResponse::handle_cgi_proc()
 {
-	static const std::string	pyExec = { "/usr/bin/python3" };
-	char* execPath = nullptr;
+	char buf[4096];
+	while (true)
+	{
+		ssize_t read_bytes = read(_pipe_read, buf, sizeof(buf));
+		if (read_bytes > 0)
+		{
+			Logger::log<LogLevel::info>("Read ", read_bytes, " bytes from CGI pipe");
+			_body.append(buf, static_cast<std::size_t>(read_bytes));
+			_body_size += static_cast<std::size_t>(read_bytes);
+			continue;
+		}
+		if (read_bytes == 0)
+		{
+			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
+			close(_pipe_read);
+			_pipe_read = -1;
+			int status = 0;
+			pid_t ret = waitpid(_cgi_pid, &status, WNOHANG);
+			if (ret == -1)
+			{
+				Logger::log<LogLevel::error>("waitpid failed for CGI child");
+				_cgi_pid = -1;
+				set_status_code(500);
+				generate_error_page();
+				set_default_headers();
+				return state::response_sending;
+			}
+			if (ret > 0)
+			{
+				_cgi_pid = -1;
+
+				if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+				{
+					set_default_headers();
+					return state::response_sending;
+				}
+				Logger::log<LogLevel::error>("CGI exited with status: ", WEXITSTATUS(status));
+				set_status_code(500);
+				generate_error_page();
+				set_default_headers();
+				return state::response_sending;
+			}
+			set_default_headers();
+			return state::response_sending;
+		}
+		Logger::log<LogLevel::error>("Read failed status: ", errno);
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
+		close(_pipe_read);
+		_pipe_read = -1;
+		_cgi_pid = -1;
+		set_status_code(500);
+		generate_error_page();
+		set_default_headers();
+		return state::response_sending;
+	}
+}
+
+bool HttpResponse::execute_cgi_proc(const std::string& abs_path)
+{
+	static const std::string execLocPath = _curr_loc.cgiPath;
+	char* execPath = NULL;
 	char* scriptPath = const_cast<char*>(abs_path.c_str());
-	char** env;
+	int p[2];
 
 	set_status_code(200);
-	if (filetype == ".py")
-		execPath = const_cast<char*>(pyExec.c_str());
-	char* const argv[] = { execPath, scriptPath, NULL };
-	std::vector<char*> tmp = parse_header_to_env(_request.getHeadersMap());
-	env = tmp.data();
+	execPath = const_cast<char*>(execLocPath.c_str());
+	if (pipe(p) == -1)
+	{
+		Logger::log<LogLevel::error>("Pipe creation failed");
+		close(p[0]);
+		close(p[1]);
+		return false;
+	}
 	int pid = fork();
+	if (pid < 0)
+	{
+		Logger::log<LogLevel::error>("fork() failed");
+		close(p[0]);
+		close(p[1]);
+		return false;
+	}
 	if (pid == 0)
 	{
-		dup2(_socket_fd, STDOUT_FILENO);
+		char* const argv[] = { execPath, scriptPath, NULL };
+		std::vector<char*> tmp = parse_header_to_env(_request->getHeadersMap());
+		char** env = tmp.data();
+		close(p[0]);
+		if (dup2(p[1], STDOUT_FILENO) == -1)
+			_exit(1);
+		if (dup2(p[1], STDERR_FILENO) == -1)
+			_exit(1);
+		close(p[1]);
 		execve(execPath, argv, env);
+		Logger::log<LogLevel::error>("Execve failed");
+		_exit(1);
+	}
+	close(p[1]);
+	epoll_event	ev;
+	ev.events = EPOLLIN | EPOLLRDHUP;
+	ev.data.fd = _socket_fd;
+	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[0], &ev) == -1)
+	{
+		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
+		close(p[0]);
+		return false;
 	}
 	_cgi_pid = pid;
+	_pipe_read = p[0];
 	return true;
+}
+
+void	HttpResponse::evaluate_vHost()
+{
+	const auto& headers = _request->getHeadersMap();
+	if (headers.empty())
+	{
+		Logger::log<LogLevel::warn>("Request headers empty");
+		return;
+	}
+	std::string hostValue = headers.find("Host")->second;
+	//Erase port specifier ":8080"
+	size_t portPrefix = hostValue.find(":");
+	if (portPrefix != std::string::npos)
+		hostValue.erase(portPrefix);
+	auto server = _configs->srvNameMap.find(hostValue);
+	if (server != _configs->srvNameMap.end())
+		_config = _configs->vHost[server->second];
+	else
+		_config = _configs->vHost[0];
+	Logger::log<LogLevel::info>("Client connected to virtual server: ", _config.serverName[0]);
 }
 
 
 //Private Member function - HELPER END
 
-HttpResponse::HttpResponse(HttpParser& req, const cfg::srvCfg& conf, int clientFd)
-	: _request(static_cast<const HttpParser&>(req)), _configs(conf), _socket_fd(clientFd)
+HttpResponse::HttpResponse(void) : _cgi_pid(-1), _pipe_read(-1)
 {
-	const auto& headers = req.getHeadersMap();
-	std::string hostValue = headers.find("Host")->second;
-	//Erase port specifier ":8080"
-	int test = hostValue.find(":");
-	if (test != -1)
-		hostValue.erase(test);
-	if (_configs.srvNameMap.find(hostValue) != _configs.srvNameMap.end())
-		_config = _configs.vHost[_configs.srvNameMap.find(hostValue)->second];
-	else
-		_config = _configs.vHost[0];
 }
 
-HttpResponse::HttpResponse(const HttpParser& req, const cfg::srvCfg& conf, int clientFd)
-	: _request(req), _configs(conf), _socket_fd(clientFd)
-{
-	const auto& headers = req.getHeadersMap();
-	std::string hostValue = headers.find("Host")->second;
-	//Erase port specifier ":8080"
-	hostValue.erase(hostValue.find(":"));
-	if (_configs.srvNameMap.find(hostValue) != _configs.srvNameMap.end())
-		_config = _configs.vHost[_configs.srvNameMap.find(hostValue)->second];
-	else
-		_config = _configs.vHost[0];
-}
 
-HttpResponse::~HttpResponse()
+HttpResponse::~HttpResponse(void)
 {
+	//RAII
+	if (_cgi_pid != -1)
+		kill(_cgi_pid, SIGKILL);
+	if (_pipe_read != -1)
+		close(_pipe_read);
 }
 
 // Con - & De- structor END
@@ -279,71 +376,124 @@ static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 	return false;
 }
 
-static std::string join_path(const std::string& left, const std::string& right) //Wrapper safer path concat
+//Removes leading / (not when its the first part of the path) and trailing
+static std::string normalize_part(const std::string& part, bool is_first)
 {
-	if (left.empty())
-		return right;
-	if (right.empty())
-		return left;
-
-	if (left[left.size() - 1] == '/' && right[0] == '/')
-		return left + right.substr(1);
-	if (left[left.size() - 1] != '/' && right[0] != '/')
-		return left + "/" + right;
-	return left + right;
+	if (part.empty())
+		return "";
+	size_t start = 0;
+	size_t end = part.size();
+	if (!is_first)
+	{
+		while (start < end && part[start] == '/')
+			++start;
+	}
+	while (end > start && part[end - 1] == '/')
+		--end;
+	return part.substr(start, end - start);
 }
 
-const std::string	HttpResponse::get_response_str() const
+//Concats n amounts of path args
+template <typename... Args>
+static std::string join_paths(const Args&... parts)
 {
-	std::ostringstream	tmp;
-
-	tmp << "HTTP/1.1 " << _status_code << " " << _http_status_map.find(_status_code)->second << "\r\n";
-	for (const auto& a : _headers)
-		tmp << a.first << ": " << a.second << "\r\n";
-	tmp << "\r\n";
-	tmp << _body;
-	return tmp.str();
+	std::vector<std::string> vec = { parts... };
+	std::string result;
+	bool first = true;
+	for (const auto& part : vec)
+	{
+		std::string cleaned = normalize_part(part, first);
+		if (cleaned.empty())
+			continue;
+		if (!result.empty())
+			result += "/";
+		result.append(cleaned);
+		first = false;
+	}
+	return result;
 }
 
-std::pair<int, std::string> HttpResponse::resolve_path(void)
+//Returns pointer to be NULL assignable(eg. no location found)
+//This function returns the most specific location requested by the client
+std::optional<std::pair<std::string, cfg::wsLocationCtx>>	HttpResponse::get_most_specific_location(const std::string& uri_path)
 {
-	const std::string uri_path = _request.getRequestUri();
+	auto best_match = _config.location.end();
+	size_t best_len = 0;
 
-	if (_config.location.empty())
-		return rtn_pair(404, std::string());
-
-	for (auto it = _config.location.begin();
-		it != _config.location.end();
-		++it)
+	for (auto it = _config.location.begin(); it != _config.location.end(); ++it)
 	{
 		const std::string& location_path = it->first;
-		const cfg::wsLocationCtx& location_cfg = it->second;
 
 		if (!loc_uri_comp(location_path, uri_path))
 			continue;
 
-		// Check method for location
-		method_type method = _request.getMethod();
-		const cfg::wsAllowMethods& allowed = location_cfg.allowMethods;
-
-		if ((method == method_type::GET && !allowed.isGet) ||
-			(method == method_type::POST && !allowed.isPost) ||
-			(method == method_type::DELETE && !allowed.isDelete))
-			return rtn_pair(405, std::string());
-
-		// For now using the hardcoded base path (must fix!)
-		if (!location_cfg.index.empty() && _request.getRequestUri() == location_path)
-			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
-		std::string tmp = join_path(root_path + "/" + location_cfg.root, uri_path);
-		std::cout << "Check for: " << tmp << std::endl;
-		if (access(tmp.c_str(), R_OK) == 0)
-			return rtn_pair(200, tmp);
-		if (!location_cfg.index.empty())
-			return rtn_pair(200, join_path(root_path + "/" + location_cfg.root, location_cfg.index));
-		return rtn_pair(404, std::string());
+		if (location_path.length() > best_len)
+		{
+			best_match = it;
+			best_len = location_path.length();
+		}
 	}
-	// if (_config.errorPage) // todo: must be migrated to the new data structure
-	// 	return rtn_pair(404, _config.errorPage->path);
+	if (best_match == _config.location.end())
+		return std::nullopt;
+	return std::make_pair(best_match->first, best_match->second);
+}
+
+std::pair<int, std::string> HttpResponse::resolve_path(void)
+{
+	std::string uri_path = _request->getRequestUri();
+	bool		is_abs_root = true; // In config its ./ or /
+
+	if (_config.location.empty())
+		return rtn_pair(404, std::string());
+
+	auto location = get_most_specific_location(uri_path);
+	if (!location)
+		return rtn_pair(404, std::string());
+	_curr_loc = location->second;
+
+	//Just so relative and absolute paths can be defined in config
+	if (_curr_loc.root[0] == '.')
+		is_abs_root = false;
+
+
+	if (_curr_loc.ret.has_value())
+		return rtn_pair(_curr_loc.ret->code, _curr_loc.ret->param);
+
+	method_type method = _request->getMethod();
+	const cfg::wsAllowMethods& allowed = _curr_loc.allowMethods;
+
+	if ((method == method_type::GET && !allowed.isGet) ||
+		(method == method_type::POST && !allowed.isPost) ||
+		(method == method_type::DELETE && !allowed.isDelete))
+		return rtn_pair(405, std::string());
+
+	//When exact configured location is requested
+	if (!_curr_loc.index.empty() && _request->getRequestUri() == location->first)
+	{
+		if (is_abs_root == false)
+			return rtn_pair(200, join_paths(root_path, _curr_loc.root, _curr_loc.index));
+		else
+			return rtn_pair(200, join_paths(_curr_loc.root, _curr_loc.index));
+	}
+	//When exact file is requested on location
+	std::string tmp;
+	if (is_abs_root == false)
+		tmp = join_paths(root_path, _curr_loc.root, uri_path.erase(0, location->first.length()));
+	else
+		tmp = join_paths(_curr_loc.root, uri_path.erase(0, location->first.length()));
+	if (access(tmp.c_str(), R_OK) == 0)
+		return rtn_pair(200, tmp);
+	//Location specific error page
+	if (_curr_loc.errorPage)
+	{
+		std::string specifiedErrPage;
+		if (is_abs_root == false)
+			specifiedErrPage = join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path);
+		else
+			specifiedErrPage = join_paths(_curr_loc.root, _curr_loc.errorPage->path);
+		if (access(specifiedErrPage.c_str(), R_OK) == 0)
+			return rtn_pair(404, specifiedErrPage);
+	}
 	return rtn_pair(404, std::string());
 }
 
@@ -384,7 +534,6 @@ void HttpResponse::generate_error_page(void)
 		status_text = it->second;
 	else
 		status_text = "Error not found in the map";
-
 	std::ostringstream body;
 
 	set_content_type("text/html");
@@ -410,9 +559,9 @@ void HttpResponse::generate_error_page(void)
 
 	_body = body.str();
 	_body_size = _body.size();
+	set_default_headers();
+	Logger::log<LogLevel::info>("Server responding with error code: ", _status_code);
 }
-
-//directory listing
 
 bool	HttpResponse::is_directory(const std::string& path)
 {
@@ -427,6 +576,22 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 	std::ostringstream ss;
 
 	std::string base_uri = uri_path;
+
+	if (_curr_loc.autoIndex == false)
+	{
+		_status_code = 403;
+		generate_error_page();
+		if (_curr_loc.errorPage->code == 403)
+		{
+			//Fallback if custom error page is not found
+			if (!read_file_to_body(join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path)))
+			{
+				_status_code = 403;
+				generate_error_page();
+			}
+		}
+		return;
+	}
 
 	ss << "<!DOCTYPE html>\n"
 		<< "<html lang=\"en\">\n"
@@ -477,29 +642,41 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 	_body_size = _body.size();
 }
 
-//directory listing end
-
 bool	HttpResponse::delete_request(const std::string& abs_path)
 {
 	struct stat path_stat;
 	if (stat(abs_path.c_str(), &path_stat) != 0)
 		return false;
-	//If its directory do not delete ???
 	if (S_ISDIR(path_stat.st_mode))
-		return false;
-
-	if (unlink(abs_path.c_str()) == 0)
 	{
+		//No recursive deletion
+		if (rmdir(abs_path.c_str()) != 0)
+		{
+			if (errno == 39)
+				Logger::log<LogLevel::error>("Dir removal failed with code: ", errno, " (no recursive folder deletion allowed!)");
+			else
+				Logger::log<LogLevel::error>("Dir removal failed with code: ", errno, " (check for permissions of program executing user!)");
+			return false;
+		}
+		Logger::log<LogLevel::info>("Deleted dir: ", abs_path);
+		_body = "<html lang=\"en-US\">\n<body>\n<h1>Directory \"" + abstract_filename(abs_path) + "/" + "\" deleted.</h1>\n</body>\n</html>";
+		return true;
+	}
+	else if (unlink(abs_path.c_str()) == 0)
+	{
+		Logger::log<LogLevel::info>("Deleted file: ", abs_path);
 		_body = "<html lang=\"en-US\">\n<body>\n<h1>File \"" + abstract_filename(abs_path) + "\" deleted.</h1>\n</body>\n</html>";
 		return true;
 	}
+	else
+		Logger::log<LogLevel::error>("File removal failed with code: ", errno, " (check for permissions of program executing user!)");
 	return false;
 }
 
 bool	HttpResponse::get_request(const std::string& abs_path)
 {
 	if (is_directory(abs_path))
-		generate_dir_listing(abs_path, _request.getRequestUri());
+		generate_dir_listing(abs_path, _request->getRequestUri());
 	else
 	{
 		const std::string file_suffix = resolve_file_suffix(abs_path);
@@ -511,7 +688,7 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 		if (type == STATIC_FILE)
 			success = read_file_to_body(abs_path);
 		else if (type == DYNAMIC_FILE)
-			success = execute_cgi_proc(abs_path, file_suffix);
+			success = execute_cgi_proc(abs_path);
 		else
 		{
 			// Momentarily dead code -> resolve_filetype always returns one of two above types
@@ -524,9 +701,11 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 			generate_error_page();
 			return false;
 		}
+		set_default_headers();
+		_is_built = true;
+		if (type == DYNAMIC_FILE)
+			return false; //To set state machine flag to proccessing
 	}
-	set_default_headers();
-	_is_built = true;
 	return true;
 }
 
@@ -536,18 +715,34 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 //	
 //}
 
-void HttpResponse::build(void)
+state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd, int epfd)
 {
-	std::cout << "Root Path: " << root_path << std::endl;
+	_request = req;
+	_configs = conf;
+	_socket_fd = clientFd;
+	_body_size = 0;
+	_epfd = epfd;
+	evaluate_vHost();
 	try
 	{
 		std::pair<int, std::string> res = resolve_path();
-		std::cout << "abs_path: " << res.second << std::endl;
-		set_status_code(res.first);
+		Logger::log<LogLevel::info>("Absolute path of requested file: ", res.second);
 
-		if (_status_code != 200) {
+		set_status_code(res.first);
+		//Simple redirect
+		if (_status_code == 301 || _status_code == 302 ||
+			_status_code == 303)
+		{
+			_headers["location"] = res.second;
+			return state::response_sending;
+		}
+		if (_status_code != 200)
+		{
 			generate_error_page();
-			return;
+			//If location specified a error page override generic one
+			if (!res.second.empty())
+				read_file_to_body(res.second);
+			return state::response_sending;
 		}
 
 		const std::string& abs_path = res.second;
@@ -556,35 +751,53 @@ void HttpResponse::build(void)
 		{
 			set_status_code(403);
 			generate_error_page();
-			return;
+			return state::response_sending;
 		}
 
 		if (access(abs_path.c_str(), R_OK) != 0)
 		{
-			//Not sure if errno is allowd to use by subject
+			//Not sure if errno is allowed to use by subject
 			set_status_code((errno == EACCES) ? 403 : 404);
 			generate_error_page();
-			return;
+			return state::response_sending;
 		}
 
-		if (method_type::DELETE == _request.getMethod())
+		if (method_type::DELETE == _request->getMethod())
 		{
 			if (!delete_request(abs_path))
 			{
 				set_status_code(403);
 				generate_error_page();
-				return;
+				return state::response_sending;
 			}
 
 		}
 		//else if (method_type::POST == _request.getMethod()) // Return a success message(depending on state)
 		//	post_request(abs_path);
-		else if (method_type::GET == _request.getMethod())
-			get_request(abs_path);
+		else if (method_type::GET == _request->getMethod())
+		{
+			if (!get_request(abs_path))
+				return state::response_proccessing; //CGI is running
+		}
 	}
 	catch (const std::exception& e)
 	{
 		set_status_code(500);
 		generate_error_page();
 	}
+	return state::response_sending;
 }
+
+const std::string	HttpResponse::get_response_str() const
+{
+	std::ostringstream	tmp;
+
+	tmp << "HTTP/1.1 " << _status_code << " " << _http_status_map.find(_status_code)->second << "\r\n";
+	for (const auto& a : _headers)
+		tmp << a.first << ": " << a.second << "\r\n";
+	tmp << "\r\n";
+	if (!_body.empty())
+		tmp << _body;
+	return tmp.str();
+}
+

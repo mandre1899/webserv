@@ -5,8 +5,11 @@
 #include "utils/Logger.hpp"
 #include "config/Config.hpp"
 
+const char * g_execName = "./webserv";
+
 int	main(int argc, char** argv)
 {
+	g_execName = argv[0];
 	if (argc == 1)
 	{
 		Logger::log<LogLevel::error>("No configuration file provided, not enough arguments.");

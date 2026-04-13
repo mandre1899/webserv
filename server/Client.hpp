@@ -1,5 +1,5 @@
 #ifndef CLIENT_HPP
-#define CLIENT_HPP
+# define CLIENT_HPP
 
 #include <string>
 #include <sys/socket.h> 
@@ -8,23 +8,10 @@
 #include <unistd.h>
 #include <chrono>
 #include "config/configTypes.hpp"
+#include "HttpResponse.hpp"
 #include "utils/Logger.hpp"
 #include "HttpParser.hpp"
-
-enum class Status {
-	recive,
-	send,
-	wait,
-	close
-};
-
-enum class state {
-	parsing_request_line = 0,
-	parsing_headers,
-	parsing_body,
-	parsing_done,
-	error
-};
+#include "StateMachines.hpp"
 
 class Client {
 private:
@@ -37,6 +24,7 @@ private:
 	HttpParser _parsedHttp;
 	state _parsingState;
 	const cfg::srvCfg& _srvCfg;
+	HttpResponse	_response;
 
 	/* Member Functions */
 	uint32_t recvData();
