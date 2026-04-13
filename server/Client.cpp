@@ -6,7 +6,7 @@ Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCf
 	_status = Status::close;
 	_msg = "";
 	_parsingState = state::parsing_request_line;
-	_timeout = std::chrono::system_clock::now();
+	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
 }
 
 Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)

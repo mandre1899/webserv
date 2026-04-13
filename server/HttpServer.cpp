@@ -36,11 +36,11 @@ void HttpServer::addClient(int serverFd, int clientFd, const cfg::socketCfg& soc
 	const cfg::srvCfg& srvCfg = it->second;
 	event.events = EPOLLIN;
 	event.data.fd = clientFd;
-	_map.insert({ clientFd, Client(serverFd, clientFd, _epollFd, srvCfg) });
+	auto clientIt = _map.insert({ clientFd, Client(serverFd, clientFd, _epollFd, srvCfg) });
 	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &event))
 		throw std::runtime_error("Failed to add file descriptor to epoll");
-	const auto now = std::chrono::system_clock::now();
-	_prioQ.push({ now, clientFd });
+	const auto timeout = std::get<Client>(clientIt.first->second).getTimeout();
+	_prioQ.push({ timeout, clientFd });
 	Logger::log<LogLevel::debug>("HttpServer::addClient() - Client added with FD ", clientFd);
 }
 
