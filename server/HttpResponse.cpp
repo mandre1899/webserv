@@ -331,7 +331,6 @@ void	HttpResponse::evaluate_vHost()
 		_config = _configs->vHost[server->second];
 	else
 		_config = _configs->vHost[0];
-	Logger::log<LogLevel::info>("Client connected to virtual server: ", _config.serverName[0]);
 }
 
 
@@ -453,8 +452,12 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 
 	//Just so relative and absolute paths can be defined in config
 	if (_curr_loc.root[0] == '.')
+	{
+		_curr_loc_root = _curr_loc.root.substr(1);
 		is_abs_root = false;
-
+	}
+	else
+		_curr_loc_root = _curr_loc.root;
 
 	if (_curr_loc.ret.has_value())
 		return rtn_pair(_curr_loc.ret->code, _curr_loc.ret->param);
@@ -471,29 +474,26 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	if (!_curr_loc.index.empty() && _request->getRequestUri() == location->first)
 	{
 		if (is_abs_root == false)
-			return rtn_pair(200, join_paths(root_path, _curr_loc.root, _curr_loc.index));
+			return rtn_pair(200, join_paths(root_path, _curr_loc_root, _curr_loc.index));
 		else
-			return rtn_pair(200, join_paths(_curr_loc.root, _curr_loc.index));
+			return rtn_pair(200, join_paths(_curr_loc_root, _curr_loc.index));
 	}
 	//When exact file is requested on location
 	std::string tmp;
 	if (is_abs_root == false)
-		tmp = join_paths(root_path, _curr_loc.root, uri_path.erase(0, location->first.length()));
+		tmp = join_paths(root_path, _curr_loc_root, uri_path.erase(0, location->first.length()));
 	else
-		tmp = join_paths(_curr_loc.root, uri_path.erase(0, location->first.length()));
+		tmp = join_paths(_curr_loc_root, uri_path.erase(0, location->first.length()));
 	if (access(tmp.c_str(), R_OK) == 0)
 		return rtn_pair(200, tmp);
 	//Location specific error page
-	// if (_curr_loc.errorPage) -> todo: must be adapted to the new data structure
-	// {
-	// 	std::string specifiedErrPage;
-	// 	if (is_abs_root == false)
-	// 		specifiedErrPage = join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path);
-	// 	else
-	// 		specifiedErrPage = join_paths(_curr_loc.root, _curr_loc.errorPage->path);
-	// 	if (access(specifiedErrPage.c_str(), R_OK) == 0)
-	// 		return rtn_pair(404, specifiedErrPage);
-	// }
+	std::string specifiedErrPage;
+	if (!(specifiedErrPage = _curr_loc.errorPage.find(404)->second).empty()) //-> todo: must be adapted to the new data structure
+	{
+		specifiedErrPage = join_paths(root_path, _curr_loc_root, specifiedErrPage);
+		if (access(specifiedErrPage.c_str(), R_OK) == 0)
+			return rtn_pair(404, specifiedErrPage);
+	}
 	return rtn_pair(404, std::string());
 }
 

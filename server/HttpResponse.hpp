@@ -38,6 +38,7 @@ class HttpResponse
 		const cfg::srvCfg*					_configs;
 		cfg::vHostCfg						_config; //Evalutated vHost
 		cfg::wsLocationCtx					_curr_loc;
+		std::string							_curr_loc_root;
 
 		const static std::map<std::string, std::string>		_mime_types;
 		static const std::map<int, std::string>				_http_status_map;
