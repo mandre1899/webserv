@@ -6,6 +6,8 @@
 #include "utils/Logger.hpp"
 #include "config/Config.hpp"
 
+const char* g_execName = "./webserv";
+
 volatile std::sig_atomic_t g_stopServerSignal = 0;
 
 void sigactionHandler(int signalId)
@@ -24,6 +26,7 @@ void setupSignalHandler()
 int	main(int argc, char** argv)
 {
 	setupSignalHandler();
+	g_execName = argv[0];
 	if (argc == 1)
 	{
 		Logger::log<LogLevel::error>("No configuration file provided, not enough arguments.");

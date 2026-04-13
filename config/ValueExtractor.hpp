@@ -106,20 +106,38 @@ private:
 
 	void _errorPage(T& confStruct, TokenStream& ts)
 	{
-		unsigned long nbr;
-		try
+		size_t i = 0;
+		std::vector<token> t;
+		std::vector<http_code> codes;
+		t.push_back(ts.getNextToken());
+		while (t[i].type == tType::value && t[i].value[0] != '/')
 		{
-			nbr = _stoul(ts.getNextValue());
+			unsigned long nbr;
+			try
+			{
+				nbr = _stoul(t[i].value);
+			}
+			catch (const std::exception& e)
+			{
+				throw std::runtime_error(buildMsg(e.what(), ts.getPositon()));
+			}
+			if (nbr > 999)
+				throw std::range_error(buildMsg("The http code is out of range", ts.getPositon()));
+			codes.push_back(static_cast<http_code>(nbr));
+			t.push_back(ts.getNextToken());
+			i++;
 		}
-		catch (const std::exception& e)
+		std::string path;
+		if (t[i].type == tType::value)
+			path = t[i].value;
+		else
+			throw TokenStream::UnexpectedTokenException(t[i].pos);
+		for (size_t j = 0; j < codes.size(); j++)
 		{
-			throw std::runtime_error(buildMsg(e.what(), ts.getPositon()));
+			bool isInserted = static_cast<bool>(confStruct.errorPage.insert({ codes[j] , path }).second);
+			if (!isInserted)
+				throw std::runtime_error(buildMsg("Duplicate error code found", t[j].pos));
 		}
-		if (nbr > 999)
-			throw std::range_error(buildMsg("The http code is out of range", ts.getPositon()));
-		confStruct.errorPage.emplace();
-		confStruct.errorPage->code = static_cast<short>(nbr);
-		confStruct.errorPage->path = ts.getNextValue();
 		ts.expectToken(tType::semi);
 	}
 
@@ -339,6 +357,8 @@ public:
 		if (it == _dispatch.end())
 			throw UnexpectedIdentifierException(ts.getPositon());
 		it->second(confStruct, ts);
+		if (id == "error_page")
+			return;
 		it->second = [this](T& confStruct, TokenStream& ts) {
 			_duplicate(confStruct, ts);
 			};

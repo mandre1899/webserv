@@ -19,15 +19,9 @@ namespace cfg
 
 	struct wsAllowMethods
 	{
-		bool isGet;
-		bool isPost;
-		bool isDelete;
-	};
-
-	struct wsErrorPage
-	{
-		http_code code;
-		std::string path;
+		bool isGet = true;
+		bool isPost = true;
+		bool isDelete = false;
 	};
 
 	// corresponds to the http{} scope in the conf file
@@ -36,7 +30,7 @@ namespace cfg
 		std::string root;
 		std::string index;
 		bool autoIndex;
-		std::optional<wsErrorPage>  errorPage;
+		std::unordered_map<http_code, std::string>  errorPage; // key: http code, path
 		size_t clientHeaderBufferSize;
 		size_t clientHeaderTimeout;
 		size_t clientMaxBodySize;

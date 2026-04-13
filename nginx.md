@@ -276,8 +276,6 @@ upload_store /var/upload;
 
 Defines the URI that will be shown for the specified errors.
 
-A `uri` value can contain variables.
-
 **Syntax:**
 
 ```
@@ -294,8 +292,7 @@ error_page 404             /404.html;
 error_page 500 502 503 504 /50x.html;
 ```
 
-This causes an internal redirect to the specified `uri` with the client request method changed to **GET**  
-(for all methods other than `GET` and `HEAD`).
+This causes an internal redirect to the specified `uri` with the client request method changed to **GET**.
 
 ---
 

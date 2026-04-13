@@ -225,11 +225,14 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 		if (!ctx.index.empty())
 			os << "index: " << ctx.index << std::endl;
 		os << "autoIndex: " << std::boolalpha << ctx.autoIndex << std::endl;
-		if (ctx.errorPage.has_value())
+		if (!ctx.errorPage.empty())
 		{
 			os << "errorPage: \n";
-			os << "   code: " << ctx.errorPage->code << std::endl;
-			os << "   path: " << ctx.errorPage->path << std::endl;
+			for (const auto& entry : ctx.errorPage)
+			{
+				os << "   code: " << entry.first << std::endl;
+				os << "   path: " << entry.second << std::endl;
+			}
 		}
 		os << "clientHeaderBufferSize: " << ctx.clientHeaderBufferSize << std::endl;
 		os << "clientHeaderTimeout: " << ctx.clientHeaderTimeout << std::endl;
@@ -259,11 +262,14 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 				if (!loc.index.empty())
 					os << "      index: " << loc.index << std::endl;
 				os << "      autoIndex: " << loc.autoIndex << std::endl;
-				if (loc.errorPage.has_value())
+				if (!loc.errorPage.empty())
 				{
 					os << "      errorPage: \n";
-					os << "         code: " << loc.errorPage->code << std::endl;
-					os << "         path: " << loc.errorPage->path << std::endl;
+					for (const auto& entry : loc.errorPage)
+					{
+						os << "   code: " << entry.first << std::endl;
+						os << "   path: " << entry.second << std::endl;
+					}
 				}
 				if (loc.ret.has_value())
 				{
