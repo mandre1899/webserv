@@ -164,6 +164,7 @@ bool	HttpResponse::check_path_secure(const std::string& abs_path)
 {
 	//When config specifies a root location we can't check
 	std::filesystem::path expandedPath = abs_path;
+
 	expandedPath = expandedPath.lexically_normal();
 	if (expandedPath.string().compare(root_path.length(), _curr_loc_root.length(), _curr_loc_root) == 0 &&
 		((expandedPath.string().length() - root_path.length()) == root_path.length() ||
