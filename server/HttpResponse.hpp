@@ -38,6 +38,7 @@ class HttpResponse
 		const cfg::srvCfg*					_configs;
 		cfg::vHostCfg						_config; //Evalutated vHost
 		cfg::wsLocationCtx					_curr_loc;
+		std::string							_curr_loc_root;
 
 		const static std::map<std::string, std::string>		_mime_types;
 		static const std::map<int, std::string>				_http_status_map;
@@ -74,7 +75,7 @@ class HttpResponse
 		void					handle_cgi_request(const std::string& script_path);
 		void					handle_error(int error_code);
 		std::string				read_file(const std::string& file_path);
-		void					generate_error_page(void);
+		void					generate_error_page(int status_code);
 
 		//Http methods
 		bool			delete_request(const std::string& abs_path);

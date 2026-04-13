@@ -138,8 +138,7 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 	// Add file size check
 	struct stat file_stat;
 	if (stat(abs_path.c_str(), &file_stat) != 0) {
-		set_status_code(404);
-		generate_error_page();
+		generate_error_page(404);
 		return false;
 	}
 	std::ifstream file;
@@ -164,11 +163,9 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 bool	HttpResponse::check_path_secure(const std::string& abs_path)
 {
 	//When config specifies a root location we can't check
-	if (_curr_loc.root[0] == '/')
-		return true;
 	std::filesystem::path expandedPath = abs_path;
 	expandedPath = expandedPath.lexically_normal();
-	if (expandedPath.string().compare(root_path.length(), _curr_loc.root.length(), _curr_loc.root) == 0 &&
+	if (expandedPath.string().compare(root_path.length(), _curr_loc_root.length(), _curr_loc_root) == 0 &&
 		((expandedPath.string().length() - root_path.length()) == root_path.length() ||
 			expandedPath.string()[root_path.length()] == '/'))
 		return true; // Path is safe
@@ -224,8 +221,7 @@ state HttpResponse::handle_cgi_proc()
 			{
 				Logger::log<LogLevel::error>("waitpid failed for CGI child");
 				_cgi_pid = -1;
-				set_status_code(500);
-				generate_error_page();
+				generate_error_page(500);
 				set_default_headers();
 				return state::response_sending;
 			}
@@ -239,8 +235,7 @@ state HttpResponse::handle_cgi_proc()
 					return state::response_sending;
 				}
 				Logger::log<LogLevel::error>("CGI exited with status: ", WEXITSTATUS(status));
-				set_status_code(500);
-				generate_error_page();
+				generate_error_page(500);
 				set_default_headers();
 				return state::response_sending;
 			}
@@ -252,8 +247,7 @@ state HttpResponse::handle_cgi_proc()
 		close(_pipe_read);
 		_pipe_read = -1;
 		_cgi_pid = -1;
-		set_status_code(500);
-		generate_error_page();
+		generate_error_page(500);
 		set_default_headers();
 		return state::response_sending;
 	}
@@ -331,7 +325,6 @@ void	HttpResponse::evaluate_vHost()
 		_config = _configs->vHost[server->second];
 	else
 		_config = _configs->vHost[0];
-	Logger::log<LogLevel::info>("Client connected to virtual server: ", _config.serverName[0]);
 }
 
 
@@ -453,8 +446,12 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 
 	//Just so relative and absolute paths can be defined in config
 	if (_curr_loc.root[0] == '.')
+	{
+		_curr_loc_root = _curr_loc.root.substr(1);
 		is_abs_root = false;
-
+	}
+	else
+		_curr_loc_root = _curr_loc.root;
 
 	if (_curr_loc.ret.has_value())
 		return rtn_pair(_curr_loc.ret->code, _curr_loc.ret->param);
@@ -471,29 +468,26 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	if (!_curr_loc.index.empty() && _request->getRequestUri() == location->first)
 	{
 		if (is_abs_root == false)
-			return rtn_pair(200, join_paths(root_path, _curr_loc.root, _curr_loc.index));
+			return rtn_pair(200, join_paths(root_path, _curr_loc_root, _curr_loc.index));
 		else
-			return rtn_pair(200, join_paths(_curr_loc.root, _curr_loc.index));
+			return rtn_pair(200, join_paths(_curr_loc_root, _curr_loc.index));
 	}
 	//When exact file is requested on location
 	std::string tmp;
 	if (is_abs_root == false)
-		tmp = join_paths(root_path, _curr_loc.root, uri_path.erase(0, location->first.length()));
+		tmp = join_paths(root_path, _curr_loc_root, uri_path.substr(location->first.length()));
 	else
-		tmp = join_paths(_curr_loc.root, uri_path.erase(0, location->first.length()));
+		tmp = join_paths(_curr_loc_root, uri_path.substr(location->first.length()));
 	if (access(tmp.c_str(), R_OK) == 0)
 		return rtn_pair(200, tmp);
 	//Location specific error page
-	// if (_curr_loc.errorPage) -> todo: must be adapted to the new data structure
-	// {
-	// 	std::string specifiedErrPage;
-	// 	if (is_abs_root == false)
-	// 		specifiedErrPage = join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path);
-	// 	else
-	// 		specifiedErrPage = join_paths(_curr_loc.root, _curr_loc.errorPage->path);
-	// 	if (access(specifiedErrPage.c_str(), R_OK) == 0)
-	// 		return rtn_pair(404, specifiedErrPage);
-	// }
+	std::unordered_map<http_code, std::string>::const_iterator it = _curr_loc.errorPage.find(404);
+	if (it != _curr_loc.errorPage.end() && !it->second.empty())
+	{
+		std::string error_page_path = join_paths(root_path, _curr_loc_root, it->second);
+		if (access(error_page_path.c_str(), R_OK) == 0)
+			return rtn_pair(404, error_page_path);
+	}
 	return rtn_pair(404, std::string());
 }
 
@@ -525,10 +519,22 @@ static const std::string resolve_file_suffix(const std::string& abs_path)
 	return abs_path.substr(dotPos);
 }
 
-void HttpResponse::generate_error_page(void)
+void HttpResponse::generate_error_page(int status_code)
 {
 	std::string status_text = "Unknown Error";
 
+
+	set_status_code(status_code);
+	std::unordered_map<http_code, std::string>::const_iterator it_err_page = _curr_loc.errorPage.find(404);
+	if (it_err_page != _curr_loc.errorPage.end() && !it_err_page->second.empty())
+	{
+		std::string error_page_path = join_paths(root_path, _curr_loc_root, it_err_page->second);
+		if (access(error_page_path.c_str(), R_OK) == 0)
+		{
+			read_file_to_body(error_page_path);
+			return ;
+		}
+	}
 	std::map<int, std::string>::const_iterator it = _http_status_map.find(_status_code);
 	if (it != _http_status_map.end())
 		status_text = it->second;
@@ -579,17 +585,7 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 
 	if (_curr_loc.autoIndex == false)
 	{
-		_status_code = 403;
-		generate_error_page();
-		// if (_curr_loc.errorPage->code == 403) -> todo: must be adapted to the new data structure
-		// {
-		// 	//Fallback if custom error page is not found
-		// 	if (!read_file_to_body(join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path)))
-		// 	{
-		// 		_status_code = 403;
-		// 		generate_error_page();
-		// 	}
-		// }
+		generate_error_page(403);
 		return;
 	}
 
@@ -698,7 +694,7 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 
 		if (!success)
 		{
-			generate_error_page();
+			generate_error_page(500);
 			return false;
 		}
 		set_default_headers();
@@ -738,7 +734,7 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 		}
 		if (_status_code != 200)
 		{
-			generate_error_page();
+			generate_error_page(200);
 			//If location specified a error page override generic one
 			if (!res.second.empty())
 				read_file_to_body(res.second);
@@ -749,16 +745,14 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 
 		if (!check_path_secure(abs_path))
 		{
-			set_status_code(403);
-			generate_error_page();
+			generate_error_page(403);
 			return state::response_sending;
 		}
 
 		if (access(abs_path.c_str(), R_OK) != 0)
 		{
 			//Not sure if errno is allowed to use by subject
-			set_status_code((errno == EACCES) ? 403 : 404);
-			generate_error_page();
+			generate_error_page((errno == EACCES) ? 403 : 404);
 			return state::response_sending;
 		}
 
@@ -766,8 +760,7 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 		{
 			if (!delete_request(abs_path))
 			{
-				set_status_code(403);
-				generate_error_page();
+				generate_error_page(403);
 				return state::response_sending;
 			}
 
@@ -782,8 +775,7 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 	}
 	catch (const std::exception& e)
 	{
-		set_status_code(500);
-		generate_error_page();
+		generate_error_page(500);
 	}
 	return state::response_sending;
 }
