@@ -442,7 +442,6 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	if (_config.location.empty())
 	{
 		std::string tmp;
-		std::string uri_path = _request->getRequestUri();
 		if (_config.root.empty())
 			return rtn_pair(404, std::string());
 		if (uri_path.empty() || uri_path == "/")
@@ -644,7 +643,7 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 			full_fs_path += name;
 			struct stat st;
 			bool is_dir = (stat(full_fs_path.c_str(), &st) == 0 && S_ISDIR(st.st_mode));
-			std::string href = base_uri + name;
+			std::string href = join_paths(base_uri, name);
 			if (is_dir && href[href.size() - 1] != '/')
 				href += '/';
 			ss << "    <li><a href=\"" + href + "\">"
