@@ -734,7 +734,7 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 		}
 		if (_status_code != 200)
 		{
-			generate_error_page(200);
+			generate_error_page(404);
 			//If location specified a error page override generic one
 			if (!res.second.empty())
 				read_file_to_body(res.second);
