@@ -484,16 +484,16 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	if (access(tmp.c_str(), R_OK) == 0)
 		return rtn_pair(200, tmp);
 	//Location specific error page
-	if (_curr_loc.errorPage)
-	{
-		std::string specifiedErrPage;
-		if (is_abs_root == false)
-			specifiedErrPage = join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path);
-		else
-			specifiedErrPage = join_paths(_curr_loc.root, _curr_loc.errorPage->path);
-		if (access(specifiedErrPage.c_str(), R_OK) == 0)
-			return rtn_pair(404, specifiedErrPage);
-	}
+	// if (_curr_loc.errorPage) -> todo: must be adapted to the new data structure
+	// {
+	// 	std::string specifiedErrPage;
+	// 	if (is_abs_root == false)
+	// 		specifiedErrPage = join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path);
+	// 	else
+	// 		specifiedErrPage = join_paths(_curr_loc.root, _curr_loc.errorPage->path);
+	// 	if (access(specifiedErrPage.c_str(), R_OK) == 0)
+	// 		return rtn_pair(404, specifiedErrPage);
+	// }
 	return rtn_pair(404, std::string());
 }
 
@@ -581,15 +581,15 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 	{
 		_status_code = 403;
 		generate_error_page();
-		if (_curr_loc.errorPage->code == 403)
-		{
-			//Fallback if custom error page is not found
-			if (!read_file_to_body(join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path)))
-			{
-				_status_code = 403;
-				generate_error_page();
-			}
-		}
+		// if (_curr_loc.errorPage->code == 403) -> todo: must be adapted to the new data structure
+		// {
+		// 	//Fallback if custom error page is not found
+		// 	if (!read_file_to_body(join_paths(root_path, _curr_loc.root, _curr_loc.errorPage->path)))
+		// 	{
+		// 		_status_code = 403;
+		// 		generate_error_page();
+		// 	}
+		// }
 		return;
 	}
 
