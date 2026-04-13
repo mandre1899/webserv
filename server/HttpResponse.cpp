@@ -164,11 +164,9 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 bool	HttpResponse::check_path_secure(const std::string& abs_path)
 {
 	//When config specifies a root location we can't check
-	if (_curr_loc.root[0] == '/')
-		return true;
 	std::filesystem::path expandedPath = abs_path;
 	expandedPath = expandedPath.lexically_normal();
-	if (expandedPath.string().compare(root_path.length(), _curr_loc.root.length(), _curr_loc.root) == 0 &&
+	if (expandedPath.string().compare(root_path.length(), _curr_loc_root.length(), _curr_loc_root) == 0 &&
 		((expandedPath.string().length() - root_path.length()) == root_path.length() ||
 			expandedPath.string()[root_path.length()] == '/'))
 		return true; // Path is safe
@@ -481,18 +479,18 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	//When exact file is requested on location
 	std::string tmp;
 	if (is_abs_root == false)
-		tmp = join_paths(root_path, _curr_loc_root, uri_path.erase(0, location->first.length()));
+		tmp = join_paths(root_path, _curr_loc_root, uri_path.substr(location->first.length()));
 	else
-		tmp = join_paths(_curr_loc_root, uri_path.erase(0, location->first.length()));
+		tmp = join_paths(_curr_loc_root, uri_path.substr(location->first.length()));
 	if (access(tmp.c_str(), R_OK) == 0)
 		return rtn_pair(200, tmp);
 	//Location specific error page
-	std::string specifiedErrPage;
-	if (!(specifiedErrPage = _curr_loc.errorPage.find(404)->second).empty()) //-> todo: must be adapted to the new data structure
+	std::unordered_map<http_code, std::string>::const_iterator it = _curr_loc.errorPage.find(404);
+	if (it != _curr_loc.errorPage.end() && !it->second.empty())
 	{
-		specifiedErrPage = join_paths(root_path, _curr_loc_root, specifiedErrPage);
-		if (access(specifiedErrPage.c_str(), R_OK) == 0)
-			return rtn_pair(404, specifiedErrPage);
+		std::string error_page_path = join_paths(root_path, _curr_loc_root, it->second);
+		if (access(error_page_path.c_str(), R_OK) == 0)
+			return rtn_pair(404, error_page_path);
 	}
 	return rtn_pair(404, std::string());
 }
