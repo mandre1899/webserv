@@ -75,7 +75,7 @@ class HttpResponse
 		void					handle_cgi_request(const std::string& script_path);
 		void					handle_error(int error_code);
 		std::string				read_file(const std::string& file_path);
-		void					generate_error_page(void);
+		void					generate_error_page(int status_code);
 
 		//Http methods
 		bool			delete_request(const std::string& abs_path);
