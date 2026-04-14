@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpParser.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
+/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/02 15:53:38 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/14 12:44:26 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <sstream>
 #include <map>
 #include <iostream>
+#include <fstream>
 #include "utils/Logger.hpp"
 
 enum class method_type
@@ -47,6 +48,7 @@ public:
 	void parseHeaders(std::string& line);
 	bool parseBody(std::string& data);
 	void parseBodyFromTmp(std::string path);
+	void  processBody(std::string& line);
 	class HttpParsingError : public std::exception {
 	public:
 		const char* what() const noexcept override;

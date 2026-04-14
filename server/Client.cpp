@@ -36,7 +36,7 @@ Client::~Client()
 /* Member Functions */
 uint32_t Client::recvData()
 {
-	char buffer[20] = {};
+	char buffer[120] = {};
 	int ret;
 
 	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
@@ -60,19 +60,18 @@ uint32_t Client::recvData()
 			{
 				Logger::log<LogLevel::trace>(this->_parsedHttp);
 				_msg.erase(0, pos + 2);
-				_parsingState = state::parsing_body;
-				std::cout << "reached body parsing" << std::endl;
+				if (_parsedHttp.getMethod() == method_type::POST)
+					_parsingState = state::parsing_body;
+				else
+					_parsingState = state::parsing_done;
 				break;
 			}
 			_parsedHttp.parseHeaders(line);
 		}
 		_msg.erase(0, pos + 2);
 	}
-	if ((_parsedHttp.getMethod() == method_type::DELETE || _parsedHttp.getMethod() == method_type::GET) && _parsingState == state::parsing_body)
-		_parsingState = state::parsing_done;
-	else if (_parsingState == state::parsing_body)
+	if (_parsingState == state::parsing_body)
 	{
-		std::cout << this->_parsedHttp << std::endl;
 		if (_parsedHttp.parseBody(_msg))
 			_parsingState = state::parsing_done;
 		_msg.erase();

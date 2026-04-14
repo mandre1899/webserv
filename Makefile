@@ -1,6 +1,6 @@
 NAME = webserv
 CXX = c++
-CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR) #-g  -fsanitize=address
+CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR) -g  -fsanitize=address
 VPATH = ./config:./server:./utils
 OBJECT_DIR = obj
 INCLUDE_DIR = ./
