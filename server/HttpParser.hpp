@@ -61,7 +61,7 @@ public:
 	std::string getMethodAsString() const;
 	std::string getRequestUri() const;
 	std::string getHttpVersion() const;
-	auto getHeadersMap() const;
+	std::map<std::string, std::string> getHeadersMap() const;
 };
 
 std::ostream& operator<<(std::ostream& o, const HttpParser& out);

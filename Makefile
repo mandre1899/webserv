@@ -1,10 +1,10 @@
 NAME = webserv
 CXX = c++
-CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR) -g  -fsanitize=address
+CXXFLAGS = -Wall -Werror -Wextra -std=c++17 -I$(INCLUDE_DIR) #-g  -fsanitize=address
 VPATH = ./config:./server:./utils
 OBJECT_DIR = obj
 INCLUDE_DIR = ./
-SOURCES = main.cpp TcpSocket.cpp HttpServer.cpp Client.cpp Config.cpp Lexer.cpp ContextNode.cpp TokenStream.cpp configUtils.cpp HttpParser.cpp
+SOURCES = main.cpp TcpSocket.cpp HttpServer.cpp Client.cpp Config.cpp Lexer.cpp ContextNode.cpp TokenStream.cpp configUtils.cpp HttpParser.cpp HttpResponse.cpp
 OBJS:= $(addprefix $(OBJECT_DIR)/, $(SOURCES:.cpp=.o))
 
 all: $(NAME)

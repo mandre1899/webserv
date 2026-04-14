@@ -6,6 +6,7 @@
 #include "configTypes.hpp"
 #include "TokenStream.hpp"
 #include "ContextNode.hpp"
+#include "configUtils.hpp"
 
 
 #define KILO 1000
@@ -70,25 +71,25 @@ private:
 			return value;
 		switch (unit)
 		{
-		case 'k':
-			value *= KILO;
-			break;
-		case 'M':
-			value *= MEGA;
-			break;
-		case 'G':
-			value *= GIGA;
-			break;
-		default:
-			throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
-			break;
+			case 'k':
+				value *= KILO;
+				break;
+			case 'M':
+				value *= MEGA;
+				break;
+			case 'G':
+				value *= GIGA;
+				break;
+			default:
+				throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
+				break;
 		}
 		return value;
 	}
 
 	void _root(T& confStruct, TokenStream& ts)
 	{
-		confStruct.root = ts.getNextValue();
+		confStruct.root = normalizePath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
@@ -106,20 +107,38 @@ private:
 
 	void _errorPage(T& confStruct, TokenStream& ts)
 	{
-		unsigned long nbr;
-		try
+		size_t i = 0;
+		std::vector<token> t;
+		std::vector<http_code> codes;
+		t.push_back(ts.getNextToken());
+		while (t[i].type == tType::value && t[i].value[0] != '/')
 		{
-			nbr = _stoul(ts.getNextValue());
+			unsigned long nbr;
+			try
+			{
+				nbr = _stoul(t[i].value);
+			}
+			catch (const std::exception& e)
+			{
+				throw std::runtime_error(buildMsg(e.what(), ts.getPositon()));
+			}
+			if (nbr > 999)
+				throw std::range_error(buildMsg("The http code is out of range", ts.getPositon()));
+			codes.push_back(static_cast<http_code>(nbr));
+			t.push_back(ts.getNextToken());
+			i++;
 		}
-		catch (const std::exception& e)
+		std::string path;
+		if (t[i].type == tType::value)
+			path = t[i].value;
+		else
+			throw TokenStream::UnexpectedTokenException(t[i].pos);
+		for (size_t j = 0; j < codes.size(); j++)
 		{
-			throw std::runtime_error(buildMsg(e.what(), ts.getPositon()));
+			bool isInserted = static_cast<bool>(confStruct.errorPage.insert({ codes[j] , path }).second);
+			if (!isInserted)
+				throw std::runtime_error(buildMsg("Duplicate error code found", t[j].pos));
 		}
-		if (nbr > 999)
-			throw std::range_error(buildMsg("The http code is out of range", ts.getPositon()));
-		confStruct.errorPage.emplace();
-		confStruct.errorPage->code = static_cast<short>(nbr);
-		confStruct.errorPage->path = ts.getNextValue();
 		ts.expectToken(tType::semi);
 	}
 
@@ -183,7 +202,7 @@ private:
 
 		if (nbr > UINT16_MAX)
 			throw std::range_error(buildMsg("This is not a valid port number.", ts.getPositon()));
-		confStruct.listen.port = static_cast<uint16_t>(nbr);
+		confStruct.port = static_cast<uint16_t>(nbr);
 
 		struct in_addr addr;
 		int result = inet_pton(AF_INET, ipStr.c_str(), &addr);
@@ -191,14 +210,23 @@ private:
 			throw std::runtime_error(buildMsg("This is not a valid IP address", ts.getPositon()));
 		if (result == -1)
 			throw std::runtime_error(buildMsg("A system error occurred while transforming the IP string into an in_addr", ts.getPositon()));
-		confStruct.listen.address = addr.s_addr;
+		confStruct.address = addr.s_addr;
 		ts.expectToken(tType::semi);
 	}
 
 	void _serverName(T& confStruct, TokenStream& ts)
 	{
-		confStruct.serverName = ts.getNextValue();
-		ts.expectToken(tType::semi);
+		confStruct.serverName.push_back(ts.getNextValue());
+		while (true)
+		{
+			token t = ts.getNextToken();
+			if (t.type == tType::value)
+				confStruct.serverName.push_back(t.value);
+			else if (t.type == tType::semi)
+				break;
+			else
+				throw TokenStream::UnexpectedTokenException(ts.getPositon());
+		}
 	}
 
 	void _allowMethods(T& confStruct, TokenStream& ts)
@@ -234,18 +262,18 @@ private:
 		}
 		if (nbr > 999)
 			throw std::range_error(buildMsg("This is not a valid http code", ts.getPositon()));
-		confStruct.retConf.emplace();
-		confStruct.retConf->code = static_cast<http_code>(nbr);
+		confStruct.ret.emplace();
+		confStruct.ret->code = static_cast<http_code>(nbr);
 		token t = ts.getNextToken();
 		if (t.type == tType::semi)
 			return;
-		confStruct.retConf->param = t.value;
+		confStruct.ret->param = t.value;
 		ts.expectToken(tType::semi);
 	}
 
 	void _uploadStore(T& confStruct, TokenStream& ts)
 	{
-		confStruct.uploadStore = ts.getNextValue();
+		confStruct.uploadStore = normalizePath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
@@ -272,7 +300,7 @@ public:
 		_dispatch["error_page"] = [this](T& confStruct, TokenStream& ts) {
 			_errorPage(confStruct, ts);
 			};
-		if constexpr (!std::is_same_v<cfg::locationCtx, T>)
+		if constexpr (!std::is_same_v<cfg::wsLocationCtx, T>)
 		{
 			_dispatch["client_header_buffer_size"] = [this](T& confStruct, TokenStream& ts) {
 				_clientHeaderBufferSize(confStruct, ts);
@@ -293,13 +321,13 @@ public:
 		_dispatch["cgi_index"] = [this](T& confStruct, TokenStream& ts) {
 			_cgiIndex(confStruct, ts);
 			};
-		if constexpr (std::is_same_v<cfg::serverCtx, T> || std::is_same_v<cfg::locationCtx, T>)
+		if constexpr (std::is_same_v<cfg::vHostCfg, T> || std::is_same_v<cfg::wsLocationCtx, T>)
 		{
 			_dispatch["return"] = [this](T& confStruct, TokenStream& ts) {
 				_retConf(confStruct, ts);
 				};
 		}
-		if constexpr (std::is_same_v<cfg::serverCtx, T>)
+		if constexpr (std::is_same_v<cfg::vHostCfg, T>)
 		{
 			_dispatch["listen"] = [this](T& confStruct, TokenStream& ts) {
 				_listen(confStruct, ts);
@@ -308,7 +336,7 @@ public:
 				_serverName(confStruct, ts);
 				};
 		}
-		if constexpr (std::is_same_v<cfg::locationCtx, T>)
+		if constexpr (std::is_same_v<cfg::wsLocationCtx, T>)
 		{
 			_dispatch["allow_methods"] = [this](T& confStruct, TokenStream& ts) {
 				_allowMethods(confStruct, ts);
@@ -330,6 +358,8 @@ public:
 		if (it == _dispatch.end())
 			throw UnexpectedIdentifierException(ts.getPositon());
 		it->second(confStruct, ts);
+		if (id == "error_page")
+			return;
 		it->second = [this](T& confStruct, TokenStream& ts) {
 			_duplicate(confStruct, ts);
 			};

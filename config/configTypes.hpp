@@ -11,38 +11,26 @@ typedef unsigned short http_code;
 
 namespace cfg
 {
-	struct socketCfg
-	{
-		in_addr_t address;
-		uint16_t port = 80;
-	};
-
-	struct returnCfg
+	struct wsReturn
 	{
 		http_code code;
 		std::string param;
 	};
 
-	struct allowMethodsCfg
+	struct wsAllowMethods
 	{
-		bool isGet;
-		bool isPost;
-		bool isDelete;
-	};
-
-	struct errorPageCfg
-	{
-		http_code code;
-		std::string path;
+		bool isGet = true;
+		bool isPost = true;
+		bool isDelete = false;
 	};
 
 	// corresponds to the http{} scope in the conf file
-	struct httpCtx
+	struct wsHttpCtx
 	{
 		std::string root;
 		std::string index;
 		bool autoIndex;
-		std::optional<errorPageCfg>  errorPage;
+		std::unordered_map<http_code, std::string>  errorPage; // key: http code, path
 		size_t clientHeaderBufferSize;
 		size_t clientHeaderTimeout;
 		size_t clientMaxBodySize;
@@ -51,24 +39,39 @@ namespace cfg
 		std::string cgiIndex;
 	};
 
-	struct sharedCfg : public httpCtx
+	struct wsShared : public wsHttpCtx
 	{
-		std::optional<returnCfg> retConf;
+		std::optional<wsReturn> ret;
 	};
 
 	// corresponds to the location{} scope in the conf file
-	struct locationCtx : public sharedCfg
+	struct wsLocationCtx : public wsShared
 	{
 		std::string uploadStore;
-		allowMethodsCfg allowMethods;
+		wsAllowMethods allowMethods;
 	};
 
 	// corresponds to the server{} scope in the conf file
-	struct serverCtx : public sharedCfg
+	struct vHostCfg : public wsShared
 	{
-		socketCfg listen;
-		std::string serverName;
-		std::unordered_map<std::string, locationCtx> location;
+		in_addr_t address;
+		uint16_t port = 80;
+		std::vector<std::string> serverName;
+		std::unordered_map<std::string, wsLocationCtx> location;
+	};
+
+	struct srvCfg
+	{
+		in_addr_t address;
+		uint16_t port;
+		std::unordered_map<std::string, int> srvNameMap; // key: serverName, value: vHost index
+		std::vector<vHostCfg> vHost;
+	};
+
+	struct socketCfg
+	{
+		uint16_t port;
+		std::unordered_map<std::string, const srvCfg&> socketMap; // key: ip address + port, value: srvCfg
 	};
 }
 

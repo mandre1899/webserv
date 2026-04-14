@@ -4,20 +4,38 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <sys/poll.h>
+#include <utility>
+#include <sys/epoll.h> 
+#include <variant>
+#include <functional>
+#include <queue>
+#include <chrono>
+#include "config/Config.hpp"
 #include "server/Client.hpp"
 #include "server/TcpSocket.hpp"
 #include "utils/Logger.hpp"
 
+#define MAX_EVENTS 5
+
+extern volatile std::sig_atomic_t g_stopServerSignal;
+
+struct sessionTime
+{
+	std::chrono::time_point<std::chrono::system_clock> timeout;
+	int clientFd;
+	bool operator>(const sessionTime& rhs) const;
+};
+
 class HttpServer {
 private:
-	std::vector<TcpSocket> _serverSockets{};
-	std::unordered_map<int, Client> _clientMap{};
-	std::vector<struct pollfd> _pfd{};
+	int _epollFd;
+	std::unordered_map<int, std::variant<TcpSocket, Client>> _map{};
+	std::priority_queue<sessionTime, std::vector<sessionTime>, std::greater<sessionTime>> _prioQ;
 
 	/* Member Functions */
-	void addClient(int serverFd, int clientFd);
-	void removeClient(int clientFd);
+	void addClient(int serverFd, int clientFd, const cfg::socketCfg& socCfg);
+	bool removeClient(int clientFd);
+	void checkClientTimeout();
 
 public:
 	/* Constructors & Destructors */
@@ -27,8 +45,7 @@ public:
 	~HttpServer();
 
 	/* Member Functions */
-	void parseConfig(std::string path);
-	void createSockets();
+	void createSockets(Config& conf);
 	void run();
 
 	/* Basic Operators */

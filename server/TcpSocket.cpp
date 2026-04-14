@@ -1,13 +1,13 @@
 #include "TcpSocket.hpp"
 
 /* Constructors & Destructors */
-TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port)
+TcpSocket::TcpSocket(uint16_t port, const cfg::socketCfg& config) : _config(config)
 {
 	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (_socket == -1)
 		throw SocketError();
 	_sockAddr.sin_family = AF_INET;
-	_sockAddr.sin_addr.s_addr = serverAddress;
+	_sockAddr.sin_addr.s_addr = INADDR_ANY;
 	_sockAddr.sin_port = htons(port);
 	int opt = 1;
 	setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); // | SO_KEEPALIVE // protecten?
@@ -17,7 +17,7 @@ TcpSocket::TcpSocket(in_addr_t serverAddress, uint16_t port)
 		throw SocketError();
 }
 
-TcpSocket::TcpSocket(TcpSocket&& src) noexcept
+TcpSocket::TcpSocket(TcpSocket&& src) noexcept : _config(src._config)
 {
 	_socket = src._socket;
 	_sockAddr = src._sockAddr;
@@ -56,6 +56,11 @@ int TcpSocket::getSocketFd() const
 sockaddr_in TcpSocket::getSocketAddr() const
 {
 	return (_sockAddr);
+}
+
+const cfg::socketCfg& TcpSocket::getConfig() const
+{
+	return (_config);
 }
 
 /* Member Class */

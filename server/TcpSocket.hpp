@@ -9,17 +9,19 @@
 #include <string.h>
 #include <errno.h>
 #include "utils/Logger.hpp"
+#include "config/Config.hpp"
 
 class TcpSocket {
 private:
 	int _socket;
 	sockaddr_in _sockAddr{};
 	static const u_int16_t _maxRequests = 10;
+	const cfg::socketCfg& _config;
 
 public:
 	/* Constructors & Destructors */
 	TcpSocket() = delete;
-	TcpSocket(in_addr_t serverAddress, uint16_t port);
+	TcpSocket(uint16_t port, const cfg::socketCfg& config);
 	TcpSocket(const TcpSocket& src) = delete;
 	TcpSocket(TcpSocket&& src) noexcept;
 	~TcpSocket();
@@ -34,6 +36,7 @@ public:
 	/* Getters & Setters */
 	int getSocketFd() const;
 	sockaddr_in getSocketAddr() const;
+	const cfg::socketCfg& getConfig() const;
 
 	/* Member Class */
 	class SocketError : public std::exception
@@ -47,7 +50,6 @@ public:
 	public:
 		virtual const char* what() const noexcept override;
 	};
-
 };
 
 #endif // SOCKET_HPP

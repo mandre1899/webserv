@@ -3,80 +3,133 @@
 /* Constructors & Destructors */
 HttpServer::HttpServer()
 {
+	_epollFd = epoll_create(1);
+	if (_epollFd == -1)
+		throw std::runtime_error("Failed to create epoll file descriptor");
 }
 
 HttpServer::~HttpServer()
 {
+	close(_epollFd);
 }
 
 /* Member Functions */
-void HttpServer::addClient(int serverFd, int clientFd)
+void HttpServer::addClient(int serverFd, int clientFd, const cfg::socketCfg& socCfg)
 {
-	struct pollfd pollFd;
+	struct epoll_event event;
+	struct sockaddr_in local_addr;
+	socklen_t len = sizeof(local_addr);
 
-	_clientMap.insert({ clientFd, Client(serverFd, clientFd) });
-	pollFd.fd = clientFd;
-	pollFd.events = POLLIN;
-	_pfd.push_back(pollFd);
+	getsockname(clientFd, (struct sockaddr*)&local_addr, &len);
+	std::string id = std::to_string(local_addr.sin_addr.s_addr) + std::to_string(socCfg.port);
+	auto it = socCfg.socketMap.find(id);
+	if (it == socCfg.socketMap.end())
+	{
+		std::string id = std::to_string(INADDR_ANY) + std::to_string(socCfg.port);
+		it = socCfg.socketMap.find(id);
+		if (it == socCfg.socketMap.end())
+		{
+			close(clientFd);
+			return;
+		}
+	}
+	const cfg::srvCfg& srvCfg = it->second;
+	event.events = EPOLLIN;
+	event.data.fd = clientFd;
+	auto clientIt = _map.insert({ clientFd, Client(serverFd, clientFd, _epollFd, srvCfg) });
+	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &event))
+		throw std::runtime_error("Failed to add file descriptor to epoll");
+	const auto timeout = std::get<Client>(clientIt.first->second).getTimeout();
+	_prioQ.push({ timeout, clientFd });
 	Logger::log<LogLevel::debug>("HttpServer::addClient() - Client added with FD ", clientFd);
 }
 
-void HttpServer::removeClient(int clientFd)
+bool HttpServer::removeClient(int clientFd)
 {
-	_clientMap.erase(clientFd);
-	for (size_t i = 0; i < _pfd.size(); i++)
-	{
-		if (_pfd[i].fd == clientFd)
-		{
-			_pfd.erase(_pfd.begin() + i);
-		}
-	}
-	Logger::log<LogLevel::debug>("HttpServer::removeClient - Removed client with FD ", clientFd);
+	struct epoll_event event;
+
+	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, &event))
+		throw std::runtime_error("Failed to delete file descriptor to epoll");
+	bool isErase = static_cast<bool>(_map.erase(clientFd));
+	if (isErase)
+		Logger::log<LogLevel::debug>("HttpServer::removeClient - Removed client with FD ", clientFd);
+	return (isErase);
 }
 
-void HttpServer::createSockets()
+void HttpServer::createSockets(Config& conf)
 {
-	size_t socketCount = 2;
-	int socketPort[2] = { 8085, 8081 };
-
-	for (size_t i = 0; i < socketCount; i++)
+	for (size_t i = 0; i < conf.socSize(); i++)
 	{
-		struct pollfd pollFd;
+		const struct cfg::socketCfg& srv = conf.socAt(i);
+		struct epoll_event event;
 
-		_serverSockets.push_back(TcpSocket(INADDR_ANY, socketPort[i]));
-		pollFd.fd = _serverSockets[i].getSocketFd();
-		pollFd.events = POLLIN;
-		_pfd.push_back(pollFd);
-		Logger::log<LogLevel::trace>("HttpServer::createSockets() - Socket created with FD ", pollFd.fd);
+		TcpSocket tmp = TcpSocket(srv.port, srv);
+		event.events = EPOLLIN;
+		event.data.fd = tmp.getSocketFd();
+		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, tmp.getSocketFd(), &event))
+			throw std::runtime_error("Failed to add file descriptor to epoll");
+		Logger::log<LogLevel::trace>("HttpServer::createSockets() - Socket created with FD ", tmp.getSocketFd());
+		_map.insert({ tmp.getSocketFd(), std::move(tmp) });
+	}
+}
+
+void HttpServer::checkClientTimeout()
+{
+	auto now = std::chrono::system_clock::now();
+	while (!_prioQ.empty() && _prioQ.top().timeout > now)
+	{
+		int cFd = _prioQ.top().clientFd;
+		auto it = _map.find(cFd);
+		if (it != _map.end())
+		{
+			Client& c = std::get<Client>(it->second);
+			if (c.getTimeout() > now)
+				removeClient(cFd);
+			else
+				_prioQ.push({ c.getTimeout(), cFd });
+		}
+		_prioQ.pop();
+		now = std::chrono::system_clock::now();
 	}
 }
 
 void HttpServer::run()
 {
-	size_t pfdSize = _pfd.size();
-	int ret = poll(_pfd.data(), pfdSize, -1);
-	(void)ret; // TODO: optimise speed
-	for (size_t i = 0; i < pfdSize; i++)
+	struct epoll_event events[MAX_EVENTS];
+	int eventCount = epoll_wait(_epollFd, events, MAX_EVENTS, 1000);
+	if (eventCount == -1)
 	{
-		if (i < _serverSockets.size()) // if (serverSocket)...
+		if (g_stopServerSignal)
+			return;
+		throw std::runtime_error("System error occurred in the epoll_wait loop");
+	}
+	for (int i = 0; i < eventCount; i++)
+	{
+		auto it = _map.find(events[i].data.fd);
+		if (std::holds_alternative<TcpSocket>(it->second)) // if (serverSocket)...
 		{
-			if (_pfd[i].revents & POLLIN)
-			{
-				addClient(_pfd[i].fd, _serverSockets[i].acceptClient());
-			}
+			TcpSocket& socket = std::get<TcpSocket>(it->second);
+			addClient(events[i].data.fd, socket.acceptClient(), socket.getConfig());
 		}
 		else // if (clientSocket)...
 		{
-			if (_pfd[i].revents == 0)
-				continue;
-			Client& c = (_clientMap.find(_pfd[i].fd))->second;
-			_pfd[i].events = c.handleConnection(_pfd[i].revents);
-			if (_pfd[i].events & POLLHUP)
-				removeClient(_pfd[i].fd);
+			Client& c = std::get<Client>(it->second);
+			events[i].events = c.handleConnection(events[i].events);
+			if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, events[i].data.fd, &events[i]))
+				throw std::runtime_error("Failed to modifie file descriptor in epoll");
+			if (events[i].events & EPOLLHUP)
+				removeClient(events[i].data.fd);
 		}
 	}
+	//checkClientTimeout();
 }
 
 /* Basic Operators */
 
 /* Getters & Setters */
+
+
+bool sessionTime::operator>(const sessionTime& rhs) const
+{
+	return (timeout > rhs.timeout);
+}

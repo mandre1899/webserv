@@ -1,29 +1,30 @@
 #include "Client.hpp"
 
 /* Constructors & Destructors */
-Client::Client(int serverFd, int clientFd) : _serverFd(serverFd), _clientFd(clientFd)
+Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _epollFd(epollFd), _srvCfg(srvCfg)
 {
-	(void)_serverFd;
-	(void)_clientFd;
 	_status = Status::close;
 	_msg = "";
 	_parsingState = state::parsing_request_line;
+	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
 }
 
-Client::Client(Client&& src) noexcept
+Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 {
 	_serverFd = src._serverFd;
 	_clientFd = src._clientFd;
+	_epollFd = src._epollFd;
 	_status = src._status;
 	_msg = src._msg;
 	_parsingState = src._parsingState;
 	_parsedHttp = std::move(src._parsedHttp);
+	_timeout = src._timeout;
 	src._serverFd = -1;
 	src._clientFd = -1;
+	src._epollFd = -1;
 	src._msg = "";
 	src._status = Status::close;
 	src._parsingState = state::error;
-
 }
 
 Client::~Client()
@@ -33,14 +34,14 @@ Client::~Client()
 }
 
 /* Member Functions */
-short Client::recvData()
+uint32_t Client::recvData()
 {
 	char buffer[20] = {};
 	int ret;
 
 	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
-	if (ret == -1)
-		return (POLLHUP); // evt. throw exception
+	if (ret < 1)
+		return (EPOLLHUP); // evt. throw exception
 	_msg.append(buffer, ret);
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
@@ -77,37 +78,51 @@ short Client::recvData()
 		_msg.erase();
 	}
 	if (_parsingState == state::parsing_done)
-		return (POLLOUT);
+		return (EPOLLOUT);
 	if (ret == 0)
-		return (POLLHUP);
-	return (POLLIN);
+		return (EPOLLHUP);
+	return (EPOLLIN);
 }
 
-short Client::sendData()
+uint32_t Client::sendData()
 {
-	const char* message = "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n<html><h1>Hello from WebServ!</h1></html>";
-	int ret = send(_clientFd, message, 81, 0);
-	Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
-	return (POLLHUP);
+	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
+	if (_parsingState == state::parsing_done)
+		_parsingState = _response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
+	else if (_parsingState == state::response_proccessing)
+		_parsingState = _response.handle_cgi_proc();
+	if (_parsingState != state::response_proccessing)
+	{
+		std::string msg = _response.get_response_str();
+		int ret = send(_clientFd, msg.c_str(), msg.size(), 0);
+		Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
+		return (EPOLLHUP); // In future EPOLLOUT as long as I have to send data that is in buffer
+	}
+	return (EPOLLIN);
 }
 
-short Client::handleConnection(short revents)
+uint32_t Client::handleConnection(uint32_t event)
 {
-	if (revents & POLLIN)
-		return (recvData());
-	if (revents & POLLPRI)
-		throw "Unexpectet call";
-	if (revents & POLLOUT)
+	if (event & EPOLLIN)
+	{
+		// I need to check if a pipe is processing
+		if (_parsingState != state::response_proccessing)
+			return (recvData());
+		else
+			return (sendData());
+	}
+	if (event & EPOLLPRI)
+		throw "Unexpectet call"; //todo
+	if (event & EPOLLOUT)
 		return (sendData());
-	if (revents & POLLRDHUP)
+	if (event & EPOLLRDHUP)
 		throw "Unexpectet call";
-	if (revents & POLLERR)
+	if (event & EPOLLERR)
 		throw "Unexpectet call";
-	if (revents & POLLHUP)
-		return (POLLHUP);
-	if (revents & POLLNVAL)
-		throw "Unexpectet call";
-	return (POLLHUP);
+	if (event & EPOLLHUP)
+		return (EPOLLHUP);
+	// todo add all epoll events
+	return (EPOLLHUP);
 }
 
 /* Basic Operators */
@@ -116,4 +131,10 @@ short Client::handleConnection(short revents)
 int Client::getFd() const
 {
 	return (_clientFd);
+}
+
+
+std::chrono::time_point<std::chrono::system_clock> Client::getTimeout() const
+{
+	return (_timeout);
 }
