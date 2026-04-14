@@ -15,6 +15,7 @@
 #include <dirent.h>
 #include "StateMachines.hpp"
 #include <unistd.h>
+#include <filesystem>
 
 extern const char * g_execName;
 
@@ -22,6 +23,20 @@ enum filetype {
 	STATIC_FILE = 0,
 	DYNAMIC_FILE,
 	UNKNOWN
+};
+
+enum class ResolveKind
+{
+	FILEPATH = 0,
+	REDIRECT,
+	ERRORSTATUS
+};
+
+struct ResolveResult
+{
+	int code;
+	ResolveKind kind;
+	std::string value;
 };
 
 class HttpResponse
@@ -60,7 +75,7 @@ class HttpResponse
 		void														evaluate_vHost(void);
 		std::optional<std::pair<std::string, cfg::wsLocationCtx>>	get_most_specific_location(const std::string &uri_path);
 		// Path resolution
-		std::pair<int, std::string>			resolve_path(void); //get absolute path
+		struct ResolveResult				resolve_path(void);
 		std::string							resolve_content_type(const std::string& abs_path);
 		bool								check_path_secure(const std::string& abs_path);
 		filetype	 						resolve_filetype(const std::string& file_suffix);

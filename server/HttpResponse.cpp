@@ -1,8 +1,5 @@
 #include "HttpResponse.hpp"
 
-#include <filesystem>
-// Temporary
-
 static std::string init_root_path()
 {
 	std::filesystem::path tmpPathWebserv = std::string(g_execName);
@@ -142,7 +139,6 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 		return false;
 	}
 	std::ifstream file;
-	file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	try
 	{
 		file.open(abs_path, std::ios::binary);
@@ -153,7 +149,7 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 		return true;
 
 	}
-	catch (const std::ifstream::failure& e) {
+	catch (...) {
 		set_status_code(500);
 		// Add logging
 		return false;
@@ -344,12 +340,14 @@ HttpResponse::~HttpResponse(void)
 }
 
 // Con - & De- structor END
-static std::pair<int, std::string>	rtn_pair(int code, std::string path)
+static struct ResolveResult	rtn_result(enum ResolveKind kind, int code, std::string value)
 {
-	std::pair<int, std::string>	rtn;
-	rtn.first = code;
-	rtn.second = path;
-	return rtn;
+	struct ResolveResult res;
+
+	res.code = code;
+	res.kind = kind;
+	res.value = value;
+	return res;
 }
 
 //Improved is also now matching /index.html on / location -> specifix ressource requesting
@@ -430,7 +428,7 @@ std::optional<std::pair<std::string, cfg::wsLocationCtx>>	HttpResponse::get_most
 	return std::make_pair(best_match->first, best_match->second);
 }
 
-std::pair<int, std::string> HttpResponse::resolve_path(void)
+struct ResolveResult	HttpResponse::resolve_path(void)
 {
 	std::string uri_path = _request->getRequestUri();
 	bool		is_abs_root = true; // In config its ./ or /
@@ -440,12 +438,11 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	{
 		std::string tmp;
 		if (_config.root.empty())
-			return rtn_pair(404, std::string());
+			return rtn_result(ResolveKind::ERRORSTATUS, 404, std::string());
 		if (uri_path.empty() || uri_path == "/")
 		{
 			if (_config.index.empty())
-				return rtn_pair(404, std::string());
-	
+				return rtn_result(ResolveKind::ERRORSTATUS, 404, std::string());
 			if (_config.root[0] == '.')
 				tmp = join_paths(root_path, _config.root.substr(1), _config.index);
 			else
@@ -460,13 +457,13 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 		}
 	
 		if (!tmp.empty() && access(tmp.c_str(), R_OK) == 0)
-			return rtn_pair(200, tmp);
-		return rtn_pair(404, std::string());
+			return rtn_result(ResolveKind::FILEPATH, 200, tmp);
+		return rtn_result(ResolveKind::FILEPATH, 404, std::string());
 	}
 
 	auto location = get_most_specific_location(uri_path);
 	if (!location)
-		return rtn_pair(404, std::string());
+		return rtn_result(ResolveKind::ERRORSTATUS, 404, std::string());
 	_curr_loc = location->second;
 
 	//Just so relative and absolute paths can be defined in config
@@ -478,8 +475,9 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	else
 		_curr_loc_root = _curr_loc.root;
 
+	//When Location defines a return
 	if (_curr_loc.ret.has_value())
-		return rtn_pair(_curr_loc.ret->code, _curr_loc.ret->param);
+		return rtn_result(ResolveKind::REDIRECT, _curr_loc.ret->code, _curr_loc.ret->param);
 
 	method_type method = _request->getMethod();
 	const cfg::wsAllowMethods& allowed = _curr_loc.allowMethods;
@@ -487,15 +485,15 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	if ((method == method_type::GET && !allowed.isGet) ||
 		(method == method_type::POST && !allowed.isPost) ||
 		(method == method_type::DELETE && !allowed.isDelete))
-		return rtn_pair(405, std::string());
+		return rtn_result(ResolveKind::ERRORSTATUS, 405, std::string());
 
 	//When exact configured location is requested
 	if (!_curr_loc.index.empty() && _request->getRequestUri() == location->first)
 	{
 		if (is_abs_root == false)
-			return rtn_pair(200, join_paths(root_path, _curr_loc_root, _curr_loc.index));
+			return rtn_result(ResolveKind::FILEPATH, 200, join_paths(root_path, _curr_loc_root, _curr_loc.index));
 		else
-			return rtn_pair(200, join_paths(_curr_loc_root, _curr_loc.index));
+			return rtn_result(ResolveKind::FILEPATH, 200, join_paths(_curr_loc_root, _curr_loc.index));
 	}
 	//When exact file is requested on location
 	std::string tmp;
@@ -504,16 +502,16 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	else
 		tmp = join_paths(_curr_loc_root, uri_path.substr(location->first.length()));
 	if (access(tmp.c_str(), R_OK) == 0)
-		return rtn_pair(200, tmp);
+		return rtn_result(ResolveKind::FILEPATH, 200, tmp);
 	//Location specific error page
 	std::unordered_map<http_code, std::string>::const_iterator it = _curr_loc.errorPage.find(404);
 	if (it != _curr_loc.errorPage.end() && !it->second.empty())
 	{
 		std::string error_page_path = join_paths(root_path, _curr_loc_root, it->second);
 		if (access(error_page_path.c_str(), R_OK) == 0)
-			return rtn_pair(404, error_page_path);
+			return rtn_result(ResolveKind::ERRORSTATUS, 404, error_page_path);
 	}
-	return rtn_pair(404, std::string());
+	return rtn_result(ResolveKind::ERRORSTATUS, 404, std::string());
 }
 
 std::string	HttpResponse::resolve_content_type(const std::string& filetype)
@@ -682,6 +680,7 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 		Logger::log<LogLevel::info>("Deleted dir: ", abs_path);
 		_body = "<html lang=\"en-US\">\n<body>\n<h1>Directory \"" + abstract_filename(abs_path) + "/" + "\" deleted.</h1>\n</body>\n</html>";
 		return true;
+
 	}
 	else if (unlink(abs_path.c_str()) == 0)
 	{
@@ -746,27 +745,22 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 	evaluate_vHost();
 	try
 	{
-		std::pair<int, std::string> res = resolve_path();
-		Logger::log<LogLevel::info>("Absolute path of requested file: ", res.second);
+		struct ResolveResult res = resolve_path();
 
-		set_status_code(res.first);
-		//Simple redirect
-		if (_status_code == 301 || _status_code == 302 ||
-			_status_code == 303)
+		set_status_code(res.code); //Safety
+		if (res.kind == ResolveKind::REDIRECT)
 		{
-			_headers["location"] = res.second;
+			_headers["location"] = res.value;
 			return state::response_sending;
 		}
-		if (_status_code != 200)
+		if (res.kind == ResolveKind::ERRORSTATUS)
 		{
-			generate_error_page(404);
-			//If location specified a error page override generic one
-			if (!res.second.empty())
-				read_file_to_body(res.second);
+			//If location specifies custom error page its handled within the function
+			generate_error_page(res.code);
 			return state::response_sending;
 		}
 
-		const std::string& abs_path = res.second;
+		const std::string& abs_path = res.value;
 
 		if (!check_path_secure(abs_path))
 		{
