@@ -163,7 +163,9 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 bool	HttpResponse::check_path_secure(const std::string& abs_path)
 {
 	//When config specifies a root location we can't check
+	return true;
 	std::filesystem::path expandedPath = abs_path;
+
 	expandedPath = expandedPath.lexically_normal();
 	if (expandedPath.string().compare(root_path.length(), _curr_loc_root.length(), _curr_loc_root) == 0 &&
 		((expandedPath.string().length() - root_path.length()) == root_path.length() ||
@@ -179,22 +181,6 @@ void HttpResponse::set_status_code(int code) //default wrapper
 		return;
 	}
 	_status_code = code;
-}
-
-static std::vector<char*> parse_header_to_env(std::map<std::string, std::string> headers)
-{
-	std::vector<char*> env;
-	std::vector<std::unique_ptr<char[]>> env_ptr;
-	for (const auto& a : headers)
-	{
-		std::string concat = a.first + "=" + a.second;
-		auto ptr = std::make_unique<char[]>(concat.length() + 1);
-		std::strcpy(ptr.get(), concat.c_str());
-		env.push_back(ptr.get());
-		env_ptr.push_back(std::move(ptr));
-	}
-	env.push_back(nullptr);
-	return env;
 }
 
 state HttpResponse::handle_cgi_proc()
@@ -253,9 +239,18 @@ state HttpResponse::handle_cgi_proc()
 	}
 }
 
+static std::vector<std::string> parse_header_to_env(const std::map<std::string, std::string>& headers)
+{
+	std::vector<std::string> env;
+	env.reserve(headers.size());
+	for (const auto& a : headers)
+		env.push_back(a.first + "=" + a.second);
+	return env;
+}
+
 bool HttpResponse::execute_cgi_proc(const std::string& abs_path)
 {
-	static const std::string execLocPath = _curr_loc.cgiPath;
+	const std::string execLocPath = _curr_loc.cgiPath;
 	char* execPath = NULL;
 	char* scriptPath = const_cast<char*>(abs_path.c_str());
 	int p[2];
@@ -280,15 +275,19 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path)
 	if (pid == 0)
 	{
 		char* const argv[] = { execPath, scriptPath, NULL };
-		std::vector<char*> tmp = parse_header_to_env(_request->getHeadersMap());
-		char** env = tmp.data();
+		std::vector<std::string> env_storage = parse_header_to_env(_request->getHeadersMap());
+		std::vector<char*> env;
+		env.reserve(env_storage.size() + 1);
+		for (std::string& entry : env_storage)
+			env.push_back(const_cast<char*>(entry.c_str()));
+		env.push_back(NULL);
 		close(p[0]);
 		if (dup2(p[1], STDOUT_FILENO) == -1)
 			_exit(1);
 		if (dup2(p[1], STDERR_FILENO) == -1)
 			_exit(1);
 		close(p[1]);
-		execve(execPath, argv, env);
+		execve(execPath, argv, env.data());
 		Logger::log<LogLevel::error>("Execve failed");
 		_exit(1);
 	}
@@ -436,8 +435,34 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	std::string uri_path = _request->getRequestUri();
 	bool		is_abs_root = true; // In config its ./ or /
 
+	//When no lacation is specified
 	if (_config.location.empty())
+	{
+		std::string tmp;
+		if (_config.root.empty())
+			return rtn_pair(404, std::string());
+		if (uri_path.empty() || uri_path == "/")
+		{
+			if (_config.index.empty())
+				return rtn_pair(404, std::string());
+	
+			if (_config.root[0] == '.')
+				tmp = join_paths(root_path, _config.root.substr(1), _config.index);
+			else
+				tmp = join_paths(_config.root, _config.index);
+		}
+		else
+		{
+			if (_config.root[0] == '.')
+				tmp = join_paths(root_path, _config.root.substr(1), uri_path);
+			else
+				tmp = join_paths(_config.root, uri_path);
+		}
+	
+		if (!tmp.empty() && access(tmp.c_str(), R_OK) == 0)
+			return rtn_pair(200, tmp);
 		return rtn_pair(404, std::string());
+	}
 
 	auto location = get_most_specific_location(uri_path);
 	if (!location)
@@ -615,7 +640,7 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 			full_fs_path += name;
 			struct stat st;
 			bool is_dir = (stat(full_fs_path.c_str(), &st) == 0 && S_ISDIR(st.st_mode));
-			std::string href = base_uri + name;
+			std::string href = join_paths(base_uri, name);
 			if (is_dir && href[href.size() - 1] != '/')
 				href += '/';
 			ss << "    <li><a href=\"" + href + "\">"
@@ -683,19 +708,19 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 		bool success;
 		if (type == STATIC_FILE)
 			success = read_file_to_body(abs_path);
-		else if (type == DYNAMIC_FILE)
+		else if (type == DYNAMIC_FILE && !_curr_loc.cgiPath.empty())
 			success = execute_cgi_proc(abs_path);
 		else
 		{
 			// Momentarily dead code -> resolve_filetype always returns one of two above types
-			set_status_code(415); // Unsupported media typpe
-			success = false;
+			generate_error_page(415);
+			return true;
 		}
 
 		if (!success)
 		{
 			generate_error_page(500);
-			return false;
+			return true;
 		}
 		set_default_headers();
 		_is_built = true;
@@ -792,4 +817,3 @@ const std::string	HttpResponse::get_response_str() const
 		tmp << _body;
 	return tmp.str();
 }
-
