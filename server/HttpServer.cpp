@@ -36,11 +36,11 @@ void HttpServer::addClient(int serverFd, int clientFd, const cfg::socketCfg& soc
 	const cfg::srvCfg& srvCfg = it->second;
 	event.events = EPOLLIN;
 	event.data.fd = clientFd;
-	_map.insert({ clientFd, Client(serverFd, clientFd, _epollFd, srvCfg) });
+	auto clientIt = _map.insert({ clientFd, Client(serverFd, clientFd, _epollFd, srvCfg) });
 	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &event))
 		throw std::runtime_error("Failed to add file descriptor to epoll");
-	const auto now = std::chrono::system_clock::now();
-	_prioQ.push({ now, clientFd });
+	const auto timeout = std::get<Client>(clientIt.first->second).getTimeout();
+	_prioQ.push({ timeout, clientFd });
 	Logger::log<LogLevel::debug>("HttpServer::addClient() - Client added with FD ", clientFd);
 }
 
@@ -98,7 +98,11 @@ void HttpServer::run()
 	struct epoll_event events[MAX_EVENTS];
 	int eventCount = epoll_wait(_epollFd, events, MAX_EVENTS, 1000);
 	if (eventCount == -1)
-		throw "System error occurred in the epoll_wait loop";
+	{
+		if (g_stopServerSignal)
+			return;
+		throw std::runtime_error("System error occurred in the epoll_wait loop");
+	}
 	for (int i = 0; i < eventCount; i++)
 	{
 		auto it = _map.find(events[i].data.fd);

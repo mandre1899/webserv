@@ -2,13 +2,30 @@
 #include "server/HttpServer.hpp"
 #include <cstring>
 #include <iostream>
+#include <csignal>
 #include "utils/Logger.hpp"
 #include "config/Config.hpp"
 
-const char * g_execName = "./webserv";
+const char* g_execName = "./webserv";
+
+volatile std::sig_atomic_t g_stopServerSignal = 0;
+
+void sigactionHandler(int signalId)
+{
+	(void)signalId;
+	g_stopServerSignal = 1;
+}
+
+void setupSignalHandler()
+{
+	std::signal(SIGINT, sigactionHandler);
+	std::signal(SIGQUIT, sigactionHandler);
+	std::signal(SIGTERM, sigactionHandler);
+}
 
 int	main(int argc, char** argv)
 {
+	setupSignalHandler();
 	g_execName = argv[0];
 	if (argc == 1)
 	{
@@ -28,7 +45,7 @@ int	main(int argc, char** argv)
 		HttpServer server;
 
 		server.createSockets(config);
-		while (true)
+		while (!g_stopServerSignal)
 			server.run();
 	}
 	catch (const std::exception& e)

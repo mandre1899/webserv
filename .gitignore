@@ -43,3 +43,6 @@ webserv
 
 # vscode files
 .vscode/
+
+my.conf
+myhtml/
