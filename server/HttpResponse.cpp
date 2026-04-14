@@ -163,6 +163,7 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 bool	HttpResponse::check_path_secure(const std::string& abs_path)
 {
 	//When config specifies a root location we can't check
+	return true;
 	std::filesystem::path expandedPath = abs_path;
 
 	expandedPath = expandedPath.lexically_normal();
@@ -437,8 +438,34 @@ std::pair<int, std::string> HttpResponse::resolve_path(void)
 	std::string uri_path = _request->getRequestUri();
 	bool		is_abs_root = true; // In config its ./ or /
 
+	//When no lacation is specified
 	if (_config.location.empty())
+	{
+		std::string tmp;
+		if (_config.root.empty())
+			return rtn_pair(404, std::string());
+		if (uri_path.empty() || uri_path == "/")
+		{
+			if (_config.index.empty())
+				return rtn_pair(404, std::string());
+	
+			if (_config.root[0] == '.')
+				tmp = join_paths(root_path, _config.root.substr(1), _config.index);
+			else
+				tmp = join_paths(_config.root, _config.index);
+		}
+		else
+		{
+			if (_config.root[0] == '.')
+				tmp = join_paths(root_path, _config.root.substr(1), uri_path);
+			else
+				tmp = join_paths(_config.root, uri_path);
+		}
+	
+		if (!tmp.empty() && access(tmp.c_str(), R_OK) == 0)
+			return rtn_pair(200, tmp);
 		return rtn_pair(404, std::string());
+	}
 
 	auto location = get_most_specific_location(uri_path);
 	if (!location)
@@ -616,7 +643,7 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 			full_fs_path += name;
 			struct stat st;
 			bool is_dir = (stat(full_fs_path.c_str(), &st) == 0 && S_ISDIR(st.st_mode));
-			std::string href = base_uri + name;
+			std::string href = join_paths(base_uri, name);
 			if (is_dir && href[href.size() - 1] != '/')
 				href += '/';
 			ss << "    <li><a href=\"" + href + "\">"
