@@ -39,10 +39,10 @@ private:
 
 public:
 	/* Constructors & Destructors */
-	HttpUpload() = delete;
+	HttpUpload(void);
 	HttpUpload(const std::map<std::string, std::string> headers, std::string filePath);
 	HttpUpload(const HttpUpload& src) = delete;
-	HttpUpload(HttpUpload&& src);
+	//HttpUpload(HttpUpload&& src);
 	~HttpUpload();
 
 	/* Member Functions */

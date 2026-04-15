@@ -13,9 +13,9 @@ enum class Status {
 enum class state {
 	parsing_request_line = 0,
 	parsing_headers,
-	parsing_body,
 	parsing_done,
 	response_proccessing,
+	response_body,
 	response_sending,
 	error
 };

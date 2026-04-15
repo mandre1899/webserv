@@ -20,10 +20,13 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 	_boundaryClosig = _rawBoundary + "--\r\n";
 }
 
-HttpUpload::HttpUpload(HttpUpload&& src)
-{
+HttpUpload::HttpUpload(void)
+{}
 
-}
+//HttpUpload::HttpUpload(HttpUpload&& src)
+//{
+//
+//}
 
 HttpUpload::~HttpUpload()
 {
@@ -179,9 +182,11 @@ body_state HttpUpload::saveData(std::string& data)
 	return (body_state::save_data);
 }
 
+/*
 // curl -X POST http://localhost:8085/upload \
 //   -F "file1=@test.txt" \
 //   -F "file2=@b.png"s
+*/
 
 bool HttpUpload::uploadBody(std::string& data)
 {

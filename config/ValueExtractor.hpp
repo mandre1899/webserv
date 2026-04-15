@@ -6,7 +6,7 @@
 #include "configTypes.hpp"
 #include "TokenStream.hpp"
 #include "ContextNode.hpp"
-#include "configUtils.hpp"
+#include "../utils/helper.hpp"
 
 
 #define KILO 1000

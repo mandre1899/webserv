@@ -14,6 +14,7 @@
 #include "sys/stat.h"
 #include <dirent.h>
 #include "StateMachines.hpp"
+#include "HttpUpload.hpp"
 #include <unistd.h>
 #include <filesystem>
 
@@ -28,6 +29,7 @@ enum filetype {
 enum class ResolveKind
 {
 	FILEPATH = 0,
+	POST,
 	REDIRECT,
 	ERRORSTATUS
 };
@@ -61,6 +63,8 @@ class HttpResponse
 		int													_socket_fd;
 		int													_cgi_pid;
 
+		//POST specific
+		//HttpUpload			_upload;
 		//CGI specific
 		int									_epfd;
 		int									_pipe_read; // pipe read end

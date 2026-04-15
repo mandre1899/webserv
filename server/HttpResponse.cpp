@@ -542,6 +542,9 @@ struct ResolveResult	HttpResponse::resolve_path(void)
 		(method == method_type::DELETE && !allowed.isDelete))
 		return rtn_result(ResolveKind::ERRORSTATUS, 405, std::string());
 
+	if (method == method_type::POST)
+		return rtn_result(ResolveKind::POST, 200, _request->getRequestUri());
+
 	//When exact configured location is requested
 	if (!_curr_loc.index.empty() && _request->getRequestUri() == location->first)
 	{
@@ -813,6 +816,10 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 			//If location specifies custom error page its handled within the function
 			generate_error_page(res.code);
 			return state::response_sending;
+		}
+		if (res.kind == ResolveKind::REDIRECT)
+		{
+			// Handle POST request
 		}
 
 		const std::string& abs_path = res.value;

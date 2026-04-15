@@ -61,23 +61,12 @@ uint32_t Client::recvData()
 		{
 			if (line.empty())
 			{
-				Logger::log<LogLevel::trace>(this->_parsedHttp);
-				_msg.erase(0, pos + 2);
-				if (_parsedHttp.getMethod() == method_type::POST)
-					_parsingState = state::parsing_body;
-				else
-					_parsingState = state::parsing_done;
+				_parsingState = state::parsing_done;
 				break;
 			}
 			_parsedHttp.parseHeaders(line);
 		}
 		_msg.erase(0, pos + 2);
-	}
-	if (_parsingState == state::parsing_body)
-	{
-		if (_parsedHttp.parseBody(_msg))
-			_parsingState = state::parsing_done;
-		_msg.erase();
 	}
 	if (_parsingState == state::parsing_done)
 		return (EPOLLOUT);
@@ -122,7 +111,8 @@ uint32_t Client::handleConnection(uint32_t event)
 	if (event & EPOLLIN)
 	{
 		// I need to check if a pipe is processing
-		if (_parsingState != state::response_proccessing)
+		if (_parsingState != state::response_proccessing &&
+				_parsingState != state::response_body)
 			return (recvData());
 		else
 			return (sendData());
