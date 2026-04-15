@@ -273,6 +273,8 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path)
 		char* const argv[] = { execPath, scriptPath, NULL };
 		std::vector<std::string> env_storage = parse_header_to_env(_request->getHeadersMap());
 		std::vector<char*> env;
+		env_storage.push_back("REQUEST_METHOD=" + _request->getMethodAsString());
+		env_storage.push_back("REQUEST_URI=" + _request->getRequestUri());
 		env.reserve(env_storage.size() + 1);
 		for (std::string& entry : env_storage)
 			env.push_back(const_cast<char*>(entry.c_str()));
