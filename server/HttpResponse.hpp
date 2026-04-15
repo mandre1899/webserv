@@ -64,7 +64,8 @@ class HttpResponse
 		int													_cgi_pid;
 
 		//POST specific
-		//HttpUpload			_upload;
+		std::unique_ptr<HttpUpload>			_upload;
+		state								upload_body(void);
 		//CGI specific
 		int									_epfd;
 		int									_pipe_read; // pipe read end

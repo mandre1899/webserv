@@ -600,6 +600,16 @@ static const std::string resolve_file_suffix(const std::string& abs_path)
 	return abs_path.substr(dotPos);
 }
 
+state	HttpResponse::upload_body(void)
+{
+	std::string tmp; // Just to make it compile
+	//logic to read file and generate a valid response?!
+	if (!_upload->uploadBody(tmp))
+		return state::response_body;
+	set_status_code(200);
+	return state::response_sending;
+}
+
 void HttpResponse::generate_error_page(int status_code)
 {
 	std::string status_text = "Unknown Error";
@@ -819,7 +829,8 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 		}
 		if (res.kind == ResolveKind::REDIRECT)
 		{
-			// Handle POST request
+			_upload = std::make_unique<HttpUpload>(_headers, _curr_loc.uploadStore);
+			return (state::response_body); //
 		}
 
 		const std::string& abs_path = res.value;

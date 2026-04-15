@@ -82,6 +82,7 @@ uint32_t Client::sendData()
 		_parsingState = _response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
 	else if (_parsingState == state::response_proccessing)
 		_parsingState = _response.handle_cgi_proc();
+	//else if (_parsingState == state::response_proccessing)
 	if (_parsingState == state::response_proccessing)
 		return (EPOLLIN);
 	if (_parsingState != state::response_sending)
