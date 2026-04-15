@@ -136,7 +136,7 @@ void HttpUpload::openFile()
 
 body_state HttpUpload::saveData(std::string& data)
 {
-	static std::string buffer;
+	std::string buffer;
 	size_t pos = 0;
 	size_t i = 0;
 
