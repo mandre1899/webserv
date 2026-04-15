@@ -109,6 +109,7 @@ class HttpResponse
 		state					build(HttpParser *req, const cfg::srvCfg* conf, int clientFd, int epfd);
 		const std::string		get_response_str(void) const; //Returns the response as string
 		state					handle_cgi_proc(void);
+		bool					parse_cgi_headers(void);// CGI Helper
 
 		// Setters
 		void					set_status_code(int code);

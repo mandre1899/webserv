@@ -124,9 +124,8 @@ void	HttpResponse::set_default_headers(void)
 	}
 
 	// Add connection header based on HTTP version
-	if (_headers.find("connection") == _headers.end()) {
+	if (_headers.find("connection") == _headers.end())
 		_headers["connection"] = "close";
-	}
 	_headers["content-length"] = std::to_string(_body_size);
 }
 
@@ -134,7 +133,8 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 {
 	// Add file size check
 	struct stat file_stat;
-	if (stat(abs_path.c_str(), &file_stat) != 0) {
+	if (stat(abs_path.c_str(), &file_stat) != 0)
+	{
 		generate_error_page(404);
 		return false;
 	}
@@ -149,7 +149,8 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 		return true;
 
 	}
-	catch (...) {
+	catch (...)
+	{
 		set_status_code(500);
 		// Add logging
 		return false;
@@ -177,6 +178,51 @@ void HttpResponse::set_status_code(int code) //default wrapper
 		return;
 	}
 	_status_code = code;
+}
+
+bool	HttpResponse::parse_cgi_headers(void)
+{
+	size_t header_end = std::string::npos;
+	size_t delimiter_len = 0;
+
+	//Evaluate differnt header endings
+	header_end = _body.find("\r\n\r\n");
+	if (header_end != std::string::npos)
+		delimiter_len = 4;
+	else
+	{
+		header_end = _body.find("\n\n");
+		if (header_end != std::string::npos)
+			delimiter_len = 2;
+		else
+			return false;
+	}
+	std::cout << "Header end: " << header_end << std::endl;
+	std::string header_block = _body.substr(0, header_end);
+	std::string parsed_body = _body.substr(header_end + delimiter_len);
+	std::istringstream header_stream(header_block);
+	std::string line;
+
+	while (std::getline(header_stream, line))
+	{
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+		if (line.empty())
+			continue;
+
+		size_t sep = line.find(':');
+		if (sep == std::string::npos)
+			return false;
+
+		std::string key = line.substr(0, sep);
+		std::string value = line.substr(sep + 1);
+
+		_headers[key] = value;
+	}
+
+	_body = parsed_body;
+	_body_size = _body.size();
+	return true;
 }
 
 state HttpResponse::handle_cgi_proc()
@@ -213,6 +259,11 @@ state HttpResponse::handle_cgi_proc()
 
 				if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 				{
+					if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
+					{
+						generate_error_page(500);
+						return state::response_sending;
+					}
 					set_default_headers();
 					return state::response_sending;
 				}
@@ -275,6 +326,8 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path)
 		std::vector<char*> env;
 		env_storage.push_back("REQUEST_METHOD=" + _request->getMethodAsString());
 		env_storage.push_back("REQUEST_URI=" + _request->getRequestUri());
+		env_storage.push_back("REDIRECT_STATUS=200");
+		env_storage.push_back("SCRIPT_FILENAME=" + abs_path); // Important for php-cgi!!!
 		env.reserve(env_storage.size() + 1);
 		for (std::string& entry : env_storage)
 			env.push_back(const_cast<char*>(entry.c_str()));
