@@ -1,7 +1,8 @@
 #include "Client.hpp"
+#include <cerrno>
 
 /* Constructors & Destructors */
-Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _epollFd(epollFd), _srvCfg(srvCfg)
+Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _epollFd(epollFd), _sendedBytes(0), _srvCfg(srvCfg)
 {
 	_status = Status::close;
 	_msg = "";
@@ -18,6 +19,7 @@ Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 	_msg = src._msg;
 	_parsingState = src._parsingState;
 	_parsedHttp = std::move(src._parsedHttp);
+	_sendedBytes = src._sendedBytes;
 	_timeout = src._timeout;
 	src._serverFd = -1;
 	src._clientFd = -1;
@@ -25,6 +27,7 @@ Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 	src._msg = "";
 	src._status = Status::close;
 	src._parsingState = state::error;
+	src._sendedBytes = 0;
 }
 
 Client::~Client()
@@ -90,14 +93,28 @@ uint32_t Client::sendData()
 		_parsingState = _response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
 	else if (_parsingState == state::response_proccessing)
 		_parsingState = _response.handle_cgi_proc();
-	if (_parsingState != state::response_proccessing)
+	if (_parsingState == state::response_proccessing)
+		return (EPOLLIN);
+	if (_parsingState != state::response_sending)
+		return (EPOLLHUP);
+	std::string msg = _response.get_response_str();
+	while (static_cast<size_t>(_sendedBytes) < msg.size())
 	{
-		std::string msg = _response.get_response_str();
-		int ret = send(_clientFd, msg.c_str(), msg.size(), 0);
-		Logger::log<LogLevel::trace>("Client::sendData() - send return value ist: ", ret);
-		return (EPOLLHUP); // In future EPOLLOUT as long as I have to send data that is in buffer
+		ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, MSG_DONTWAIT);
+		if (ret > 0)
+		{
+			_sendedBytes += ret;
+			continue ;
+		}
+		if (ret == 0)
+			return (EPOLLHUP);
+		if (errno == EWOULDBLOCK || errno == EAGAIN)
+			return (EPOLLOUT);
+		if (msg.size() == static_cast<size_t>(_sendedBytes))
+			return (EPOLLHUP);
+		return (EPOLLOUT);
 	}
-	return (EPOLLIN);
+	return (EPOLLHUP);
 }
 
 uint32_t Client::handleConnection(uint32_t event)
