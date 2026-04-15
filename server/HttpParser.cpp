@@ -29,6 +29,40 @@ HttpParser::~HttpParser()
 {
 }
 
+static std::pair<std::string, std::string> request_uri_normalization(const std::string& request_uri)
+{
+	std::string	uri = request_uri;
+	std::string	query_string;
+
+	size_t query_pos = uri.find('?');
+	if (query_pos != std::string::npos)
+	{
+		query_string = uri.substr(query_pos + 1);
+		uri = uri.substr(0, query_pos);
+	}
+
+	std::string normalized_uri;
+	normalized_uri.reserve(uri.size());
+	bool previous_is_slash = false;
+	for (char c : uri)
+	{
+		if (c == '/')
+		{
+			if (!previous_is_slash)
+				normalized_uri.push_back(c);
+			previous_is_slash = true;
+		}
+		else
+		{
+			normalized_uri.push_back(c);
+			previous_is_slash = false;
+		}
+	}
+	if (normalized_uri.empty())
+		normalized_uri = "/";
+	return std::make_pair(normalized_uri, query_string);
+}
+
 /* Member Functions */
 void HttpParser::parseRequestLine(std::string& line)
 {
@@ -46,7 +80,9 @@ void HttpParser::parseRequestLine(std::string& line)
 		throw HttpParsingError();
 
 	getline(ss, temp, del);
-	_request_URI = temp;
+	auto uri_and_query_str = request_uri_normalization(temp);
+	_request_URI = uri_and_query_str.first;
+	_query_str = uri_and_query_str.second;
 	if (temp[0] != '/')
 		throw HttpParsingError();
 
@@ -227,9 +263,11 @@ void  HttpParser::processBody(std::string& line)
 	}
 }
 
+/*
 // curl -X POST http://localhost:8085/upload \
 //   -F "file1=@test.txt" \
 //   -F "file2=@b.png"s
+*/
 
 bool HttpParser::parseBody(std::string& line)
 {
@@ -317,6 +355,11 @@ std::string HttpParser::getMethodAsString() const
 std::string HttpParser::getRequestUri() const
 {
 	return (_request_URI);
+}
+
+std::string HttpParser::getRequestQuery() const
+{
+	return (_query_str);
 }
 
 std::string HttpParser::getHttpVersion() const

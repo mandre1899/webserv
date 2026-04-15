@@ -32,6 +32,7 @@ class HttpParser {
 private:
 	method_type _method;
 	std::string _request_URI;
+	std::string	_query_str;
 	std::string _http_version;
 	std::map<std::string, std::string> _headers_map;
 	std::string _boundary;
@@ -62,6 +63,7 @@ public:
 	method_type getMethod() const;
 	std::string getMethodAsString() const;
 	std::string getRequestUri() const;
+	std::string getRequestQuery() const;
 	std::string getHttpVersion() const;
 	std::map<std::string, std::string> getHeadersMap() const;
 };
