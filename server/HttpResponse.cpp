@@ -307,8 +307,6 @@ bool HttpResponse::execute_cgi_proc(const std::string& abs_path)
 	if (pipe(p) == -1)
 	{
 		Logger::log<LogLevel::error>("Pipe creation failed");
-		close(p[0]);
-		close(p[1]);
 		return false;
 	}
 	int pid = fork();
@@ -366,6 +364,11 @@ void	HttpResponse::evaluate_vHost()
 		return;
 	}
 	std::string hostValue = headers.find("Host")->second;
+	if (hostValue.empty())
+	{
+		_config = _configs->vHost[0];
+		return ;
+	}
 	//Erase port specifier ":8080"
 	size_t portPrefix = hostValue.find(":");
 	if (portPrefix != std::string::npos)
@@ -616,7 +619,7 @@ void HttpResponse::generate_error_page(int status_code)
 
 
 	set_status_code(status_code);
-	std::unordered_map<http_code, std::string>::const_iterator it_err_page = _curr_loc.errorPage.find(404);
+	std::unordered_map<http_code, std::string>::const_iterator it_err_page = _curr_loc.errorPage.find(status_code);
 	if (it_err_page != _curr_loc.errorPage.end() && !it_err_page->second.empty())
 	{
 		std::string error_page_path = join_paths(root_path, _curr_loc_root, it_err_page->second);
@@ -827,7 +830,7 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 			generate_error_page(res.code);
 			return state::response_sending;
 		}
-		if (res.kind == ResolveKind::REDIRECT)
+		if (res.kind == ResolveKind::POST)
 		{
 			_upload = std::make_unique<HttpUpload>(_headers, _curr_loc.uploadStore);
 			return (state::response_body); //
