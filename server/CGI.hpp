@@ -29,7 +29,7 @@ class CGI
 	int												_pipe_read;
 	int												_epfd;
 	int												_socket_fd;
-	int												_body_size;
+	size_t												_body_size;
 	std::string										_body;
 	std::unordered_map<std::string, std::string>	_cgi_header;
 
@@ -46,6 +46,7 @@ class CGI
 		//GETTERS
 		std::string										get_body(void);
 		std::unordered_map<std::string, std::string>	get_header_map(void);
+		size_t											get_body_size(void);
 };
 
 #endif // !CGI_H
