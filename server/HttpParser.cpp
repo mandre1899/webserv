@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/16 16:19:28 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/16 16:53:44 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,7 +86,7 @@ void HttpParser::parseRequestLine(std::string& line)
 		throw HttpParsingError();
 
 	getline(ss, temp, del);
-	if (!(temp == "HTTP/1.1" || temp == "HTTP/1.0"))
+	if (!(temp == "HTTP/1.1" || temp == "HTTP/1.0")) //  for http/1.1 -> !(temp == "HTTP/1.1" || temp == "HTTP/1.0") -> todo: check http version
 		throw HttpParsingError();
 	_http_version = temp;
 	if (!ss.eof()) //extra space seems okay tho ... so trim space at end
