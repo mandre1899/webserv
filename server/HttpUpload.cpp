@@ -65,6 +65,33 @@ bool  HttpUpload::parsingBoundary(std::string& data)
 	return (false);
 }
 
+std::string HttpUpload::extractFilename(std::string& value)
+{
+	std::string filename;
+	size_t fileNamePos = value.find("filename="); // todo: more validation
+
+	if (fileNamePos == std::string::npos)
+		throw UploadErrorException();
+	fileNamePos += 9;
+	if (value[fileNamePos] != '\"')
+		throw UploadErrorException();
+	fileNamePos++;
+	for (size_t i = fileNamePos; i < value.size(); i++)
+	{
+		if (value[i] == ';' && fileNamePos != i && value[i - 1] == '\"')
+		{
+			filename = value.substr(fileNamePos, (i - 1 - fileNamePos));
+			return (filename);
+		}
+		if (i == value.size() - 1 && fileNamePos != i && value[i] == '\"')
+		{
+			filename = value.substr(fileNamePos, (i - fileNamePos));
+			return (filename);
+		}
+	}
+	throw UploadErrorException();
+}
+
 // read headers
 bool HttpUpload::parsingHeaders(std::string& data)
 {
@@ -74,14 +101,13 @@ bool HttpUpload::parsingHeaders(std::string& data)
 	{
 		size_t posEnd = data.find("\r\n\r\n"); // check if i got the full header
 		if (posEnd == std::string::npos)
-			return isProcessCompleted;
+			break;
 
 		size_t subLen = data.find_first_of("\r\n"); // find the sub data
 		if (subLen == std::string::npos)
 			throw UploadErrorException();
 
 		std::string sub = data.substr(0, subLen); // extract find the sub data
-		std::cout << "sub: " << sub << std::endl;
 		size_t pos = sub.find(':');
 		if (pos == std::string::npos)
 			throw UploadErrorException();
@@ -94,26 +120,7 @@ bool HttpUpload::parsingHeaders(std::string& data)
 
 		if (key == "Content-Disposition") // get file name
 		{
-			size_t fileNamePos = value.find("filename="); // todo: more validation
-			if (fileNamePos == std::string::npos)
-				throw UploadErrorException();
-			fileNamePos += 9;
-			if (value[fileNamePos] != '\"')
-				throw UploadErrorException();
-			fileNamePos++;
-			for (size_t i = fileNamePos; i < value.size(); i++)
-			{
-				if (value[i] == ';' && fileNamePos != i && value[i - 1] == '\"')
-				{
-					_filename = value.substr(fileNamePos, (i - 1 - fileNamePos));
-					break;
-				}
-				if (i == value.size() - 1 && fileNamePos != i && value[i] == '\"')
-				{
-					_filename = value.substr(fileNamePos, (i - fileNamePos));
-					break;
-				}
-			}
+			_filename = extractFilename(value);
 		}
 
 		data = data.substr(subLen + 2);
@@ -137,17 +144,14 @@ void HttpUpload::openFile()
 
 body_state HttpUpload::saveData(std::string& data)
 {
-	static std::string buffer;
 	size_t pos = 0;
 	size_t i = 0;
 
-	buffer.append(data, 0, data.size());
-	data = buffer;
 	while (i < data.size())
 	{
 		while (i + pos < data.size() && data[i + pos] == _rawBoundary[pos])
 			pos++;
-		if (pos == _rawBoundary.size())
+		if (pos == _rawBoundary.size()) // boundery found
 		{
 			if (i != 0)
 			{
@@ -161,19 +165,15 @@ body_state HttpUpload::saveData(std::string& data)
 			else if (i + pos + 1 < data.size() && data[i + pos] == '\r' && data[i + pos + 1] == '\n') // check if normal boundery
 			{
 				data = data.substr(i + _rawBoundary.size() + 2);
-				buffer.erase();
 				_file.close();
-				std::cout << "check data find: " << data << std::endl;
 				return (body_state::parsing_headers);
 			}
 		}
-		if (i + pos == data.size())
+		if (i + pos == data.size()) // possible bondery found, but it is on the end, so wie habe to revice more data
 		{
-			buffer = data.substr(i);
-			data = data.substr(0, i);
-			std::cout << "check buffer: " << buffer << std::endl;
-			std::cout << "check data: " << data << std::endl;
-			break;
+			_file << data.substr(0, i);
+			data = data.substr(i);
+			return (body_state::save_data);
 		}
 		pos = 0;
 		i++;
@@ -190,12 +190,12 @@ body_state HttpUpload::saveData(std::string& data)
 */
 bool HttpUpload::uploadBody(std::string& data)
 {
-	std::cout << data << std::endl;
+	//std::cout << "data:" << data << "|--|" << std::endl;
 	_bytesRead += data.size();
 	if (_bytesRead > _contentLength)
 		throw UploadErrorException();
 	_buffer.append(data, 0, data.size());
-
+	data.erase();
 	while (_state != body_state::done)
 	{
 		if (_state == body_state::parsing_boundary)
