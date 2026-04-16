@@ -32,6 +32,8 @@ private:
 
 	/* Member Functions */
 	std::string extractBoundary(std::string value);
+	std::string extractFilename(std::string& value);
+	void writeToFile(std::string& data);
 	bool parsingBoundary(std::string& line);
 	bool parsingHeaders(std::string& line);
 	void openFile();

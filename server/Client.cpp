@@ -38,12 +38,12 @@ Client::~Client()
 
 void Client::recvMsg()
 {
-	char buffer[120] = {};
+	char buffer[1024] = {};
 	int ret;
 
-	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
+	ret = recv(_clientFd, buffer, sizeof(buffer), 0);
 	if (ret < 1)
-		throw std::runtime_error("Client connection interrupted");
+		throw std::runtime_error("Client connection interrupted or client cosed the connection");
 	_msg.append(buffer, ret);
 }
 
@@ -66,6 +66,7 @@ uint32_t Client::recvData()
 			if (line.empty())
 			{
 				_parsingState = state::parsing_done;
+				_msg.erase(0, pos + 2);
 				break;
 			}
 			_parsedHttp.parseHeaders(line);
@@ -73,7 +74,10 @@ uint32_t Client::recvData()
 		_msg.erase(0, pos + 2);
 	}
 	if (_parsingState == state::parsing_done)
+	{
+		Logger::log<LogLevel::trace>("Client::recvData() ", _parsedHttp);
 		sendData();
+	}
 	return (EPOLLIN);
 }
 
@@ -122,13 +126,19 @@ uint32_t Client::handleConnection(uint32_t event)
 	{
 		if (event & EPOLLIN)
 		{
-			recvMsg();
 			// I need to check if a pipe is processing
-			if (_parsingState != state::response_proccessing &&
-				_parsingState != state::response_body)
-				return (recvData());
-			else
+			if (_parsingState == state::response_proccessing)
 				return (sendData());
+			else if (_parsingState == state::response_body)
+			{
+				recvMsg();
+				return (sendData());
+			}
+			else
+			{
+				recvMsg();
+				return (recvData());
+			}
 		}
 		if (event & EPOLLPRI)
 			throw "Unexpectet call"; //todo
