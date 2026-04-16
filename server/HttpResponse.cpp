@@ -227,14 +227,14 @@ bool	HttpResponse::parse_cgi_headers(void)
 
 state HttpResponse::handle_cgi_proc()
 {
-	cgi_state CGI_state = _cgi->handle_cgi_proc();
-	if (CGI_state == cgi_state::FINISHED_KO)
+	auto CGI_state = _cgi->handle_cgi_proc();
+	if (CGI_state.first == cgi_state::FINISHED_KO)
 	{
-		generate_error_page(500);
+		generate_error_page(CGI_state.second);
 		set_default_headers();
 		return state::response_sending;
 	}
-	if (CGI_state == cgi_state::FINISHED_OK)
+	if (CGI_state.first == cgi_state::FINISHED_OK)
 	{
 		_body = _cgi->get_body();
 		_body_size = _body.size();

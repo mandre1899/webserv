@@ -1,6 +1,8 @@
 #include "CGI.hpp"
 
-CGI::CGI(HttpParser &request, std::string cgi_exec_path, const std::string &abs_path, int epfd, int socket_fd) : _request(request), _exec_path(cgi_exec_path), _abs_path(abs_path), _epfd(epfd), _socket_fd(socket_fd)
+CGI::CGI(HttpParser &request, std::string cgi_exec_path, const std::string &abs_path, int epfd, int socket_fd)
+	: _request(request), _exec_path(cgi_exec_path), _abs_path(abs_path), _cgi_pid(-1), _pipe_read(-1), _epfd(epfd), \
+	_socket_fd(socket_fd), _body_size(0)
 {}
 
 CGI::~CGI()
@@ -55,7 +57,7 @@ bool	CGI::parse_cgi_headers(void)
 	return true;
 }
 
-cgi_state	CGI::handle_cgi_proc()
+std::pair<cgi_state, int>	CGI::handle_cgi_proc()
 {
 	char buf[4096];
 	while (true)
@@ -79,7 +81,7 @@ cgi_state	CGI::handle_cgi_proc()
 			{
 				Logger::log<LogLevel::error>("waitpid failed for CGI child");
 				_cgi_pid = -1;
-				return cgi_state::FINISHED_KO;
+				return std::make_pair(cgi_state::FINISHED_KO, 500);
 			}
 			if (ret > 0)
 			{
@@ -87,20 +89,23 @@ cgi_state	CGI::handle_cgi_proc()
 				if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 				{
 					if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
-						return cgi_state::FINISHED_OK;
-					return cgi_state::FINISHED_OK;
+					{
+						Logger::log<LogLevel::error>("CGI script didn't produced HTTP header");
+						return std::make_pair(cgi_state::FINISHED_KO, 500);
+					}
+					return std::make_pair(cgi_state::FINISHED_OK, 200);
 				}
 				Logger::log<LogLevel::error>("CGI exited with status: ", WEXITSTATUS(status));
-				return cgi_state::FINISHED_KO;
+				return std::make_pair(cgi_state::FINISHED_KO, 500);
 			}
-			return cgi_state::FINISHED_KO;
+			return std::make_pair(cgi_state::FINISHED_KO, 500);
 		}
 		Logger::log<LogLevel::error>("Read failed status: ", errno);
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 		close(_pipe_read);
 		_pipe_read = -1;
 		_cgi_pid = -1;
-		return cgi_state::FINISHED_KO;
+		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}
 }
 

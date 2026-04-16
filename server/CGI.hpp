@@ -39,9 +39,9 @@ class CGI
 		~CGI(void);
 		CGI(CGI &obj) = delete;
 		CGI	operator=(CGI &obj) = delete;
-		bool			parse_cgi_headers(void);
-		cgi_state   	execute_cgi_proc();
-		cgi_state		handle_cgi_proc();
+		bool						parse_cgi_headers(void);
+		cgi_state   				execute_cgi_proc();
+		std::pair<cgi_state, int>	handle_cgi_proc();
 
 		//GETTERS
 		std::string										get_body(void);
