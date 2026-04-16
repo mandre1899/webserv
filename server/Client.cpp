@@ -38,12 +38,12 @@ Client::~Client()
 
 void Client::recvMsg()
 {
-	char buffer[120] = {};
+	char buffer[1024] = {};
 	int ret;
 
-	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
+	ret = recv(_clientFd, buffer, sizeof(buffer), 0);
 	if (ret < 1)
-		throw std::runtime_error("Client connection interrupted");
+		throw std::runtime_error("Client connection interrupted or client cosed the connection");
 	_msg.append(buffer, ret);
 }
 

@@ -4,10 +4,10 @@
 HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::string filePath) : _headers(headers)
 {
 	_state = body_state::parsing_boundary;;
-	_filePath = filePath + "/"; // todo: is this necessary?
+	_filePath = filePath + "/";
 
 	auto search = _headers.find("Content-Length");
-	if ((search == _headers.end())) // todo:  Ab HTTP/1.1 -> _headers_map.find("Transfer-Encoding") != _headers_map.end()
+	if ((search == _headers.end())) // todo: From HTTP/1.1 onward -> _headers_map.find("Transfer-Encoding") != _headers_map.end()
 		throw UploadErrorException();
 	is_number(search->second);
 	_contentLength = std::stoul(search->second);
@@ -17,7 +17,7 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 		throw UploadErrorException();
 	_rawBoundary = extractBoundary(boundary_header->second);
 	_boundary = _rawBoundary + "\r\n";
-	_boundaryClosig = _rawBoundary + "--\r\n";
+	_boundaryClosig = "\r\n" + _rawBoundary;
 }
 
 HttpUpload::HttpUpload(void)
@@ -47,28 +47,10 @@ std::string HttpUpload::extractBoundary(std::string value)
 	return ("--" + boundary);
 }
 
-// read body boundery
-bool  HttpUpload::parsingBoundary(std::string& data)
-{
-	size_t pos = data.find(_boundary);
-
-	if (pos == 0)
-	{
-		if (_boundary.size() == data.size())
-			data.erase();
-		else
-			data = data.substr(_boundary.size());
-		return (true);
-	}
-	if (data.size() > _boundary.size())
-		throw UploadErrorException();
-	return (false);
-}
-
 std::string HttpUpload::extractFilename(std::string& value)
 {
 	std::string filename;
-	size_t fileNamePos = value.find("filename="); // todo: more validation
+	size_t fileNamePos = value.find("filename=");
 
 	if (fileNamePos == std::string::npos)
 		throw UploadErrorException();
@@ -92,6 +74,30 @@ std::string HttpUpload::extractFilename(std::string& value)
 	throw UploadErrorException();
 }
 
+void HttpUpload::writeToFile(std::string& data)
+{
+
+}
+
+// read body boundery
+bool  HttpUpload::parsingBoundary(std::string& data)
+{
+	size_t pos = data.find(_boundary);
+
+	if (pos == 0)
+	{
+		if (_boundary.size() == data.size())
+			data.erase();
+		else
+			data = data.substr(_boundary.size());
+		return (true);
+	}
+	if (data.size() > _boundary.size())
+		throw UploadErrorException();
+	return (false);
+}
+
+
 // read headers
 bool HttpUpload::parsingHeaders(std::string& data)
 {
@@ -99,32 +105,32 @@ bool HttpUpload::parsingHeaders(std::string& data)
 
 	while (true)
 	{
-		size_t posEnd = data.find("\r\n\r\n"); // check if i got the full header
+		size_t posEnd = data.find("\r\n\r\n");  // check if i got the full header
 		if (posEnd == std::string::npos)
 			break;
 
-		size_t subLen = data.find_first_of("\r\n"); // find the sub data
-		if (subLen == std::string::npos)
+		size_t lineLength = data.find_first_of("\r\n"); // find the end of the line 
+		if (lineLength == std::string::npos)
 			throw UploadErrorException();
 
-		std::string sub = data.substr(0, subLen); // extract find the sub data
-		size_t pos = sub.find(':');
+		std::string line = data.substr(0, lineLength); // extract the line
+		size_t pos = line.find(':');
 		if (pos == std::string::npos)
 			throw UploadErrorException();
 
-		std::string key = sub.substr(0, pos); // extract the key
+		std::string key = line.substr(0, pos); // extract the key
 		if (key.empty())
 			throw UploadErrorException();
 
-		std::string value = sub.substr(pos + 1);
+		std::string value = line.substr(pos + 1); // extract the value
 
-		if (key == "Content-Disposition") // get file name
+		if (key == "Content-Disposition") // extract the filename
 		{
 			_filename = extractFilename(value);
 		}
 
-		data = data.substr(subLen + 2);
-		if (posEnd == subLen)
+		data = data.substr(lineLength + 2);
+		if (posEnd == lineLength)
 		{
 			data = data.substr(2);
 			isProcessCompleted = true;
@@ -138,7 +144,12 @@ void HttpUpload::openFile()
 {
 	if (_filename.empty())
 		throw UploadErrorException();
-	std::cout << _filePath + _filename << " <- file path + file name" << std::endl; //todo: remove
+	for (size_t i = 0; i < _filename.size(); i++)
+	{
+		if (_filename[i] == '/')
+			throw UploadErrorException();
+	}
+	Logger::log<LogLevel::trace>("HttpUpload::openFile() - Upload file: ", _filePath + _filename);
 	_file = std::ofstream(_filePath + _filename);
 }
 
@@ -149,29 +160,34 @@ body_state HttpUpload::saveData(std::string& data)
 
 	while (i < data.size())
 	{
-		while (i + pos < data.size() && data[i + pos] == _rawBoundary[pos])
+		while (i + pos < data.size() && data[i + pos] == _boundaryClosig[pos])
 			pos++;
-		if (pos == _rawBoundary.size()) // boundery found
+		if (pos == _boundaryClosig.size()) // boundary found
 		{
 			if (i != 0)
 			{
 				_file << data.substr(0, i);
 			}
-			if (i + pos + 3 < data.size() && data[i + pos] == '-' && data[i + pos + 1] == '-') // add check for \r\n check if closing boundery
+			std::string tmp = data.substr(i + pos);
+			if (tmp.find("\r\n") == 0) // check if the normal boundary (\r\n); if so, process the next file
+			{
+				data = data.substr(i + pos + 2);
+				_file.close();
+				return (body_state::parsing_headers);
+			}
+			if (tmp.find("--\r\n") == 0) // check if closing boundary (--\r\n)
 			{
 				_file.close();
 				return (body_state::done);
 			}
-			else if (i + pos + 1 < data.size() && data[i + pos] == '\r' && data[i + pos + 1] == '\n') // check if normal boundery
+			else
 			{
-				data = data.substr(i + _rawBoundary.size() + 2);
-				_file.close();
-				return (body_state::parsing_headers);
+				return (body_state::save_data);
 			}
 		}
-		if (i + pos == data.size()) // possible bondery found, but it is on the end, so wie habe to revice more data
+		if (i + pos == data.size()) // possible boundary found, but it's at the end of the data string, so we have to receive more data
 		{
-			_file << data.substr(0, i);
+			_file << data.substr(0, i); //todo: error if out of space
 			data = data.substr(i);
 			return (body_state::save_data);
 		}
@@ -190,7 +206,6 @@ body_state HttpUpload::saveData(std::string& data)
 */
 bool HttpUpload::uploadBody(std::string& data)
 {
-	//std::cout << "data:" << data << "|--|" << std::endl;
 	_bytesRead += data.size();
 	if (_bytesRead > _contentLength)
 		throw UploadErrorException();
