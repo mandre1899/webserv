@@ -36,16 +36,21 @@ Client::~Client()
 		close(_clientFd);
 }
 
-/* Member Functions */
-uint32_t Client::recvData()
+void Client::recvMsg()
 {
 	char buffer[120] = {};
 	int ret;
 
 	ret = recv(_clientFd, buffer, sizeof(buffer) - 1, 0);
 	if (ret < 1)
-		return (EPOLLHUP); // evt. throw exception
+		throw std::runtime_error("Client connection interrupted");
 	_msg.append(buffer, ret);
+}
+
+/* Member Functions */
+uint32_t Client::recvData()
+{
+	recvMsg();
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
@@ -69,9 +74,7 @@ uint32_t Client::recvData()
 		_msg.erase(0, pos + 2);
 	}
 	if (_parsingState == state::parsing_done)
-		return (EPOLLOUT);
-	if (ret == 0)
-		return (EPOLLHUP);
+		sendData();
 	return (EPOLLIN);
 }
 
@@ -82,7 +85,11 @@ uint32_t Client::sendData()
 		_parsingState = _response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
 	else if (_parsingState == state::response_proccessing)
 		_parsingState = _response.handle_cgi_proc();
-	//else if (_parsingState == state::response_proccessing)
+	else if (_parsingState == state::response_proccessing)
+	{
+		recvMsg();
+		_parsingState = _response.upload_body(_msg);
+	}
 	if (_parsingState == state::response_proccessing)
 		return (EPOLLIN);
 	if (_parsingState != state::response_sending)
@@ -94,7 +101,7 @@ uint32_t Client::sendData()
 		if (ret > 0)
 		{
 			_sendedBytes += ret;
-			continue ;
+			continue;
 		}
 		if (ret == 0)
 			return (EPOLLHUP);
@@ -109,27 +116,35 @@ uint32_t Client::sendData()
 
 uint32_t Client::handleConnection(uint32_t event)
 {
-	if (event & EPOLLIN)
+	try
 	{
-		// I need to check if a pipe is processing
-		if (_parsingState != state::response_proccessing &&
+		if (event & EPOLLIN)
+		{
+			// I need to check if a pipe is processing
+			if (_parsingState != state::response_proccessing &&
 				_parsingState != state::response_body)
-			return (recvData());
-		else
+				return (recvData());
+			else
+				return (sendData());
+		}
+		if (event & EPOLLPRI)
+			throw "Unexpectet call"; //todo
+		if (event & EPOLLOUT)
 			return (sendData());
-	}
-	if (event & EPOLLPRI)
-		throw "Unexpectet call"; //todo
-	if (event & EPOLLOUT)
-		return (sendData());
-	if (event & EPOLLRDHUP)
-		throw "Unexpectet call";
-	if (event & EPOLLERR)
-		throw "Unexpectet call";
-	if (event & EPOLLHUP)
+		if (event & EPOLLRDHUP)
+			throw "Unexpectet call";
+		if (event & EPOLLERR)
+			throw "Unexpectet call";
+		if (event & EPOLLHUP)
+			return (EPOLLHUP);
+		// todo add all epoll events
 		return (EPOLLHUP);
-	// todo add all epoll events
-	return (EPOLLHUP);
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+		return (EPOLLHUP);
+	}
 }
 
 /* Basic Operators */

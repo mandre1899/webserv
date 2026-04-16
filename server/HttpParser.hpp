@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/14 12:44:26 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/16 09:06:33 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include <map>
 #include <iostream>
 #include <fstream>
+#include "utils/helper.hpp"
 #include "utils/Logger.hpp"
 
 enum class method_type

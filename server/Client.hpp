@@ -28,6 +28,7 @@ private:
 	HttpResponse	_response;
 
 	/* Member Functions */
+	void recvMsg();
 	uint32_t recvData();
 	uint32_t sendData();
 

@@ -367,7 +367,7 @@ void	HttpResponse::evaluate_vHost()
 	if (hostValue.empty())
 	{
 		_config = _configs->vHost[0];
-		return ;
+		return;
 	}
 	//Erase port specifier ":8080"
 	size_t portPrefix = hostValue.find(":");
@@ -513,7 +513,7 @@ struct ResolveResult	HttpResponse::resolve_path(void)
 			else
 				tmp = join_paths(_config.root, uri_path);
 		}
-	
+
 		if (!tmp.empty() && access(tmp.c_str(), R_OK) == 0)
 			return rtn_result(ResolveKind::FILEPATH, 200, tmp);
 		return rtn_result(ResolveKind::FILEPATH, 404, std::string());
@@ -603,11 +603,9 @@ static const std::string resolve_file_suffix(const std::string& abs_path)
 	return abs_path.substr(dotPos);
 }
 
-state	HttpResponse::upload_body(void)
+state	HttpResponse::upload_body(std::string& data)
 {
-	std::string tmp; // Just to make it compile
-	//logic to read file and generate a valid response?!
-	if (!_upload->uploadBody(tmp))
+	if (!_upload->uploadBody(data))
 		return state::response_body;
 	set_status_code(200);
 	return state::response_sending;
@@ -626,7 +624,7 @@ void HttpResponse::generate_error_page(int status_code)
 		if (access(error_page_path.c_str(), R_OK) == 0)
 		{
 			read_file_to_body(error_page_path);
-			return ;
+			return;
 		}
 	}
 	std::map<int, std::string>::const_iterator it = _http_status_map.find(_status_code);
