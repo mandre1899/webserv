@@ -50,7 +50,6 @@ void Client::recvMsg()
 /* Member Functions */
 uint32_t Client::recvData()
 {
-	recvMsg();
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
@@ -85,14 +84,17 @@ uint32_t Client::sendData()
 		_parsingState = _response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
 	else if (_parsingState == state::response_proccessing)
 		_parsingState = _response.handle_cgi_proc();
-	else if (_parsingState == state::response_proccessing)
+	if (_parsingState == state::response_body)
 	{
-		recvMsg();
 		_parsingState = _response.upload_body(_msg);
+		if (_parsingState == state::response_body)
+			return (EPOLLIN);
 	}
 	if (_parsingState == state::response_proccessing)
 		return (EPOLLIN);
 	if (_parsingState != state::response_sending)
+		return (EPOLLHUP);
+	if (_parsingState == state::error)
 		return (EPOLLHUP);
 	std::string msg = _response.get_response_str();
 	while (static_cast<size_t>(_sendedBytes) < msg.size())
@@ -120,6 +122,7 @@ uint32_t Client::handleConnection(uint32_t event)
 	{
 		if (event & EPOLLIN)
 		{
+			recvMsg();
 			// I need to check if a pipe is processing
 			if (_parsingState != state::response_proccessing &&
 				_parsingState != state::response_body)
