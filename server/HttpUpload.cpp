@@ -74,10 +74,10 @@ std::string HttpUpload::extractFilename(std::string& value)
 	throw UploadErrorException();
 }
 
-void HttpUpload::writeToFile(std::string& data)
-{
+// void HttpUpload::writeToFile(std::string& data)
+// {
 
-}
+// }
 
 // read body boundery
 bool  HttpUpload::parsingBoundary(std::string& data)
