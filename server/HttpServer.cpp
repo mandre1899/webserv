@@ -76,14 +76,14 @@ void HttpServer::createSockets(Config& conf)
 void HttpServer::checkClientTimeout()
 {
 	auto now = std::chrono::system_clock::now();
-	while (!_prioQ.empty() && _prioQ.top().timeout > now)
+	while (!_prioQ.empty() && now > _prioQ.top().timeout)
 	{
 		int cFd = _prioQ.top().clientFd;
 		auto it = _map.find(cFd);
 		if (it != _map.end())
 		{
 			Client& c = std::get<Client>(it->second);
-			if (c.getTimeout() > now)
+			if (now > c.getTimeout())
 				removeClient(cFd);
 			else
 				_prioQ.push({ c.getTimeout(), cFd });
@@ -121,7 +121,7 @@ void HttpServer::run()
 				removeClient(events[i].data.fd);
 		}
 	}
-	//checkClientTimeout();
+	checkClientTimeout();
 }
 
 /* Basic Operators */
@@ -129,7 +129,7 @@ void HttpServer::run()
 /* Getters & Setters */
 
 
-bool sessionTime::operator>(const sessionTime& rhs) const
+bool sessionTime::operator<(const sessionTime& rhs) const
 {
-	return (timeout > rhs.timeout);
+	return (timeout < rhs.timeout);
 }

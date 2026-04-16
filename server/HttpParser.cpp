@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/16 09:08:21 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/16 16:19:28 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,6 @@ HttpParser::HttpParser(HttpParser&& src)
 	: _method(src._method), _request_URI(std::move(src._request_URI)), \
 	_http_version(std::move(src._http_version)), _headers_map(std::move(src._headers_map))
 {
-	// TODO body information
 }
 
 HttpParser::~HttpParser()
