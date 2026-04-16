@@ -1,6 +1,6 @@
 #include "CGI.hpp"
 
-CGI::CGI(HttpParser request, std::string abs_path, int epfd) : _request(request), _abs_path(abs_path), _epfd(epfd)
+CGI::CGI(HttpParser &request, std::string cgi_exec_path, const std::string &abs_path, int epfd, int socket_fd) : _request(request), _exec_path(cgi_exec_path), _abs_path(abs_path), _epfd(epfd), _socket_fd(socket_fd)
 {}
 
 CGI::~CGI()
@@ -47,7 +47,7 @@ bool	CGI::parse_cgi_headers(void)
 		std::string key = line.substr(0, sep);
 		std::string value = line.substr(sep + 1);
 
-		//_headers[key] = value;
+		_cgi_header[key] = value;
 	}
 
 	_body = parsed_body;
@@ -55,7 +55,7 @@ bool	CGI::parse_cgi_headers(void)
 	return true;
 }
 
-state CGI::handle_cgi_proc()
+cgi_state	CGI::handle_cgi_proc()
 {
 	char buf[4096];
 	while (true)
@@ -79,10 +79,7 @@ state CGI::handle_cgi_proc()
 			{
 				Logger::log<LogLevel::error>("waitpid failed for CGI child");
 				_cgi_pid = -1;
-				//TODO: somehow generate error page 500
-				//generate_error_page(500);
-				//set_default_headers();
-				return state::response_sending;
+				return cgi_state::FINISHED_KO;
 			}
 			if (ret > 0)
 			{
@@ -91,33 +88,20 @@ state CGI::handle_cgi_proc()
 				if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 				{
 					if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
-					{
-						//TODO: somehow generate error page 500
-						//generate_error_page(500);
-						return state::response_sending;
-					}
-					//TODO: somehow generate error page 500
-					//set_default_headers();
-					return state::response_sending;
+						return cgi_state::FINISHED_OK;
+					return cgi_state::FINISHED_OK;
 				}
 				Logger::log<LogLevel::error>("CGI exited with status: ", WEXITSTATUS(status));
-				//TODO: somehow generate error page 500
-				//generate_error_page(500);
-				//set_default_headers();
-				return state::response_sending;
+				return cgi_state::FINISHED_KO;
 			}
-			//TODO: somehow generate error page 500
-			//set_default_headers();
-			return state::response_sending;
+			return cgi_state::FINISHED_KO;
 		}
 		Logger::log<LogLevel::error>("Read failed status: ", errno);
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 		close(_pipe_read);
 		_pipe_read = -1;
 		_cgi_pid = -1;
-		generate_error_page(500);
-		set_default_headers();
-		return state::response_sending;
+		return cgi_state::FINISHED_KO;
 	}
 }
 
@@ -130,11 +114,11 @@ static std::vector<std::string> parse_header_to_env(const std::map<std::string, 
 	return env;
 }
 
-bool	CGI::execute_cgi_proc(const std::string& abs_path)
+cgi_state	CGI::execute_cgi_proc()
 {
-	const std::string execLocPath = _curr_loc.cgiPath;
+	const std::string execLocPath = _exec_path;
 	char* execPath = NULL;
-	char* scriptPath = const_cast<char*>(abs_path.c_str());
+	char* scriptPath = const_cast<char*>(_abs_path.c_str());
 	int p[2];
 
 	//set_status_code(200);
@@ -142,7 +126,7 @@ bool	CGI::execute_cgi_proc(const std::string& abs_path)
 	if (pipe(p) == -1)
 	{
 		Logger::log<LogLevel::error>("Pipe creation failed");
-		return false;
+		return cgi_state::FAILED;
 	}
 	int pid = fork();
 	if (pid < 0)
@@ -150,17 +134,17 @@ bool	CGI::execute_cgi_proc(const std::string& abs_path)
 		Logger::log<LogLevel::error>("fork() failed");
 		close(p[0]);
 		close(p[1]);
-		return false;
+		return cgi_state::FAILED;
 	}
 	if (pid == 0)
 	{
 		char* const argv[] = { execPath, scriptPath, NULL };
-		std::vector<std::string> env_storage = parse_header_to_env(_request->getHeadersMap());
+		std::vector<std::string> env_storage = parse_header_to_env(_request.getHeadersMap());
 		std::vector<char*> env;
-		env_storage.push_back("REQUEST_METHOD=" + _request->getMethodAsString());
-		env_storage.push_back("REQUEST_URI=" + _request->getRequestUri());
+		env_storage.push_back("REQUEST_METHOD=" + _request.getMethodAsString());
+		env_storage.push_back("REQUEST_URI=" + _request.getRequestUri());
 		env_storage.push_back("REDIRECT_STATUS=200");
-		env_storage.push_back("SCRIPT_FILENAME=" + abs_path); // Important for php-cgi!!!
+		env_storage.push_back("SCRIPT_FILENAME=" + _abs_path); // Important for php-cgi!!!
 		env.reserve(env_storage.size() + 1);
 		for (std::string& entry : env_storage)
 			env.push_back(const_cast<char*>(entry.c_str()));
@@ -183,9 +167,20 @@ bool	CGI::execute_cgi_proc(const std::string& abs_path)
 	{
 		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
 		close(p[0]);
-		return false;
+		return cgi_state::FAILED;
 	}
 	_cgi_pid = pid;
 	_pipe_read = p[0];
-	return true;
+	return cgi_state::RUNNING;
 }
+
+std::string	CGI::get_body(void)
+{
+	return _body;	
+}
+
+std::unordered_map<std::string, std::string>	CGI::get_header_map(void)
+{
+	return _cgi_header;
+}
+
