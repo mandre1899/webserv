@@ -17,6 +17,7 @@
 #include "HttpUpload.hpp"
 #include <unistd.h>
 #include <filesystem>
+#include <memory>
 
 extern const char* g_execName;
 

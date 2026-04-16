@@ -830,8 +830,17 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 		}
 		if (res.kind == ResolveKind::POST)
 		{
-			_upload = std::make_unique<HttpUpload>(_headers, _curr_loc.uploadStore);
-			return (state::response_body); //
+			try
+			{
+
+				_upload = std::make_unique<HttpUpload>(_request->getHeadersMap(), _curr_loc.uploadStore);
+				return (state::response_body); //
+			}
+			catch (const std::exception& e)
+			{
+				// todo: Logger 
+				return (state::error);
+			}
 		}
 
 		const std::string& abs_path = res.value;

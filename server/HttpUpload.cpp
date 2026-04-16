@@ -21,7 +21,8 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 }
 
 HttpUpload::HttpUpload(void)
-{}
+{
+}
 
 //HttpUpload::HttpUpload(HttpUpload&& src)
 //{
@@ -136,7 +137,7 @@ void HttpUpload::openFile()
 
 body_state HttpUpload::saveData(std::string& data)
 {
-	std::string buffer;
+	static std::string buffer;
 	size_t pos = 0;
 	size_t i = 0;
 
@@ -187,7 +188,6 @@ body_state HttpUpload::saveData(std::string& data)
 //   -F "file1=@test.txt" \
 //   -F "file2=@b.png"s
 */
-
 bool HttpUpload::uploadBody(std::string& data)
 {
 	std::cout << data << std::endl;
@@ -236,5 +236,5 @@ bool HttpUpload::uploadBody(std::string& data)
 
 const char* HttpUpload::UploadErrorException::what() const noexcept
 {
-	return ("Http parsing error\n");
+	return ("Http upload error\n");
 }
