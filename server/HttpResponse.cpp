@@ -237,7 +237,9 @@ state HttpResponse::handle_cgi_proc()
 	if (CGI_state == cgi_state::FINISHED_OK)
 	{
 		_body = _cgi->get_body();
-		_headers.insert(_headers.end(), _cgi->get_header_map().begin());
+		_body_size = _body.size();
+	 	_headers = _cgi->get_header_map();
+		set_default_headers();
 		return state::response_sending;
 	}
 	return state::response_proccessing;

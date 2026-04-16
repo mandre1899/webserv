@@ -84,7 +84,6 @@ cgi_state	CGI::handle_cgi_proc()
 			if (ret > 0)
 			{
 				_cgi_pid = -1;
-
 				if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 				{
 					if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
