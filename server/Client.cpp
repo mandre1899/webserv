@@ -50,9 +50,11 @@ void Client::recvMsg()
 /* Member Functions */
 uint32_t Client::recvData()
 {
+	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
+		_headerBytes = pos + 2;
 		if (pos == std::string::npos)
 			break;
 		std::string line = _msg.substr(0, pos);
@@ -72,6 +74,8 @@ uint32_t Client::recvData()
 			_parsedHttp.parseHeaders(line);
 		}
 		_msg.erase(0, pos + 2);
+		if (_headerBytes > _srvCfg.vHost[0].clientHeaderBufferSize && _srvCfg.vHost[0].clientHeaderBufferSize != 0)
+			throw std::runtime_error("clientHeaderBufferSize limit reached");
 	}
 	if (_parsingState == state::parsing_done)
 	{
@@ -90,7 +94,7 @@ uint32_t Client::sendData()
 		_parsingState = _response.handle_cgi_proc();
 	if (_parsingState == state::response_body)
 	{
-		_parsingState = _response.upload_body(_msg);
+		_parsingState = _response.upload_body(_msg); // todo: body timeout  + client_max_body_size -> set to 0 = disabled
 		if (_parsingState == state::response_body)
 			return (EPOLLIN);
 	}
@@ -140,22 +144,20 @@ uint32_t Client::handleConnection(uint32_t event)
 				return (recvData());
 			}
 		}
-		if (event & EPOLLPRI)
-			throw "Unexpectet call"; //todo
 		if (event & EPOLLOUT)
 			return (sendData());
-		if (event & EPOLLRDHUP)
-			throw "Unexpectet call";
-		if (event & EPOLLERR)
-			throw "Unexpectet call";
 		if (event & EPOLLHUP)
 			return (EPOLLHUP);
-		// todo add all epoll events
+		// if (event & EPOLLPRI)
+		// 	throw "Unexpectet call"; // todo add all epoll events
+		// if (event & EPOLLRDHUP)
+		// 	throw "Unexpectet call";
+		// if (event & EPOLLERR)
+		// 	throw "Unexpectet call";
 		return (EPOLLHUP);
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << e.what() << '\n';
 		return (EPOLLHUP);
 	}
 }

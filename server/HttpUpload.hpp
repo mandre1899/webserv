@@ -29,11 +29,10 @@ private:
 	std::string _filename;
 	std::ofstream _file;
 
-
 	/* Member Functions */
 	std::string extractBoundary(std::string value);
 	std::string extractFilename(std::string& value);
-	void writeToFile(std::string& data);
+	void writeToFile(std::string data);
 	bool parsingBoundary(std::string& line);
 	bool parsingHeaders(std::string& line);
 	void openFile();
@@ -44,7 +43,7 @@ public:
 	HttpUpload(void);
 	HttpUpload(const std::map<std::string, std::string> headers, std::string filePath);
 	HttpUpload(const HttpUpload& src) = delete;
-	//HttpUpload(HttpUpload&& src);
+	HttpUpload(HttpUpload&& src) = delete;
 	~HttpUpload();
 
 	/* Member Functions */

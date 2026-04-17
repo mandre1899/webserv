@@ -1,6 +1,10 @@
 #include "HttpUpload.hpp"
 
 /* Constructors & Destructors */
+HttpUpload::HttpUpload(void)
+{
+}
+
 HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::string filePath) : _headers(headers)
 {
 	_state = body_state::parsing_boundary;;
@@ -19,15 +23,6 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 	_boundary = _rawBoundary + "\r\n";
 	_boundaryClosig = "\r\n" + _rawBoundary;
 }
-
-HttpUpload::HttpUpload(void)
-{
-}
-
-//HttpUpload::HttpUpload(HttpUpload&& src)
-//{
-//
-//}
 
 HttpUpload::~HttpUpload()
 {
@@ -74,10 +69,14 @@ std::string HttpUpload::extractFilename(std::string& value)
 	throw UploadErrorException();
 }
 
-// void HttpUpload::writeToFile(std::string& data)
-// {
-
-// }
+void HttpUpload::writeToFile(std::string data)
+{
+	_file << data;
+	if (_file.fail())
+	{
+		throw std::runtime_error("Error occurred with the disk file; check that you have enough space left on the device.");
+	}
+}
 
 // read body boundery
 bool  HttpUpload::parsingBoundary(std::string& data)
@@ -96,7 +95,6 @@ bool  HttpUpload::parsingBoundary(std::string& data)
 		throw UploadErrorException();
 	return (false);
 }
-
 
 // read headers
 bool HttpUpload::parsingHeaders(std::string& data)
@@ -166,7 +164,7 @@ body_state HttpUpload::saveData(std::string& data)
 		{
 			if (i != 0)
 			{
-				_file << data.substr(0, i);
+				writeToFile(data.substr(0, i));
 			}
 			std::string tmp = data.substr(i + pos);
 			if (tmp.find("\r\n") == 0) // check if the normal boundary (\r\n); if so, process the next file
@@ -187,14 +185,14 @@ body_state HttpUpload::saveData(std::string& data)
 		}
 		if (i + pos == data.size()) // possible boundary found, but it's at the end of the data string, so we have to receive more data
 		{
-			_file << data.substr(0, i); //todo: error if out of space
+			writeToFile(data.substr(0, i));
 			data = data.substr(i);
 			return (body_state::save_data);
 		}
 		pos = 0;
 		i++;
 	}
-	_file << data;
+	writeToFile(data);
 	data.erase();
 	return (body_state::save_data);
 }
