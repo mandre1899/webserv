@@ -107,19 +107,14 @@ uint32_t Client::sendData()
 	std::string msg = _response.get_response_str();
 	while (static_cast<size_t>(_sendedBytes) < msg.size())
 	{
-		ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, MSG_DONTWAIT);
+		ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
 		if (ret > 0)
 		{
 			_sendedBytes += ret;
-			continue;
-		}
-		if (ret == 0)
-			return (EPOLLHUP);
-		if (errno == EWOULDBLOCK || errno == EAGAIN)
 			return (EPOLLOUT);
-		if (msg.size() == static_cast<size_t>(_sendedBytes))
+		}
+		if (ret < 1)
 			return (EPOLLHUP);
-		return (EPOLLOUT);
 	}
 	return (EPOLLHUP);
 }
