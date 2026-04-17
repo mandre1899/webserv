@@ -23,7 +23,7 @@ private:
 	std::string _msg;
 	HttpParser _parsedHttp;
 	size_t	_headerBytes = {};
-	ssize_t	_sendedBytes = {};
+	size_t	_sendedBytes = {};
 	state _parsingState;
 	const cfg::srvCfg& _srvCfg;
 	HttpResponse	_response;

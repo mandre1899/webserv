@@ -80,7 +80,7 @@ uint32_t Client::recvData()
 	if (_parsingState == state::parsing_done)
 	{
 		Logger::log<LogLevel::trace>("Client::recvData() ", _parsedHttp);
-		sendData();
+		return (sendData());
 	}
 	return (EPOLLIN);
 }
@@ -105,16 +105,13 @@ uint32_t Client::sendData()
 	if (_parsingState == state::error)
 		return (EPOLLHUP);
 	std::string msg = _response.get_response_str();
-	while (static_cast<size_t>(_sendedBytes) < msg.size())
+	ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
+	if (ret > 0)
 	{
-		ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
-		if (ret > 0)
-		{
-			_sendedBytes += ret;
-			return (EPOLLOUT);
-		}
-		if (ret < 1)
+		_sendedBytes += ret;
+		if (_sendedBytes >= msg.size())
 			return (EPOLLHUP);
+		return (EPOLLOUT);
 	}
 	return (EPOLLHUP);
 }

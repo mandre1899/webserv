@@ -55,7 +55,19 @@ public:
 
 	/* Getters & Setters */
 
-	class UploadErrorException : public std::exception {
+	class BadRequestException : public std::exception {
+	public:
+		const char* what() const noexcept override;
+	};
+	class MissingLengthException : public std::exception {
+	public:
+		const char* what() const noexcept override;
+	};
+	class BodyTooLargeException : public std::exception {
+	public:
+		const char* what() const noexcept override;
+	};
+	class InternelErrorException : public std::exception {
 	public:
 		const char* what() const noexcept override;
 	};

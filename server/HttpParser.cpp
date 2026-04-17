@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/16 16:53:44 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/17 14:08:27 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -140,7 +140,6 @@ HttpParser& HttpParser::operator=(const HttpParser& src)
 		this->_request_URI = src._request_URI;
 		this->_http_version = src._http_version;
 		this->_headers_map = src._headers_map;
-		// TODO body information
 	}
 	return *this;
 }
