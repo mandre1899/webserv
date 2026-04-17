@@ -194,6 +194,12 @@ state HttpResponse::handle_cgi_proc()
 		_body = _cgi->get_body();
 		_body_size = _cgi->get_body_size();
 	 	_headers = _cgi->get_header_map();
+		auto it = _headers.find("Status");
+		if (it != _headers.end())
+		{
+			set_status_code(std::stoi(it->second));
+			_headers.erase(it);
+		}
 		set_default_headers();
 		return state::response_sending;
 	}
