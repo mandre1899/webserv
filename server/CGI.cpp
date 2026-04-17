@@ -219,6 +219,8 @@ cgi_state	CGI::execute_cgi_proc()
 		close(p[0]);
 		if (dup2(p[1], STDOUT_FILENO) == -1)
 			_exit(1);
+		if (dup2(p[1], STDERR_FILENO) == -1)
+			_exit(1);
 		close(p[1]);
 		execve(execPath, argv, env.data());
 		Logger::log<LogLevel::error>("Execve failed");
