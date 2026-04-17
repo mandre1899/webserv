@@ -689,7 +689,10 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 		set_status_code(res.code); //Safety
 		if (res.kind == ResolveKind::REDIRECT)
 		{
-			_headers["location"] = res.value;
+			if ((res.code % 300) < 10)
+				_headers["location"] = res.value;
+			else
+				generate_error_page(res.code);
 			set_default_headers();
 			return state::response_sending;
 		}
