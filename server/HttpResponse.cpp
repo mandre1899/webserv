@@ -152,7 +152,7 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 	catch (...)
 	{
 		set_status_code(500);
-		// Add logging
+		Logger::log<LogLevel::error>("Failed to read rile to body: ", abs_path);
 		return false;
 	}
 }
@@ -474,8 +474,8 @@ void HttpResponse::generate_error_page(int status_code)
 {
 	std::string status_text = "Unknown Error";
 
-
 	set_status_code(status_code);
+	set_content_type("text/html");
 	std::unordered_map<http_code, std::string>::const_iterator it_err_page = _curr_loc.errorPage.find(status_code);
 	if (it_err_page != _curr_loc.errorPage.end() && !it_err_page->second.empty())
 	{
@@ -483,6 +483,7 @@ void HttpResponse::generate_error_page(int status_code)
 		if (access(error_page_path.c_str(), R_OK) == 0)
 		{
 			read_file_to_body(error_page_path);
+			set_default_headers();
 			return;
 		}
 	}
@@ -625,7 +626,7 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 	return false;
 }
 
-bool	HttpResponse::get_request(const std::string& abs_path)
+state	HttpResponse::get_request(const std::string& abs_path)
 {
 	if (is_directory(abs_path))
 		generate_dir_listing(abs_path, _request->getRequestUri());
@@ -643,22 +644,22 @@ bool	HttpResponse::get_request(const std::string& abs_path)
 			success = execute_cgi_proc(abs_path);
 		else
 		{
-			// Momentarily dead code -> resolve_filetype always returns one of two above types
-			generate_error_page(415);
-			return true;
+			//NO cgi rout given so server can't redirect the request
+			generate_error_page(502);
+			return state::response_sending;
 		}
 
 		if (!success)
 		{
 			generate_error_page(500);
-			return true;
+			return state::response_sending;
 		}
 		set_default_headers();
 		_is_built = true;
 		if (type == DYNAMIC_FILE)
-			return false; //To set state machine flag to proccessing
+			return state::response_proccessing;
 	}
-	return true;
+	return state::response_sending;
 }
 
 // Question: do I handle the file storing or is this part of the parser and I just return matching response
@@ -702,8 +703,8 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 			}
 			catch (const std::exception& e)
 			{
-				// todo: Logger 
-				return (state::error);
+				Logger::log<LogLevel::error>("POST request failed: ", e.what());
+				generate_error_page(500);
 			}
 		}
 
@@ -734,10 +735,7 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 		//else if (method_type::POST == _request.getMethod()) // Return a success message(depending on state)
 		//	post_request(abs_path);
 		else if (method_type::GET == _request->getMethod())
-		{
-			if (!get_request(abs_path))
-				return state::response_proccessing; //CGI is running
-		}
+			return get_request(abs_path);
 	}
 	catch (const std::exception& e)
 	{

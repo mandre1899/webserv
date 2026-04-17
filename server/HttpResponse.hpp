@@ -97,7 +97,7 @@ private:
 
 	//Http methods
 	bool			delete_request(const std::string& abs_path);
-	bool			get_request(const std::string& abs_path);
+	state			get_request(const std::string& abs_path);
 
 	int						get_status_code(void) const;
 	std::string				get_body(void) const;
