@@ -29,7 +29,7 @@ class CGI
 	int												_pipe_read;
 	int												_epfd;
 	int												_socket_fd;
-	int												_body_size;
+	size_t												_body_size;
 	std::string										_body;
 	std::unordered_map<std::string, std::string>	_cgi_header;
 
@@ -39,13 +39,14 @@ class CGI
 		~CGI(void);
 		CGI(CGI &obj) = delete;
 		CGI	operator=(CGI &obj) = delete;
-		bool			parse_cgi_headers(void);
-		cgi_state   	execute_cgi_proc();
-		cgi_state		handle_cgi_proc();
+		bool						parse_cgi_headers(void);
+		cgi_state   				execute_cgi_proc();
+		std::pair<cgi_state, int>	handle_cgi_proc();
 
 		//GETTERS
 		std::string										get_body(void);
 		std::unordered_map<std::string, std::string>	get_header_map(void);
+		size_t											get_body_size(void);
 };
 
 #endif // !CGI_H

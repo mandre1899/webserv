@@ -180,64 +180,19 @@ void HttpResponse::set_status_code(int code) //default wrapper
 	_status_code = code;
 }
 
-bool	HttpResponse::parse_cgi_headers(void)
-{
-	size_t header_end = std::string::npos;
-	size_t delimiter_len = 0;
-
-	//Evaluate differnt header endings
-	header_end = _body.find("\r\n\r\n");
-	if (header_end != std::string::npos)
-		delimiter_len = 4;
-	else
-	{
-		header_end = _body.find("\n\n");
-		if (header_end != std::string::npos)
-			delimiter_len = 2;
-		else
-			return false;
-	}
-	std::cout << "Header end: " << header_end << std::endl;
-	std::string header_block = _body.substr(0, header_end);
-	std::string parsed_body = _body.substr(header_end + delimiter_len);
-	std::istringstream header_stream(header_block);
-	std::string line;
-
-	while (std::getline(header_stream, line))
-	{
-		if (!line.empty() && line[line.size() - 1] == '\r')
-			line.erase(line.size() - 1);
-		if (line.empty())
-			continue;
-
-		size_t sep = line.find(':');
-		if (sep == std::string::npos)
-			return false;
-
-		std::string key = line.substr(0, sep);
-		std::string value = line.substr(sep + 1);
-
-		_headers[key] = value;
-	}
-
-	_body = parsed_body;
-	_body_size = _body.size();
-	return true;
-}
-
 state HttpResponse::handle_cgi_proc()
 {
-	cgi_state CGI_state = _cgi->handle_cgi_proc();
-	if (CGI_state == cgi_state::FINISHED_KO)
+	auto CGI_state = _cgi->handle_cgi_proc();
+	if (CGI_state.first == cgi_state::FINISHED_KO)
 	{
-		generate_error_page(500);
+		generate_error_page(CGI_state.second);
 		set_default_headers();
 		return state::response_sending;
 	}
-	if (CGI_state == cgi_state::FINISHED_OK)
+	if (CGI_state.first == cgi_state::FINISHED_OK)
 	{
 		_body = _cgi->get_body();
-		_body_size = _body.size();
+		_body_size = _cgi->get_body_size();
 	 	_headers = _cgi->get_header_map();
 		set_default_headers();
 		return state::response_sending;
@@ -268,7 +223,13 @@ void	HttpResponse::evaluate_vHost()
 		Logger::log<LogLevel::warn>("Request headers empty");
 		return;
 	}
-	std::string hostValue = headers.find("Host")->second;
+	std::map<std::string, std::string>::const_iterator matchPair;
+	if ((matchPair = headers.find("Host")) == headers.end())
+	{
+		_config = _configs->vHost[0];
+		return;
+	}
+	std::string hostValue = matchPair->second;
 	if (hostValue.empty())
 	{
 		_config = _configs->vHost[0];
@@ -623,7 +584,7 @@ void HttpResponse::generate_dir_listing(const std::string& dir_path, const std::
 		<< "</body>\n"
 		<< "</html>\n";
 
-	_content_type = "text/html";
+	set_content_type("text/html");
 	_body = ss.str();
 	_body_size = _body.size();
 }
@@ -646,6 +607,8 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 		}
 		Logger::log<LogLevel::info>("Deleted dir: ", abs_path);
 		_body = "<html lang=\"en-US\">\n<body>\n<h1>Directory \"" + abstract_filename(abs_path) + "/" + "\" deleted.</h1>\n</body>\n</html>";
+		_body_size = _body.size();
+		set_default_headers();
 		return true;
 
 	}
@@ -653,6 +616,8 @@ bool	HttpResponse::delete_request(const std::string& abs_path)
 	{
 		Logger::log<LogLevel::info>("Deleted file: ", abs_path);
 		_body = "<html lang=\"en-US\">\n<body>\n<h1>File \"" + abstract_filename(abs_path) + "\" deleted.</h1>\n</body>\n</html>";
+		_body_size = _body.size();
+		set_default_headers();
 		return true;
 	}
 	else
@@ -718,6 +683,7 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 		if (res.kind == ResolveKind::REDIRECT)
 		{
 			_headers["location"] = res.value;
+			set_default_headers();
 			return state::response_sending;
 		}
 		if (res.kind == ResolveKind::ERRORSTATUS)
