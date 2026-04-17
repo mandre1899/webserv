@@ -157,18 +157,46 @@ bool HttpResponse::read_file_to_body(const std::string& abs_path)
 	}
 }
 
-bool	HttpResponse::check_path_secure(const std::string& abs_path)
+bool HttpResponse::check_path_secure(const std::string& abs_path)
 {
-	//When config specifies a root location we can't check
-	return true;
-	std::filesystem::path expandedPath = abs_path;
+	const std::string& curr_root = _curr_loc.root;
 
-	expandedPath = expandedPath.lexically_normal();
-	if (expandedPath.string().compare(root_path.length(), _curr_loc_root.length(), _curr_loc_root) == 0 &&
-		((expandedPath.string().length() - root_path.length()) == root_path.length() ||
-			expandedPath.string()[root_path.length()] == '/'))
-		return true; // Path is safe
-	return false;
+	std::cout << std::endl;
+	std::cout << std::endl;
+
+	std::filesystem::path base;
+	if (curr_root[0] == '.')
+	{
+		std::string rel = curr_root.substr(1);
+		while (!rel.empty() && rel[0] == '/')
+			rel.erase(0, 1);
+		base = std::filesystem::path(root_path) / rel;
+	}
+	else
+		base = std::filesystem::path(curr_root);
+	std::error_code ec;
+	base = std::filesystem::weakly_canonical(base, ec);
+	if (ec)
+	{
+		Logger::log<LogLevel::error>("Base Path resolving failed: ", ec);
+		return false;
+	}
+	std::filesystem::path target = std::filesystem::weakly_canonical(abs_path, ec); // resolves sym links and ".."
+	if (ec)
+	{
+		Logger::log<LogLevel::error>("Target Path resolving failed: ", ec);
+		return false;
+	}
+	std::cout << "Base: " << base << std::endl;
+	std::cout << "Target: " << target << std::endl;
+	auto b = base.begin();
+	auto t = target.begin();
+	for (; b != base.end() && t != target.end(); ++b, ++t)
+	{
+		if (*b != *t)
+			return false;
+	}
+	return b == base.end();
 }
 
 void HttpResponse::set_status_code(int code) //default wrapper
