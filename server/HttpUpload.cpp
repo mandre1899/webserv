@@ -12,16 +12,20 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 
 	auto search = _headers.find("Content-Length");
 	if ((search == _headers.end())) // todo: From HTTP/1.1 onward -> _headers_map.find("Transfer-Encoding") != _headers_map.end()
-		throw UploadErrorException();
+		throw MissingLengthException();
 	is_number(search->second);
 	_contentLength = std::stoul(search->second);
 
 	auto boundary_header = _headers.find("Content-Type");
 	if (boundary_header == _headers.end())
-		throw UploadErrorException();
+		throw BadRequestException();
 	_rawBoundary = extractBoundary(boundary_header->second);
 	_boundary = _rawBoundary + "\r\n";
 	_boundaryClosig = "\r\n" + _rawBoundary;
+
+	size_t maxBodySize = 50000; // todo: remove
+	if (_contentLength > maxBodySize)
+		throw BodyTooLargeException();
 }
 
 HttpUpload::~HttpUpload()
@@ -37,7 +41,7 @@ HttpUpload::~HttpUpload()
 std::string HttpUpload::extractBoundary(std::string value)
 {
 	if (value.substr(0, 30).compare("multipart/form-data; boundary=") != 0)
-		throw UploadErrorException();
+		throw BadRequestException();
 	std::string boundary = value.substr(30);
 	return ("--" + boundary);
 }
@@ -48,10 +52,10 @@ std::string HttpUpload::extractFilename(std::string& value)
 	size_t fileNamePos = value.find("filename=");
 
 	if (fileNamePos == std::string::npos)
-		throw UploadErrorException();
+		throw BadRequestException();
 	fileNamePos += 9;
 	if (value[fileNamePos] != '\"')
-		throw UploadErrorException();
+		throw BadRequestException();
 	fileNamePos++;
 	for (size_t i = fileNamePos; i < value.size(); i++)
 	{
@@ -66,7 +70,7 @@ std::string HttpUpload::extractFilename(std::string& value)
 			return (filename);
 		}
 	}
-	throw UploadErrorException();
+	throw BadRequestException();
 }
 
 void HttpUpload::writeToFile(std::string data)
@@ -74,7 +78,7 @@ void HttpUpload::writeToFile(std::string data)
 	_file << data;
 	if (_file.fail())
 	{
-		throw std::runtime_error("Error occurred with the disk file; check that you have enough space left on the device.");
+		throw InternelErrorException();
 	}
 }
 
@@ -92,7 +96,7 @@ bool  HttpUpload::parsingBoundary(std::string& data)
 		return (true);
 	}
 	if (data.size() > _boundary.size())
-		throw UploadErrorException();
+		throw BadRequestException();
 	return (false);
 }
 
@@ -109,16 +113,16 @@ bool HttpUpload::parsingHeaders(std::string& data)
 
 		size_t lineLength = data.find_first_of("\r\n"); // find the end of the line 
 		if (lineLength == std::string::npos)
-			throw UploadErrorException();
+			throw BadRequestException();
 
 		std::string line = data.substr(0, lineLength); // extract the line
 		size_t pos = line.find(':');
 		if (pos == std::string::npos)
-			throw UploadErrorException();
+			throw BadRequestException();
 
 		std::string key = line.substr(0, pos); // extract the key
 		if (key.empty())
-			throw UploadErrorException();
+			throw BadRequestException();
 
 		std::string value = line.substr(pos + 1); // extract the value
 
@@ -141,14 +145,16 @@ bool HttpUpload::parsingHeaders(std::string& data)
 void HttpUpload::openFile()
 {
 	if (_filename.empty())
-		throw UploadErrorException();
+		throw BadRequestException();
 	for (size_t i = 0; i < _filename.size(); i++)
 	{
 		if (_filename[i] == '/')
-			throw UploadErrorException();
+			throw BadRequestException();
 	}
 	Logger::log<LogLevel::trace>("HttpUpload::openFile() - Upload file: ", _filePath + _filename);
 	_file = std::ofstream(_filePath + _filename);
+	if (_file.fail())
+		throw InternelErrorException();
 }
 
 body_state HttpUpload::saveData(std::string& data)
@@ -206,7 +212,7 @@ bool HttpUpload::uploadBody(std::string& data)
 {
 	_bytesRead += data.size();
 	if (_bytesRead > _contentLength)
-		throw UploadErrorException();
+		throw BodyTooLargeException();
 	_buffer.append(data, 0, data.size());
 	data.erase();
 	while (_state != body_state::done)
@@ -238,7 +244,7 @@ bool HttpUpload::uploadBody(std::string& data)
 		}
 	}
 	if (_bytesRead == _contentLength && _state == body_state::done)
-		return true; // need to reset bytes_read? can same client get here a second time?
+		return true; // todo: need to reset bytes_read? can same client get here a second time?
 	return false;
 }
 
@@ -247,7 +253,22 @@ bool HttpUpload::uploadBody(std::string& data)
 /* Getters & Setters */
 
 
-const char* HttpUpload::UploadErrorException::what() const noexcept
+const char* HttpUpload::BadRequestException::what() const noexcept
 {
-	return ("Http upload error\n");
+	return ("Http upload bad request error\n");
+}
+
+const char* HttpUpload::MissingLengthException::what() const noexcept
+{
+	return ("Http upload missing length error\n");
+}
+
+const char* HttpUpload::BodyTooLargeException::what() const noexcept
+{
+	return ("Http upload body too large error\n");
+}
+
+const char* HttpUpload::InternelErrorException::what() const noexcept
+{
+	return ("Http upload internel server error\n");
 }
