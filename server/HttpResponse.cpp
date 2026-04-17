@@ -735,7 +735,7 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 			try
 			{
 
-				_upload = std::make_unique<HttpUpload>(_request->getHeadersMap(), _curr_loc.uploadStore);
+				_upload = std::make_unique<HttpUpload>(_request->getHeadersMap(), _curr_loc.uploadStore, _config.clientMaxBodySize);
 				return (state::response_body); //
 			}
 			catch (const std::exception& e)

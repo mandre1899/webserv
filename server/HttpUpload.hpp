@@ -28,6 +28,7 @@ private:
 	std::string _filePath;
 	std::string _filename;
 	std::ofstream _file;
+	std::size_t   _clientMaxBody;
 
 	/* Member Functions */
 	std::string extractBoundary(std::string value);
@@ -41,7 +42,7 @@ private:
 public:
 	/* Constructors & Destructors */
 	HttpUpload(void);
-	HttpUpload(const std::map<std::string, std::string> headers, std::string filePath);
+	HttpUpload(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody);
 	HttpUpload(const HttpUpload& src) = delete;
 	HttpUpload(HttpUpload&& src) = delete;
 	~HttpUpload();

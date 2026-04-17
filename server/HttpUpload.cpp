@@ -5,7 +5,7 @@ HttpUpload::HttpUpload(void)
 {
 }
 
-HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::string filePath) : _headers(headers)
+HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody) : _headers(headers)
 {
 	_state = body_state::parsing_boundary;;
 	_filePath = filePath + "/";
@@ -22,6 +22,7 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 	_rawBoundary = extractBoundary(boundary_header->second);
 	_boundary = _rawBoundary + "\r\n";
 	_boundaryClosig = "\r\n" + _rawBoundary;
+	_clientMaxBody = clientMaxBody;
 
 	size_t maxBodySize = 50000; // todo: remove
 	if (_contentLength > maxBodySize)
