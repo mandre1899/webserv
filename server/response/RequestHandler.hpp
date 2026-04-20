@@ -4,12 +4,12 @@
 #include <memory>
 #include <exception>
 
-#include "../../config/configTypes.hpp"
+#include "ResponseStructs.hpp"
 #include "../../utils/Logger.hpp"
 #include "../HttpParser.hpp"
 #include "StaticFileService.hpp"
-#include "HttpUpload.hpp"
 #include "../../utils/helper.hpp"
+#include <sys/stat.h>
 
 class RequestHandler
 {
@@ -19,8 +19,8 @@ class RequestHandler
 	const cfg::wsLocationCtx	*_locationConfig;	// them with NULL
 	std::string					_location_uri;		// Uri of the location
 
-	std::unique_ptr<StaticFileService>	_staticFileService;
-	std::unique_ptr<HttpUpload>			_fileUpload;
+	// Result of this class
+	ResourceInspection					_inspection_result;
 
 	// Buissness logic member functions
 	void		resolveVHost(void); // Resolves vHost assigns the _serverConfig
@@ -29,10 +29,11 @@ class RequestHandler
 												// with the allowed methods of the location
 	std::string	pathResolution(void); // Logically resolves the path without checking for 
 									  // ressource availablility
-	void		filesystemInspection(void); // Checks given path for ressource availablility
+	void		filesystemInspection(std::string &abs_path); // Checks given path for ressource availablility
 	public:
 		RequestHandler(const HttpParser &request, cfg::srvCfg &config);
 		~RequestHandler(void);
+		ResourceInspection get_result();
 
 	// Exceptions
 	class MethodNotAllowed : public std::exception {

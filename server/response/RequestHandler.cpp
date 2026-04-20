@@ -1,4 +1,5 @@
 #include "RequestHandler.hpp"
+#include <unistd.h>
 
 RequestHandler::RequestHandler(const HttpParser &request, cfg::srvCfg &config)
 	: _request(request), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
@@ -7,8 +8,8 @@ RequestHandler::RequestHandler(const HttpParser &request, cfg::srvCfg &config)
 		resolveVHost();
 		resolveLocation();
 		methodLocationValidation();
-		pathResolution();
-		filesystemInspection();
+		std::string abs_path = pathResolution();
+		filesystemInspection(abs_path);
 	}
 	catch (RequestHandler::MethodNotAllowed &e)
 	{
@@ -27,6 +28,11 @@ RequestHandler::RequestHandler(const HttpParser &request, cfg::srvCfg &config)
 
 RequestHandler::~RequestHandler(void)
 {}
+
+ResourceInspection RequestHandler::get_result()
+{
+	return _inspection_result;
+}
 
 /*
  * Buissness logic start
@@ -150,6 +156,73 @@ std::string	RequestHandler::pathResolution(void)
 	return join_paths(init_root_path(), uri_path.substr(_location_uri.length()));
 }
 
+void	RequestHandler::filesystemInspection(std::string &abs_path)
+{
+	struct stat file_stat;
+	
+	_inspection_result.abs_path = abs_path;
+	
+	// Check if path exists
+	if (stat(abs_path.c_str(), &file_stat) != 0)
+	{
+		_inspection_result.status = NOT_FOUND;
+		_inspection_result.exists = false;
+		_inspection_result.is_file = false;
+		_inspection_result.is_directory = false;
+		_inspection_result.readable = false;
+		_inspection_result.writable = false;
+		_inspection_result.executable = false;
+		_inspection_result.kind = NONE;
+		return;
+	}
+	
+	_inspection_result.exists = true;
+	
+	// Check permissions
+	_inspection_result.readable = (access(abs_path.c_str(), R_OK) == 0);
+	_inspection_result.writable = (access(abs_path.c_str(), W_OK) == 0);
+	_inspection_result.executable = (access(abs_path.c_str(), X_OK) == 0);
+	
+	// Determine if it's a directory or file
+	if (S_ISDIR(file_stat.st_mode))
+	{
+		_inspection_result.is_directory = true;
+		_inspection_result.is_file = false;
+		_inspection_result.kind = DIRECTORY;
+		
+		if (_locationConfig->autoIndex)
+		{
+			_inspection_result.status = OK;
+		}
+		else
+		{
+			_inspection_result.status = FORBIDDEN;
+		}
+	}
+	else if (S_ISREG(file_stat.st_mode))
+	{
+		_inspection_result.is_file = true;
+		_inspection_result.is_directory = false;
+		_inspection_result.kind = IS_FILE;
+		
+		if (_inspection_result.readable)
+		{
+			_inspection_result.status = OK;
+		}
+		else
+		{
+			_inspection_result.status = FORBIDDEN;
+		}
+	}
+	else
+	{
+		_inspection_result.is_file = false;
+		_inspection_result.is_directory = false;
+		_inspection_result.kind = NONE;
+		_inspection_result.status = FORBIDDEN;
+	}
+}
+
 
 /*
  * Exceptions
@@ -159,7 +232,5 @@ const char	*RequestHandler::MethodNotAllowed::what() const noexcept
 {
 	return "method not allowed";
 }
-
-
 
 
