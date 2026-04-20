@@ -4,7 +4,6 @@
 /* Constructors & Destructors */
 Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _epollFd(epollFd), _sendedBytes(0), _srvCfg(srvCfg)
 {
-	_status = Status::close;
 	_msg = "";
 	_parsingState = state::parsing_request_line;
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
@@ -15,7 +14,6 @@ Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 	_serverFd = src._serverFd;
 	_clientFd = src._clientFd;
 	_epollFd = src._epollFd;
-	_status = src._status;
 	_msg = src._msg;
 	_parsingState = src._parsingState;
 	_parsedHttp = std::move(src._parsedHttp);
@@ -25,7 +23,6 @@ Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 	src._clientFd = -1;
 	src._epollFd = -1;
 	src._msg = "";
-	src._status = Status::close;
 	src._parsingState = state::error;
 	src._sendedBytes = 0;
 }

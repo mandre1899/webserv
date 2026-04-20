@@ -19,7 +19,6 @@ private:
 	int _clientFd;
 	int _epollFd;
 	std::chrono::time_point<std::chrono::system_clock> _timeout;
-	Status _status;
 	std::string _msg;
 	HttpParser _parsedHttp;
 	size_t	_headerBytes = {};
