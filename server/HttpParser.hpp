@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/20 16:11:02 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/20 16:53:55 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,14 +50,21 @@ public:
 	/* Member Functions */
 	void parseRequestLine(std::string& line);
 	void parseHeaders(std::string& line);
-	bool parseBody(std::string& data);
-	void parseBodyFromTmp(std::string path);
-	void  processBody(std::string& line);
+	void checkHeader();
 	class HttpParsingError : public std::exception {
 	public:
 		const char* what() const noexcept override;
 	};
-
+	class HttpVersionConflict : public std::exception {
+	public:
+		const char* what() const noexcept override;
+	};
+	class RequestUriTooLarge : public std::exception {
+		const char* what() const noexcept override;
+	};
+	class HeadersTooLarge : public std::exception {
+		const char* what() const noexcept override;
+	};
 	/* Basic Operators */
 	HttpParser& operator=(const HttpParser& src);
 	HttpParser& operator=(HttpParser&& src) noexcept;

@@ -1,5 +1,4 @@
 #include "Client.hpp"
-#include <cerrno>
 
 /* Constructors & Destructors */
 Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _epollFd(epollFd), _sendedBytes(0), _srvCfg(srvCfg)
@@ -72,10 +71,11 @@ uint32_t Client::recvData()
 		}
 		_msg.erase(0, pos + 2);
 		if (_headerBytes > _srvCfg.vHost[0].clientHeaderBufferSize && _srvCfg.vHost[0].clientHeaderBufferSize != 0)
-			throw std::runtime_error("clientHeaderBufferSize limit reached");
+			throw HttpParser::HeadersTooLarge();
 	}
 	if (_parsingState == state::parsing_done)
 	{
+		_parsedHttp.checkHeader();
 		Logger::log<LogLevel::trace>("Client::recvData() ", _parsedHttp);
 		return (sendData());
 	}
@@ -143,6 +143,22 @@ uint32_t Client::handleConnection(uint32_t event)
 		// 	throw "Unexpectet call";
 		// if (event & EPOLLERR)
 		// 	throw "Unexpectet call";
+		return (EPOLLHUP);
+	}
+	catch (const HttpParser::RequestUriTooLarge& e)
+	{
+		// TODO send respone with code 414
+		return (EPOLLHUP);
+	}
+	catch (const HttpParser::HeadersTooLarge& e)
+	{
+		//TODO send respone with 400
+		return (EPOLLHUP);
+	}
+	catch (const HttpParser::HttpVersionConflict& e)
+	{
+		printf("test\n");
+		//TODO send bad request with 400
 		return (EPOLLHUP);
 	}
 	catch (const std::exception& e)

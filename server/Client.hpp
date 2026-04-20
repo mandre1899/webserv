@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sys/epoll.h> 
 #include <unistd.h>
+#include <cerrno>
 #include <chrono>
 #include "config/configTypes.hpp"
 #include "HttpResponse.hpp"
