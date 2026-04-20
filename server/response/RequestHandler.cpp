@@ -98,6 +98,7 @@ void	RequestHandler::resolveLocation(void)
 	}
 	if (best_match == _serverConfig->location.end())
 		_locationConfig = nullptr;
+	_location_uri = best_match->first;
 	_locationConfig = &best_match->second;
 }
 
@@ -117,18 +118,37 @@ std::string	RequestHandler::pathResolution(void)
 		if (!_serverConfig->index.empty() &&
 				!_serverConfig->index.empty())
 		{
-			// Build path regarding on the root and index
+			if (_serverConfig->root[0] == '.')
+				return join_paths(init_root_path(), _serverConfig->root.substr(1), _serverConfig->index);
+			else
+				return join_paths(_serverConfig->root, _serverConfig->index);
 		}
 		else
 		{
-			//Set path to the default html site
 		}
 	}
+	bool	is_abs = true; // ./ is a relative file and / is a absolute
+	std::string loc_root = _locationConfig->root;
+	if (_locationConfig->root[0] == '.')
+	{
+		is_abs = false;
+		loc_root.substr(1); // ./html -> /html for path concat
+	}
+	//Exact location was requested
+	if (!_locationConfig->index.empty() && _request.getRequestUri() == _location_uri)
+	{
+		if (is_abs == false)
+			return join_paths(init_root_path(), loc_root, _locationConfig->index);
+		else
+			return join_paths(loc_root, _locationConfig->index);
+	}
+	//When exact file is requested on location
+	std::string tmp;
+	std::string uri_path = _request.getRequestUri();
+	if (is_abs == false)
+		return join_paths(init_root_path(), loc_root, uri_path.substr(_location_uri.length()));
+	return join_paths(init_root_path(), uri_path.substr(_location_uri.length()));
 }
-
-
-
-
 
 
 /*

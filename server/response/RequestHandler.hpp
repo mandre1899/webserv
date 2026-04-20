@@ -17,6 +17,7 @@ class RequestHandler
 	const cfg::srvCfg			&_config;			// global config
 	const cfg::vHostCfg			*_serverConfig;		// Have to be pointers to instantiate
 	const cfg::wsLocationCtx	*_locationConfig;	// them with NULL
+	std::string					_location_uri;		// Uri of the location
 
 	std::unique_ptr<StaticFileService>	_staticFileService;
 	std::unique_ptr<HttpUpload>			_fileUpload;
