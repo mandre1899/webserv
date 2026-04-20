@@ -27,3 +27,44 @@ void is_number(const std::string& s)
 		return;
 	throw std::runtime_error("is_number: invalid number found");
 }
+
+/*
+ * Mateo added
+*/
+//Removes leading / (not when its the first part of the path) and trailing
+static std::string normalize_part(const std::string& part, bool is_first)
+{
+	if (part.empty())
+		return "";
+	size_t start = 0;
+	size_t end = part.size();
+	if (!is_first)
+	{
+		while (start < end && part[start] == '/')
+			++start;
+	}
+	while (end > start && part[end - 1] == '/')
+		--end;
+	return part.substr(start, end - start);
+}
+
+//Concats n amounts of path args
+template <typename... Args>
+std::string join_paths(const Args&... parts)
+{
+	std::vector<std::string> vec = { parts... };
+	std::string result;
+	bool first = true;
+	for (const auto& part : vec)
+	{
+		std::string cleaned = normalize_part(part, first);
+		if (cleaned.empty())
+			continue;
+		if (!result.empty())
+			result += "/";
+		result.append(cleaned);
+		first = false;
+	}
+	return result;
+}
+
