@@ -120,7 +120,7 @@ void	HttpResponse::set_default_reponse(int status_code)
 {
 	std::string status_text = "Unknown Error";
 
-	status_map::const_iterator it = _status_code_map.find(_status_code);
+	status_map::const_iterator it = _status_code_map.find(status_code);
 	if (it != _status_code_map.end())
 		status_text = it->second;
 	else
@@ -149,7 +149,7 @@ void	HttpResponse::set_default_reponse(int status_code)
 
 	_body = body.str();
 	set_default_headers();
-	Logger::log<LogLevel::info>("Server responding with error code: ", _status_code);
+	Logger::log<LogLevel::info>("Server responding with error code: ", status_code);
 
 }
 
@@ -193,17 +193,17 @@ void	HttpResponse::set_body(std::string &body)
 }
 
 //Getter
-const int	HttpResponse::get_status(void) const
+int	HttpResponse::get_status(void) const
 {
 	return (_status_code);
 }
 
-const header_map	HttpResponse::get_headers(void) const
+header_map	HttpResponse::get_headers(void) const
 {
 	return _header;
 }
 
-const std::string	HttpResponse::get_body(void) const
+std::string	HttpResponse::get_body(void) const
 {
 	return _body;
 }

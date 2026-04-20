@@ -38,13 +38,13 @@ class HttpResponse
 		void	set_default_reponse(int status_code, cfg::wsLocationCtx &location); // With check for default error page overwrite
 		//Setters
 		void	set_status(int status_code);
-		void	set_header(header_map::iterator begin, header_map::iterator end);				// Insert headers at the end
+		void	set_header(header_map::iterator begin, header_map::iterator end);	// Insert headers at the end
 		void	set_header(header_map::const_iterator begin, header_map::const_iterator end);	// replaces matching keys 
 		void	set_body(std::string &body);
 		//Getter
-		const int			get_status(void) const;
-		const header_map	get_headers(void) const;
-		const std::string	get_body(void) const;
+		int			get_status(void) const;
+		header_map	get_headers(void) const;
+		std::string	get_body(void) const;
 };
 
 std::ostream&	operator<<(std::ostream& os, HttpResponse& obj);
