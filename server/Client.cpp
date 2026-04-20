@@ -54,7 +54,6 @@ uint32_t Client::recvData()
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
-		_headerBytes = pos + 2;
 		if (pos == std::string::npos)
 			break;
 		std::string line = _msg.substr(0, pos);
@@ -65,6 +64,7 @@ uint32_t Client::recvData()
 		}
 		else if (_parsingState == state::parsing_headers)
 		{
+			_headerBytes = pos + 2;
 			if (line.empty())
 			{
 				_parsingState = state::parsing_done;

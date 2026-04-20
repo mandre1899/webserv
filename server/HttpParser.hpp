@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpParser.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/16 09:06:33 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/20 14:40:18 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,8 @@
 #include <fstream>
 #include "utils/helper.hpp"
 #include "utils/Logger.hpp"
+
+#define REQUESTLINE_MAX_SIZE 8192 // 8 KiB
 
 enum class method_type
 {

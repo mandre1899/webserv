@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpParser.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/17 14:08:27 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/20 14:34:34 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,8 @@ static std::pair<std::string, std::string> request_uri_normalization(const std::
 /* Member Functions */
 void HttpParser::parseRequestLine(std::string& line)
 {
+	if (line.length() > REQUESTLINE_MAX_SIZE)
+		throw HttpParsingError();
 	std::stringstream ss(line);
 	std::string temp;
 	char del = ' ';
