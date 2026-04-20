@@ -738,10 +738,33 @@ state	HttpResponse::build(HttpParser* req, const cfg::srvCfg* conf, int clientFd
 				_upload = std::make_unique<HttpUpload>(_request->getHeadersMap(), _curr_loc.uploadStore, _config.clientMaxBodySize);
 				return (state::response_body); //
 			}
-			catch (const std::exception& e)
+			catch (const HttpUpload::BadRequestException &e)
 			{
-				Logger::log<LogLevel::error>("POST request failed: ", e.what());
+				Logger::log<LogLevel::error>("POST: ", e.what());
+				generate_error_page(400);
+				return state::response_sending;
+			}
+			catch (const HttpUpload::MissingLengthException &e)
+			{
+				Logger::log<LogLevel::error>("POST: ", e.what());
+				generate_error_page(411);
+				return state::response_sending;
+			}
+			catch (const HttpUpload::BodyTooLargeException &e)
+			{
+				Logger::log<LogLevel::error>("POST: ", e.what());
+				generate_error_page(413);
+				return state::response_sending;
+			}
+			catch (const HttpUpload::InternelErrorException &e)
+			{
 				generate_error_page(500);
+				return state::response_sending;
+			}
+			catch (...)
+			{
+				generate_error_page(500);
+				return state::response_sending;
 			}
 		}
 

@@ -94,9 +94,30 @@ uint32_t Client::sendData()
 		_parsingState = _response.handle_cgi_proc();
 	if (_parsingState == state::response_body)
 	{
-		_parsingState = _response.upload_body(_msg); // todo: body timeout  + client_max_body_size -> set to 0 = disabled
-		if (_parsingState == state::response_body)
-			return (EPOLLIN);
+		try {
+			_parsingState = _response.upload_body(_msg); // todo: body timeout  + client_max_body_size -> set to 0 = disabled
+			if (_parsingState == state::response_body)
+				return (EPOLLIN);
+			_response.generate_error_page(200); //DKN
+			_parsingState = state::response_sending;
+		}
+		catch (const HttpUpload::BodyTooLargeException &e)
+		{
+			Logger::log<LogLevel::error>("POST: ", e.what());
+			_response.generate_error_page(413);
+			_parsingState = state::response_sending;
+		}
+		catch (const HttpUpload::InternelErrorException &e)
+		{
+			Logger::log<LogLevel::error>("POST: ", e.what());
+			_response.generate_error_page(500);
+			_parsingState = state::response_sending;
+		}
+		catch (...)
+		{
+			_response.generate_error_page(500);
+			_parsingState = state::response_sending;
+		}
 	}
 	if (_parsingState == state::response_proccessing)
 		return (EPOLLIN);
