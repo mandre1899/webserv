@@ -22,7 +22,7 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 	_rawBoundary = extractBoundary(boundary_header->second);
 	_boundary = _rawBoundary + "\r\n";
 	_boundaryClosig = "\r\n" + _rawBoundary;
-	if (_contentLength > clientMaxBody)
+	if (_contentLength > clientMaxBody && clientMaxBody != 0)
 		throw BodyTooLargeException();
 }
 
