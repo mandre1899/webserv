@@ -24,7 +24,7 @@ enum cgi_state {
 	FINISHED_KO
 };
 
-class CGI
+class CgiService
 {
 	std::string					_bin_exec_path;
 	const std::string&			_script_path;
@@ -39,10 +39,10 @@ class CGI
 
 
 	public:
-		CGI(ResourceInspection	&data, std::string cgi_exec_path, const std::string& script_path, int epfd, int socket_fd);
-		~CGI(void);
-		CGI(CGI &obj) = delete;
-		CGI	operator=(CGI &obj) = delete;
+		CgiService(ResourceInspection &data, int epfd, int socket_fd);
+		~CgiService(void);
+		CgiService(CgiService &obj) = delete;
+		CgiService	operator=(CgiService &obj) = delete;
 		bool						parse_cgi_headers(void);
 		cgi_state   				execute_cgi_proc();
 		std::pair<cgi_state, int>	handle_cgi_proc();

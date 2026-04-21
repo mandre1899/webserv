@@ -39,7 +39,7 @@ static void push_env(std::vector<std::string> &env_storage, const std::string &k
 	env_storage.push_back(key + "=" + value);
 }
 
-static std::vector<std::string> build_cgi_env(ResourceInspection &data, const std::string &abs_path)
+static std::vector<std::string> build_cgi_env(ResourceInspection &data)
 {
 	std::vector<std::string> env_storage;
 	env_storage.reserve(data.request_headers.size());
@@ -59,7 +59,7 @@ static std::vector<std::string> build_cgi_env(ResourceInspection &data, const st
 	push_env(env_storage, "QUERY_STRING", data.request_query); 
 	//push_env(env_storage, "SCRIPT_NAME", script_name);
 	//push_env(env_storage, "SERVER_PROTOCOL", data.request_version);.
-	push_env(env_storage, "SCRIPT_FILENAME", abs_path);
+	push_env(env_storage, "SCRIPT_FILENAME", data.abs_path);
 	push_env(env_storage, "REDIRECT_STATUS", "200"); // Important for php-cgi
 	if (content_length != NULL)
 		push_env(env_storage, "HTTP_CONTENT_LENGTH", *content_length);
@@ -68,18 +68,18 @@ static std::vector<std::string> build_cgi_env(ResourceInspection &data, const st
 	return env_storage;
 }
 
-CGI::CGI(ResourceInspection &data, std::string cgi_exec_path, const std::string &script_path, int epfd, int socket_fd)
-	: _bin_exec_path(cgi_exec_path), _script_path(script_path), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
+CgiService::CgiService(ResourceInspection &data, int epfd, int socket_fd)
+	: _bin_exec_path(data.cgi_path), _script_path(data.abs_path), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
 	_socket_fd(socket_fd)
 {
-	std::vector<std::string> env_storage = build_cgi_env(data, script_path);
+	std::vector<std::string> env_storage = build_cgi_env(data);
 	_cgi_envs.reserve(env_storage.size() + 1);
 	for (std::string& entry : env_storage)
 		_cgi_envs.push_back(const_cast<char*>(entry.c_str()));
 	_cgi_envs.push_back(NULL);
 }
 
-CGI::~CGI()
+CgiService::~CgiService()
 {
 	if (_pipe_read != -1)
 		close(_pipe_read);
@@ -89,7 +89,7 @@ CGI::~CGI()
 		close(_pipe_write);
 }
 
-bool	CGI::parse_cgi_headers(void)
+bool	CgiService::parse_cgi_headers(void)
 {
 	size_t header_end = std::string::npos;
 	size_t delimiter_len = 0;
@@ -132,7 +132,7 @@ bool	CGI::parse_cgi_headers(void)
 	return true;
 }
 
-std::pair<cgi_state, int>	CGI::handle_cgi_proc()
+std::pair<cgi_state, int>	CgiService::handle_cgi_proc()
 {
 	char buf[4096];
 	while (true)
@@ -186,7 +186,7 @@ std::pair<cgi_state, int>	CGI::handle_cgi_proc()
 	}
 }
 
-cgi_state	CGI::execute_cgi_proc()
+cgi_state	CgiService::execute_cgi_proc()
 {
 	const std::string execLocPath = _bin_exec_path;
 	char* execPath = NULL;
@@ -236,12 +236,12 @@ cgi_state	CGI::execute_cgi_proc()
 	return cgi_state::RUNNING;
 }
 
-std::string	CGI::get_body(void)
+std::string	CgiService::get_body(void)
 {
 	return _body;	
 }
 
-header_map	CGI::get_header_map(void)
+header_map	CgiService::get_header_map(void)
 {
 	return _cgi_headers;
 }
