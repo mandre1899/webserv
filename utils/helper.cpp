@@ -32,7 +32,7 @@ void is_number(const std::string& s)
  * Mateo added
 */
 //Removes leading / (not when its the first part of the path) and trailing
-static std::string normalize_part(const std::string& part, bool is_first)
+std::string normalize_part(const std::string& part, bool is_first)
 {
 	if (part.empty())
 		return "";
@@ -48,23 +48,16 @@ static std::string normalize_part(const std::string& part, bool is_first)
 	return part.substr(start, end - start);
 }
 
-//Concats n amounts of path args
-template <typename... Args>
-std::string join_paths(const Args&... parts)
+std::string init_root_path(void)
 {
-	std::vector<std::string> vec = { parts... };
-	std::string result;
-	bool first = true;
-	for (const auto& part : vec)
-	{
-		std::string cleaned = normalize_part(part, first);
-		if (cleaned.empty())
-			continue;
-		if (!result.empty())
-			result += "/";
-		result.append(cleaned);
-		first = false;
-	}
-	return result;
+	std::filesystem::path tmpPathWebserv = std::string(g_execName);
+
+	std::string abs = std::filesystem::absolute(tmpPathWebserv).string();
+
+	std::size_t pos = abs.find('.');
+	if (pos != std::string::npos)
+		abs.erase(pos);
+	abs.erase(abs.find_last_of("/"));
+	return abs;
 }
 
