@@ -1,5 +1,10 @@
 #include "Client.hpp"
+#include "ServiceHandler.hpp"
+#include "response/ResponseStructs.hpp"
+#include "response/StaticFileService.hpp"
 #include <cerrno>
+#include <exception>
+#include <memory>
 
 /* Constructors & Destructors */
 Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCfg) : _serverFd(serverFd), _clientFd(clientFd), _epollFd(epollFd), _sendedBytes(0), _srvCfg(srvCfg)
@@ -88,8 +93,19 @@ uint32_t Client::recvData()
 uint32_t Client::sendData()
 {
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
-	std::make_unique<RequestHandler>(_parsedHttp, _srvCfg); // Throws internally with catching
-
+	//The request handler just resolves the request into a meaningfull sturct
+	if (_parsingState == state::parsing_done)
+	{
+		try {
+			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _srvCfg); // Throws internally but doesn not catch currently
+			ResourceInspection data = _request_handler->get_result();
+			_service_handler = std::make_unique<ServiceHandler>(data, _response);
+		} catch (...) {
+			Logger::log<LogLevel::error>("RequestHandler failed");
+		}
+	}
+	_response.set_status(200);
+	std::cout << _response << std::endl;
 	std::string msg = _response.get_response_str();
 	_parsingState = state::response_sending;
 	ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
