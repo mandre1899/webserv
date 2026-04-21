@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sys/epoll.h> 
 #include <unistd.h>
+#include <cerrno>
 #include <chrono>
 #include "config/configTypes.hpp"
 #include "HttpResponse.hpp"
@@ -19,7 +20,6 @@ private:
 	int _clientFd;
 	int _epollFd;
 	std::chrono::time_point<std::chrono::system_clock> _timeout;
-	Status _status;
 	std::string _msg;
 	HttpParser _parsedHttp;
 	size_t	_headerBytes = {};
