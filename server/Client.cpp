@@ -91,7 +91,7 @@ uint32_t Client::sendData()
 		try {
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _srvCfg); // Throws internally but doesn not catch currently
 			ResourceInspection data = _request_handler->get_result();
-			_service_handler = std::make_unique<ServiceHandler>(data, _response);
+			_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd);
 		} catch (...) {
 			Logger::log<LogLevel::error>("RequestHandler failed");
 		}
