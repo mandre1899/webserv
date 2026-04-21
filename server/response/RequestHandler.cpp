@@ -4,26 +4,11 @@
 RequestHandler::RequestHandler(const HttpParser &request, const cfg::srvCfg &config)
 	: _request(request), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
 {
-	try {
-		resolveVHost();
-		resolveLocation();
-		methodLocationValidation();
-		std::string abs_path = pathResolution();
-		filesystemInspection(abs_path);
-	}
-	catch (RequestHandler::MethodNotAllowed &e)
-	{
-		Logger::log<LogLevel::error>("RequestHandler: ", e.what());
-		//Generate matching error 
-	}
-	catch (std::exception &e)
-	{
-		Logger::log<LogLevel::error>("RequestHandler: ", e.what());
-	}
-	catch (...)
-	{
-		Logger::log<LogLevel::error>("RequestHandler: catched undefined error!");
-	}
+	resolveVHost();
+	resolveLocation();
+	methodLocationValidation();
+	std::string abs_path = pathResolution();
+	filesystemInspection(abs_path);
 }
 
 RequestHandler::~RequestHandler(void)
@@ -161,6 +146,8 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	struct stat file_stat;
 	
 	_inspection_result.abs_path = abs_path;
+	_inspection_result.request_uri = _request.getRequestUri();
+	_inspection_result.request_query = _request.getRequestQuery();
 	
 	// Check if path exists
 	if (stat(abs_path.c_str(), &file_stat) != 0)

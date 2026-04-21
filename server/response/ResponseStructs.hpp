@@ -31,6 +31,9 @@ struct ResourceInspection
 	InspectStatus    status;
 	ResourceKind     kind;
 
+	std::string		request_uri;
+	std::string		request_query;
+
 	std::string      abs_path;
 	std::string      cgi_path;
 	std::string      index_path;
