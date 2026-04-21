@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/21 13:09:52 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/21 14:04:08 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -132,7 +132,6 @@ void HttpParser::parseHeaders(std::string& line)
 	std::string value = line.substr(pos + 1);
 	trim(value);
 	_headers_map.insert(std::pair<std::string, std::string>{str_tolower(key), value});
-	std::cout << *this << std::endl;
 }
 
 void HttpParser::checkHeader()
