@@ -39,8 +39,9 @@ class HttpResponse
 		//Setters
 		void	set_status(int status_code);
 		void	set_header(header_map::iterator begin, header_map::iterator end);	// Insert headers at the end
-		void	set_header(header_map::const_iterator begin, header_map::const_iterator end);	// replaces matching keys 
-		void	set_body(std::string &body);
+		void	set_header(header_map::const_iterator begin, header_map::const_iterator end);	// replaces matching keysvoid	
+		void	set_content_type(std::string type);
+		void	set_body(std::string body);
 		//Getter
 		int					get_status(void) const;
 		header_map			get_headers(void) const;

@@ -1,4 +1,5 @@
 #include "HttpResponse.hpp"
+#include <unordered_map>
 
 const status_map	HttpResponse::_status_code_map =
 {
@@ -202,9 +203,15 @@ void HttpResponse::set_header(header_map::const_iterator begin, header_map::cons
         _header[begin->first] = begin->second;
 }
 
-void	HttpResponse::set_body(std::string &body)
+void	HttpResponse::set_body(std::string body)
 {
 	_body = body;
+}
+
+void	HttpResponse::set_content_type(std::string type)
+{
+	header_map tmp = {{"Content-Type", type}};
+	set_header(tmp.begin(), tmp.end());
 }
 
 //Getter
