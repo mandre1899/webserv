@@ -1,7 +1,7 @@
 #include "RequestHandler.hpp"
 #include <unistd.h>
 
-RequestHandler::RequestHandler(const HttpParser &request, cfg::srvCfg &config)
+RequestHandler::RequestHandler(const HttpParser &request, const cfg::srvCfg &config)
 	: _request(request), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
 {
 	try {
@@ -138,7 +138,7 @@ std::string	RequestHandler::pathResolution(void)
 	if (_locationConfig->root[0] == '.')
 	{
 		is_abs = false;
-		loc_root.substr(1); // ./html -> /html for path concat
+		loc_root = loc_root.substr(1); // ./html -> /html for path concat
 	}
 	//Exact location was requested
 	if (!_locationConfig->index.empty() && _request.getRequestUri() == _location_uri)
@@ -232,5 +232,4 @@ const char	*RequestHandler::MethodNotAllowed::what() const noexcept
 {
 	return "method not allowed";
 }
-
 

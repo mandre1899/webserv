@@ -5,10 +5,10 @@
 #include <exception>
 
 #include "ResponseStructs.hpp"
-#include "../../utils/Logger.hpp"
-#include "../HttpParser.hpp"
+#include "utils/Logger.hpp"
+#include "server/HttpParser.hpp"
 #include "StaticFileService.hpp"
-#include "../../utils/helper.hpp"
+#include "utils/helper.hpp"
 #include <sys/stat.h>
 
 class RequestHandler
@@ -20,7 +20,7 @@ class RequestHandler
 	std::string					_location_uri;		// Uri of the location
 
 	// Result of this class
-	ResourceInspection					_inspection_result;
+	ResourceInspection			_inspection_result;
 
 	// Buissness logic member functions
 	void		resolveVHost(void); // Resolves vHost assigns the _serverConfig
@@ -31,7 +31,7 @@ class RequestHandler
 									  // ressource availablility
 	void		filesystemInspection(std::string &abs_path); // Checks given path for ressource availablility
 	public:
-		RequestHandler(const HttpParser &request, cfg::srvCfg &config);
+		RequestHandler(const HttpParser &request, const cfg::srvCfg &config);
 		~RequestHandler(void);
 		ResourceInspection get_result();
 
