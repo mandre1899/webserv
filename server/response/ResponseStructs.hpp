@@ -1,7 +1,9 @@
 #ifndef RESPONSE_STRUCTS_H
 #define RESPONSE_STRUCTS_H
 
+#include "typedefs.hpp"
 #include "../../config/configTypes.hpp"
+#include "server/HttpParser.hpp"
 
 #include <string>
 
@@ -33,6 +35,8 @@ struct ResourceInspection
 
 	std::string		request_uri;
 	std::string		request_query;
+	header_map		request_headers;
+	std::string		request_method;
 
 	std::string      abs_path;
 	std::string      cgi_path;

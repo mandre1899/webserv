@@ -13,9 +13,7 @@
 #include "config/configTypes.hpp"
 #include "utils/helper.hpp"
 #include "utils/Logger.hpp"
-
-typedef std::unordered_map<std::string, std::string>	header_map;
-typedef std::unordered_map<int, std::string>			status_map;
+#include "typedefs.hpp"
 
 class HttpResponse
 {

@@ -1,5 +1,4 @@
 #include "RequestHandler.hpp"
-#include <unistd.h>
 
 RequestHandler::RequestHandler(const HttpParser &request, const cfg::srvCfg &config)
 	: _request(request), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
@@ -14,7 +13,7 @@ RequestHandler::RequestHandler(const HttpParser &request, const cfg::srvCfg &con
 RequestHandler::~RequestHandler(void)
 {}
 
-ResourceInspection RequestHandler::get_result()
+ResourceInspection &RequestHandler::get_result()
 {
 	return _inspection_result;
 }
@@ -30,7 +29,7 @@ void	RequestHandler::resolveVHost(void)
 		Logger::log<LogLevel::warn>("Request headers empty");
 		throw std::logic_error("RequestHandler: request headers empty");
 	}
-	std::map<std::string, std::string>::const_iterator matchPair;
+	header_map::const_iterator matchPair;
 	if ((matchPair = headers.find("Host")) == headers.end())
 	{
 		_serverConfig = &_config.vHost[0];
@@ -148,6 +147,8 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	_inspection_result.abs_path = abs_path;
 	_inspection_result.request_uri = _request.getRequestUri();
 	_inspection_result.request_query = _request.getRequestQuery();
+	_inspection_result.request_headers = _request.getHeadersMap();
+	_inspection_result.request_method = _request.getMethodAsString();
 	
 	// Check if path exists
 	if (stat(abs_path.c_str(), &file_stat) != 0)

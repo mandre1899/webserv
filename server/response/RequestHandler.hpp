@@ -3,13 +3,16 @@
 
 #include <memory>
 #include <exception>
+#include <sys/stat.h>
 
 #include "ResponseStructs.hpp"
 #include "utils/Logger.hpp"
 #include "server/HttpParser.hpp"
 #include "StaticFileService.hpp"
 #include "utils/helper.hpp"
-#include <sys/stat.h>
+#include "CgiService.hpp"
+#include "HttpUploadService.hpp"
+#include "typedefs.hpp"
 
 class RequestHandler
 {
@@ -31,9 +34,10 @@ class RequestHandler
 									  // ressource availablility
 	void		filesystemInspection(std::string &abs_path); // Checks given path for ressource availablility
 	public:
+		RequestHandler(void) = delete;
 		RequestHandler(const HttpParser &request, const cfg::srvCfg &config);
 		~RequestHandler(void);
-		ResourceInspection get_result();
+		ResourceInspection &get_result();
 
 	// Exceptions
 	class MethodNotAllowed : public std::exception {
