@@ -26,7 +26,6 @@ class HttpResponse
 
 	//Buissness logic intern
 	void	set_default_headers(void);
-	bool	read_file_to_body(std::string &abs_path);
 	public:
 		HttpResponse(void);
 		~HttpResponse(void);
@@ -36,6 +35,7 @@ class HttpResponse
 		//Buissness logic extern
 		void	set_default_reponse(int status_code); // Set default error page
 		void	set_default_reponse(int status_code, cfg::wsLocationCtx &location); // With check for default error page overwrite
+		bool	read_file_to_body(std::string &abs_path);
 		//Setters
 		void	set_status(int status_code);
 		void	set_header(header_map::iterator begin, header_map::iterator end);	// Insert headers at the end

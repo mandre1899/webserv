@@ -89,33 +89,7 @@ void	HttpResponse::set_default_headers(void)
 	_header["content-length"] = std::to_string(_body.size());
 }
 
-bool	HttpResponse::read_file_to_body(std::string &abs_path)
-{
-	struct stat file_stat;
-	if (stat(abs_path.c_str(), &file_stat) != 0)
-	{
-		set_default_reponse(404);
-		return false;
-	}
-	std::ifstream file;
-	try
-	{
-		file.open(abs_path, std::ios::binary);
-		_body.reserve(file_stat.st_size); //reserve for better performance
-		_body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-		file.close();
-		return true;
-
-	}
-	catch (...)
-	{
-		set_default_reponse(500);
-		Logger::log<LogLevel::error>("Failed to read rile to body: ", abs_path);
-		return false;
-	}
-}
-
-//Buissness logic intern
+//Buissness logic extern
 void	HttpResponse::set_default_reponse(int status_code)
 {
 	std::string status_text = "Unknown Error";
@@ -182,6 +156,32 @@ const std::string	HttpResponse::get_response_str(void) const
 		tmp << _body;
 	return tmp.str();
 
+}
+
+bool	HttpResponse::read_file_to_body(std::string &abs_path)
+{
+	struct stat file_stat;
+	if (stat(abs_path.c_str(), &file_stat) != 0)
+	{
+		set_default_reponse(404);
+		return false;
+	}
+	std::ifstream file;
+	try
+	{
+		file.open(abs_path, std::ios::binary);
+		_body.reserve(file_stat.st_size); //reserve for better performance
+		_body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+		file.close();
+		return true;
+
+	}
+	catch (...)
+	{
+		set_default_reponse(500);
+		Logger::log<LogLevel::error>("Failed to read rile to body: ", abs_path);
+		return false;
+	}
 }
 
 //Setters
