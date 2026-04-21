@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/20 16:53:55 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/21 13:03:20 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <sstream>
 #include <map>
 #include <iostream>
+#include <algorithm>
 #include <fstream>
 #include "utils/helper.hpp"
 #include "utils/Logger.hpp"

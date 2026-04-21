@@ -157,7 +157,6 @@ uint32_t Client::handleConnection(uint32_t event)
 	}
 	catch (const HttpParser::HttpVersionConflict& e)
 	{
-		printf("test\n");
 		//TODO send bad request with 400
 		return (EPOLLHUP);
 	}
