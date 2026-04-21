@@ -10,9 +10,9 @@
 #include <sys/stat.h>
 #include <fstream>
 
-#include "../../config/configTypes.hpp"
-#include "../../utils/helper.hpp"
-#include "../../utils/Logger.hpp"
+#include "config/configTypes.hpp"
+#include "utils/helper.hpp"
+#include "utils/Logger.hpp"
 
 typedef std::unordered_map<std::string, std::string>	header_map;
 typedef std::unordered_map<int, std::string>			status_map;
@@ -42,9 +42,10 @@ class HttpResponse
 		void	set_header(header_map::const_iterator begin, header_map::const_iterator end);	// replaces matching keys 
 		void	set_body(std::string &body);
 		//Getter
-		int			get_status(void) const;
-		header_map	get_headers(void) const;
-		std::string	get_body(void) const;
+		int					get_status(void) const;
+		header_map			get_headers(void) const;
+		std::string			get_body(void) const;
+		const std::string	get_response_str(void) const;
 };
 
 std::ostream&	operator<<(std::ostream& os, HttpResponse& obj);

@@ -120,6 +120,7 @@ void	HttpResponse::set_default_reponse(int status_code)
 {
 	std::string status_text = "Unknown Error";
 
+	_status_code = status_code;
 	status_map::const_iterator it = _status_code_map.find(status_code);
 	if (it != _status_code_map.end())
 		status_text = it->second;
@@ -167,6 +168,20 @@ void	HttpResponse::set_default_reponse(int status_code, cfg::wsLocationCtx &loca
 		}
 	}
 	set_default_reponse(status_code);
+}
+
+const std::string	HttpResponse::get_response_str(void) const
+{
+	std::ostringstream	tmp;
+
+	tmp << "HTTP/1.1 " << _status_code << " " << _status_code_map.find(_status_code)->second << "\r\n";
+	for (const auto& a : _header)
+		tmp << a.first << ": " << a.second << "\r\n";
+	tmp << "\r\n";
+	if (!_body.empty())
+		tmp << _body;
+	return tmp.str();
+
 }
 
 //Setters
