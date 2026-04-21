@@ -3,7 +3,10 @@
 
 #include "response/HttpResponse.hpp"
 #include "response/ResponseStructs.hpp"
-#include "server/response/StaticFileService.hpp"
+#include "response/StaticFileService.hpp"
+#include "response/HttpUploadService.hpp"
+#include "response/CgiService.hpp"
+
 #include <memory>
 
 enum ServiceState
@@ -14,11 +17,13 @@ enum ServiceState
 
 class ServiceHandler
 {
-	ResourceInspection	_data; //The logical resolve from request
-	HttpResponse		&_response; // A reference for the response
-	std::unique_ptr<StaticFileService>	_staticFileService;
+	ResourceInspection				_data; //The logical resolve from request
+	HttpResponse					&_response; // A reference for the response
+	std::unique_ptr<CgiService>		_cgiService;
 	public:
-		ServiceHandler(ResourceInspection data, HttpResponse &response);
+		ServiceHandler(void) = delete;
+		ServiceHandler(ResourceInspection data, HttpResponse &response, int epfd, int socket_fd);
+		ServiceHandler	operator=(const ServiceHandler &obj) = delete;
 		~ServiceHandler(void);
 };
 
