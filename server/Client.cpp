@@ -105,7 +105,6 @@ uint32_t Client::sendData()
 		}
 	}
 	_response.set_status(200);
-	std::cout << _response << std::endl;
 	std::string msg = _response.get_response_str();
 	_parsingState = state::response_sending;
 	ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
