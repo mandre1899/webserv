@@ -88,44 +88,10 @@ uint32_t Client::recvData()
 uint32_t Client::sendData()
 {
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
-	if (_parsingState == state::parsing_done)
-		_parsingState = _response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
-	else if (_parsingState == state::response_proccessing)
-		_parsingState = _response.handle_cgi_proc();
-	if (_parsingState == state::response_body)
-	{
-		try {
-			_parsingState = _response.upload_body(_msg); // todo: body timeout  + client_max_body_size -> set to 0 = disabled
-			if (_parsingState == state::response_body)
-				return (EPOLLIN);
-			_response.generate_error_page(200); //DKN
-			_parsingState = state::response_sending;
-		}
-		catch (const HttpUpload::BodyTooLargeException &e)
-		{
-			Logger::log<LogLevel::error>("POST: ", e.what());
-			_response.generate_error_page(413);
-			_parsingState = state::response_sending;
-		}
-		catch (const HttpUpload::InternelErrorException &e)
-		{
-			Logger::log<LogLevel::error>("POST: ", e.what());
-			_response.generate_error_page(500);
-			_parsingState = state::response_sending;
-		}
-		catch (...)
-		{
-			_response.generate_error_page(500);
-			_parsingState = state::response_sending;
-		}
-	}
-	if (_parsingState == state::response_proccessing)
-		return (EPOLLIN);
-	if (_parsingState != state::response_sending)
-		return (EPOLLHUP);
-	if (_parsingState == state::error)
-		return (EPOLLHUP);
+	std::make_unique<RequestHandler>(_parsedHttp, _srvCfg); // Throws internally with catching
+
 	std::string msg = _response.get_response_str();
+	_parsingState = state::response_sending;
 	ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
 	if (ret > 0)
 	{

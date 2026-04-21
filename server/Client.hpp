@@ -8,7 +8,8 @@
 #include <unistd.h>
 #include <chrono>
 #include "config/configTypes.hpp"
-#include "HttpResponse.hpp"
+#include "response/HttpResponse.hpp"
+#include "response/RequestHandler.hpp"
 #include "utils/Logger.hpp"
 #include "HttpParser.hpp"
 #include "StateMachines.hpp"
@@ -26,6 +27,7 @@ private:
 	size_t	_sendedBytes = {};
 	state _parsingState;
 	const cfg::srvCfg& _srvCfg;
+	std::unique_ptr<RequestHandler>	_request_handler;
 	HttpResponse	_response;
 
 	/* Member Functions */
