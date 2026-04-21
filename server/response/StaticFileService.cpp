@@ -3,6 +3,7 @@
 StaticFileService::StaticFileService(ResourceInspection data, HttpResponse &response)
 	: _data(data), _response(response)
 {	
+	_response.set_content_type(smart_filetype_detection(data.abs_path));
 	if (!data.is_directory)
 	{
 		response.set_status(200);
