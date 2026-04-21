@@ -42,6 +42,7 @@ std::string join_paths(const Args&... parts)
 	return result;
 }
 std::string init_root_path(void);
+std::string	smart_filetype_detection(std::string &path);
 
 #endif // HELPER_HPP
 

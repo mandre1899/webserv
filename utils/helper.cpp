@@ -1,4 +1,34 @@
 #include "helper.hpp"
+#include <unordered_map>
+
+//Data storage for mime types
+static const std::unordered_map<std::string, std::string> mime_types =
+{
+	{".html", "text/html"},
+	{".css", "text/css"},
+	{".js", "application/javascript"},
+	{".json", "application/json"},
+	{".xml", "application/xml"},
+	{".png", "image/png"},
+	{".jpg", "image/jpeg"},
+	{".gif", "image/gif"},
+	{".svg", "image/svg+xml"},
+	{".ico", "image/vnd.microsoft.icon"},
+	{".woff", "font/woff"},
+	{".woff2", "font/woff2"},
+	{".ttf", "font/ttf"},
+	{".otf", "font/otf"},
+	{".mp4", "video/mp4"},
+	{".mp3", "audio/mpeg"},
+	{".wav", "audio/wav"},
+	{".pdf", "application/pdf"},
+	{".zip", "application/zip"},
+	{".tar", "application/x-tar"},
+	{".gz", "application/gzip"},
+	{".py", "text/x-python"},
+	{".php", "text/html"},
+	{"notype", "application/octet-stream"}
+};
 
 std::string buildMsg(std::string msg, const filePos& pos)
 {
@@ -59,5 +89,17 @@ std::string init_root_path(void)
 		abs.erase(pos);
 	abs.erase(abs.find_last_of("/"));
 	return abs;
+}
+
+std::string	smart_filetype_detection(std::string &path) // Detects the content type of the file referenced by the path passed as argument
+{
+	size_t pos = path.find(".");
+	if (pos == std::string::npos)
+		return std::string();
+	std::string filetype = path.substr(pos);
+	auto res = mime_types.find(filetype);
+	if (res == mime_types.end())
+		return mime_types.at("notype");
+	return res->second;
 }
 
