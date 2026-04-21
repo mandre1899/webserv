@@ -14,6 +14,7 @@
 #include "server/Client.hpp"
 #include "server/TcpSocket.hpp"
 #include "utils/Logger.hpp"
+#include "StateMachines.hpp"
 
 #define MAX_EVENTS 5
 
@@ -29,12 +30,13 @@ struct sessionTime
 class HttpServer {
 private:
 	int _epollFd;
-	std::unordered_map<int, std::variant<TcpSocket, Client>> _map{};
+	// std::vector<FdContext*> _FdList;
+	std::unordered_map<int, FdContext*> _map{};
 	std::priority_queue<sessionTime, std::vector<sessionTime>, std::less<sessionTime>> _prioQ;
 
 	/* Member Functions */
 	void addClient(int serverFd, int clientFd, const cfg::socketCfg& socCfg);
-	bool removeClient(int clientFd);
+	void removeClient(FdContext* clientContext);
 	void checkClientTimeout();
 
 public:

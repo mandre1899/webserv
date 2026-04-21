@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpParser.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/17 14:08:27 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/21 14:04:08 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,8 @@ static std::pair<std::string, std::string> request_uri_normalization(const std::
 /* Member Functions */
 void HttpParser::parseRequestLine(std::string& line)
 {
+	if (line.length() > REQUESTLINE_MAX_SIZE)
+		throw RequestUriTooLarge();
 	std::stringstream ss(line);
 	std::string temp;
 	char del = ' ';
@@ -108,6 +110,14 @@ static void trim(std::string& s)
 	s = s.substr(start, end - start + 1);
 }
 
+std::string str_tolower(std::string s)
+{
+	std::transform(s.begin(), s.end(), s.begin(),
+		[](unsigned char c) { return std::tolower(c); }
+	);
+	return s;
+}
+
 void HttpParser::parseHeaders(std::string& line)
 {
 	auto pos = line.find(':');
@@ -121,14 +131,37 @@ void HttpParser::parseHeaders(std::string& line)
 	//TODO maybe do more validation on header names
 	std::string value = line.substr(pos + 1);
 	trim(value);
-	_headers_map.insert(std::pair<std::string, std::string>{key, value});
+	_headers_map.insert(std::pair<std::string, std::string>{str_tolower(key), value});
 }
+
+void HttpParser::checkHeader()
+{
+	auto pos = _headers_map.find("host");
+	if (_http_version == "HTTP/1.1" && pos == _headers_map.end())
+		throw (HttpParser::HttpVersionConflict());
+}
+
 
 // curl -X POST http://localhost:8085/upload 
 //   -F "myfile=@./test.txt"
 const char* HttpParser::HttpParsingError::what() const noexcept
 {
 	return ("Http parsing error\n");
+}
+
+const char* HttpParser::HttpVersionConflict::what() const noexcept
+{
+	return ("Syntax of HTTP versions conflict, adhere to HTTP/1.1 or HTTP/1.0");
+}
+
+const char* HttpParser::RequestUriTooLarge::what() const noexcept
+{
+	return ("Request Uri Too Large!");
+}
+
+const char* HttpParser::HeadersTooLarge::what() const noexcept
+{
+	return ("Headers Too Large!");
 }
 
 /* Basic Operators */
