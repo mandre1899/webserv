@@ -208,6 +208,11 @@ void HttpResponse::set_header(header_map::const_iterator begin, header_map::cons
         _header[begin->first] = begin->second;
 }
 
+void HttpResponse::set_header(std::string key, std::string value)
+{
+	_header[key] = value;
+}
+
 void	HttpResponse::set_body(std::string body)
 {
 	_body = body;
