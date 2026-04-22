@@ -30,32 +30,33 @@ enum InspectStatus
 
 struct ResourceInspection
 {
-	InspectStatus    status;
-	ResourceKind     kind;
+	InspectStatus	status;
+	ResourceKind	kind;
 
 	std::string		request_uri;
 	std::string		request_query;
 	header_map		request_headers;
 	std::string		request_method;
 
-	std::string      abs_path;
-	std::string      cgi_path;
-	std::string      index_path;
+	std::string		abs_path;
+	std::string		cgi_path;
+	std::string		index_path;
 
-	bool             exists = false;
-	bool             is_file;
+	bool			exists = false;
+	bool			is_file;
 
-	bool             is_directory;
-	bool             readable; // Maybe this is useful somehow
-	bool             writable; // Maybe this is useful somehow
-	bool             executable;
+	bool			is_directory;
+	bool			readable; // Maybe this is useful somehow
+	bool			writable; // Maybe this is useful somehow
+	bool			executable;
 
-	bool             body_required;     // e.g. POST to CGI/upload
-	bool             body_expected;     // request says body may come
+	bool			body_required;     // e.g. POST to CGI/upload
+	bool			body_expected;     // request says body may come
 
 	// Redirect
-	http_code        redirect_code;     // NEW: 301, 302, 307, etc.
-	std::string      redirect_target;
+	bool			has_redirect = false;
+	http_code		redirect_code;
+	std::string		redirect_target;
 };
 
 #endif // !RESPONSE_STRUCTS_H
