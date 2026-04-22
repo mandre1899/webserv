@@ -1,6 +1,4 @@
 #include "CgiService.hpp"
-#include "server/Client.hpp"
-#include <fcntl.h>
 
 //CGI ENV Helpers
 static std::string to_lower(std::string value)
@@ -26,7 +24,7 @@ static std::string cgi_token(const std::string &token)
 }
 
 static const std::string *find_header_case_insensitive(header_map &headers,
-	const std::string &key_lower)
+		const std::string &key_lower)
 {
 	for (const auto &header : headers)
 	{
@@ -72,8 +70,18 @@ static std::vector<std::string> build_cgi_env(ResourceInspection &data)
 
 CgiService::CgiService(ResourceInspection &data, int epfd, int socket_fd)
 	: _data(data), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
-	_socket_fd(socket_fd)
+		  _socket_fd(socket_fd)
 {
+	if (data.body_expected)
+	{
+		_postContentLength = std::stoi(data.request_headers.at("content-length"));
+		_postWriteTrack = 0;
+	}
+	else
+	{
+		_postContentLength = -1;
+		_postWriteTrack = -1;
+	}
 	std::vector<std::string> env_storage = build_cgi_env(data);
 	_cgi_envs.reserve(env_storage.size() + 1);
 	for (std::string& entry : env_storage)
@@ -188,8 +196,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 		_pipe_read = -1;
 		_cgi_pid = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
-	}
-}
+	}}
 
 std::pair<cgi_state, int>	CgiService::handle_cgi_write(const std::string& body_data)
 {
@@ -202,17 +209,13 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_write(const std::string& body_d
 		_pipe_write = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}
-
-	if (written_bytes == static_cast<ssize_t>(body_data.size()))
+	_postWriteTrack += body_data.size();
+	if (body_data.empty() || _postWriteTrack == _postContentLength)
 	{
-		Logger::log<LogLevel::info>("Wrote ", written_bytes, " bytes to CGI pipe");
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
 		close(_pipe_write);
 		_pipe_write = -1;
-		return std::make_pair(cgi_state::RUNNING, 200);
+		return std::make_pair(cgi_state::FINISHED_OK, 200);
 	}
-
-	Logger::log<LogLevel::warn>("Partial write to CGI: ", written_bytes, " out of ", body_data.size());
 	return std::make_pair(cgi_state::RUNNING, 200);
 }
 
@@ -275,11 +278,11 @@ cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 		_exit(1);
 	}
 	close(out[1]);
-	set_epoll_event(EPOLLIN | EPOLLRDHUP, out[0], FdKind::CGI_STDOUT_READ, currClient);
+	set_epoll_event(EPOLLIN , out[0], FdKind::CGI_STDOUT_READ, currClient);
 	if (expectedBody)
 	{
 		_pipe_write = in[1];
-		set_epoll_event(EPOLLOUT | EPOLLRDHUP, in[1], FdKind::CGI_STDIN_WRITE, currClient);
+		set_epoll_event(EPOLLOUT , in[1], FdKind::CGI_STDIN_WRITE, currClient);
 	}
 	else
 	{
@@ -295,13 +298,12 @@ void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client *
 {
 	epoll_event	ev;
 	FdContext	*tmp = new FdContext;
-	
+
 	_ctxTrack.push_back(tmp);
 	tmp->fd = fd;
 	tmp->kind = kind;
 	tmp->socket = currClient;
 	ev.events = events;
-	ev.data.fd = fd;
 	ev.data.ptr = (void *)tmp;
 	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd , &ev) == -1)
 	{

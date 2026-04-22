@@ -38,6 +38,8 @@ class CgiService
 	std::vector<char*>			_cgi_envs; // They get created at initialisation
 	header_map					_cgi_headers;
 	std::vector<FdContext*>		_ctxTrack;
+	unsigned int				_postWriteTrack; //tracks the bytest already written to the pipe stdin
+	unsigned int				_postContentLength;
 
 	void		set_epoll_event(uint32_t events, int fd, FdKind kind, Client *currClient);
 
