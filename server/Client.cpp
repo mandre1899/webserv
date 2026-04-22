@@ -115,7 +115,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 			}
 			else
 			{
-				_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd, this);
+				_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd, this, _srvCfg.vHost[0].clientMaxBodySize);
 				_parsingState = _service_handler->select_service();
 				return (EPOLLOUT);
 			}
