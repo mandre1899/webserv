@@ -14,7 +14,7 @@
 #include "server/Client.hpp"
 #include "server/TcpSocket.hpp"
 #include "utils/Logger.hpp"
-#include "StateMachines.hpp"
+#include "serverTypes.hpp"
 
 #define MAX_EVENTS 5
 

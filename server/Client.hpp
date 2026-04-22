@@ -14,7 +14,7 @@
 #include "response/RequestHandler.hpp"
 #include "utils/Logger.hpp"
 #include "HttpParser.hpp"
-#include "StateMachines.hpp"
+#include "serverTypes.hpp"
 
 class Client {
 private:
