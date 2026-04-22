@@ -8,8 +8,10 @@
 #include <unistd.h>
 #include <cerrno>
 #include <chrono>
+#include "ServiceHandler.hpp"
 #include "config/configTypes.hpp"
-#include "HttpResponse.hpp"
+#include "response/HttpResponse.hpp"
+#include "response/RequestHandler.hpp"
 #include "utils/Logger.hpp"
 #include "HttpParser.hpp"
 #include "StateMachines.hpp"
@@ -27,11 +29,14 @@ private:
 	state _parsingState;
 	const cfg::srvCfg& _srvCfg;
 	HttpResponse	_response;
+	std::unique_ptr<RequestHandler>	_request_handler;//Gives the request meaning m.l
+	std::unique_ptr<ServiceHandler>	_service_handler;//Turns the meaning into a response m.l
 
+	//std::unique_ptr<StaticFileService>	_staticFileService;
 	/* Member Functions */
 	void recvMsg();
-	uint32_t recvData();
-	uint32_t sendData();
+	uint32_t recvData(FdContext* fdCon);
+	uint32_t sendData(FdContext* fdCon);
 
 public:
 	/* Constructors & Destructors */
@@ -42,7 +47,7 @@ public:
 	~Client();
 
 	/* Member Functions */
-	uint32_t handleConnection(uint32_t event);
+	uint32_t handleConnection(uint32_t event, FdContext* fdCon);
 
 	/* Basic Operators */
 	Client& operator=(const Client& src) = delete;

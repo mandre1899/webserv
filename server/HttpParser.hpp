@@ -21,6 +21,7 @@
 #include <fstream>
 #include "utils/helper.hpp"
 #include "utils/Logger.hpp"
+#include "response/typedefs.hpp"
 
 #define REQUESTLINE_MAX_SIZE 8192 // 8 KiB
 
@@ -38,7 +39,7 @@ private:
 	std::string _request_URI;
 	std::string	_query_str;
 	std::string _http_version;
-	std::map<std::string, std::string> _headers_map;
+	header_map _headers_map;
 	std::string _boundary;
 
 public:
@@ -76,7 +77,7 @@ public:
 	std::string getRequestUri() const;
 	std::string getRequestQuery() const;
 	std::string getHttpVersion() const;
-	std::map<std::string, std::string> getHeadersMap() const;
+	header_map getHeadersMap() const;
 };
 
 std::ostream& operator<<(std::ostream& o, const HttpParser& out);

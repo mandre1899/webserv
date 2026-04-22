@@ -1,20 +1,95 @@
-#include "CGI.hpp"
-#include <cctype>
+#include "CgiService.hpp"
 
-CGI::CGI(HttpParser &request, std::string cgi_exec_path, const std::string &abs_path, int epfd, int socket_fd)
-	: _request(request), _exec_path(cgi_exec_path), _abs_path(abs_path), _cgi_pid(-1), _pipe_read(-1), _epfd(epfd), \
-	_socket_fd(socket_fd), _body_size(0)
-{}
+//CGI ENV Helpers
+static std::string to_lower(std::string value)
+{
+	for (char &c : value)
+		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+	return value;
+}
 
-CGI::~CGI()
+static std::string cgi_token(const std::string &token)
+{
+	std::string out;
+	out.reserve(token.size());
+	for (char c : token)
+	{
+		const unsigned char xc = static_cast<unsigned char>(c);
+		if (std::isalnum(xc))
+			out.push_back(static_cast<char>(std::toupper(xc)));
+		else
+			out.push_back('_');
+	}
+	return out;
+}
+
+static const std::string *find_header_case_insensitive(header_map &headers,
+	const std::string &key_lower)
+{
+	for (const auto &header : headers)
+	{
+		if (to_lower(header.first) == key_lower)
+			return &header.second;
+	}
+	return NULL;
+}
+
+static void push_env(std::vector<std::string> &env_storage, const std::string &key, const std::string &value)
+{
+	env_storage.push_back(key + "=" + value);
+}
+
+static std::vector<std::string> build_cgi_env(ResourceInspection &data)
+{
+	std::vector<std::string> env_storage;
+	env_storage.reserve(data.request_headers.size());
+
+	for (const auto &header : data.request_headers)
+	{
+		std::string cgi_header_key = cgi_token(header.first);
+		if (cgi_header_key == "CONTENT_LENGTH" || cgi_header_key == "CONTENT_TYPE")
+			continue;
+		push_env(env_storage, "HTTP_" + cgi_header_key, header.second);
+	}
+	const std::string *content_length = find_header_case_insensitive(data.request_headers, "content-length");
+	const std::string *content_type = find_header_case_insensitive(data.request_headers, "content-type");
+
+	push_env(env_storage, "REQUEST_METHOD", data.request_method);
+	push_env(env_storage, "REQUEST_URI", data.request_uri);
+	push_env(env_storage, "QUERY_STRING", data.request_query); 
+	//push_env(env_storage, "SCRIPT_NAME", script_name);
+	//push_env(env_storage, "SERVER_PROTOCOL", data.request_version);.
+	push_env(env_storage, "SCRIPT_FILENAME", data.abs_path);
+	push_env(env_storage, "REDIRECT_STATUS", "200"); // Important for php-cgi
+	if (content_length != NULL)
+		push_env(env_storage, "HTTP_CONTENT_LENGTH", *content_length);
+	if (content_type != NULL)
+		push_env(env_storage, "HTTP_CONTENT_TYPE", *content_type);
+	return env_storage;
+}
+
+CgiService::CgiService(ResourceInspection &data, int epfd, int socket_fd)
+	: _bin_exec_path(data.cgi_path), _script_path(data.abs_path), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
+	_socket_fd(socket_fd)
+{
+	std::vector<std::string> env_storage = build_cgi_env(data);
+	_cgi_envs.reserve(env_storage.size() + 1);
+	for (std::string& entry : env_storage)
+		_cgi_envs.push_back(const_cast<char*>(entry.c_str()));
+	_cgi_envs.push_back(NULL);
+}
+
+CgiService::~CgiService()
 {
 	if (_pipe_read != -1)
 		close(_pipe_read);
 	if (_cgi_pid != -1 )
 		kill(_cgi_pid, SIGKILL);
+	if (_pipe_write != -1)
+		close(_pipe_write);
 }
 
-bool	CGI::parse_cgi_headers(void)
+bool	CgiService::parse_cgi_headers(void)
 {
 	size_t header_end = std::string::npos;
 	size_t delimiter_len = 0;
@@ -50,15 +125,14 @@ bool	CGI::parse_cgi_headers(void)
 		std::string key = line.substr(0, sep);
 		std::string value = line.substr(sep + 1);
 
-		_cgi_header[key] = value;
+		_cgi_headers[key] = value;
 	}
 
 	_body = parsed_body;
-	_body_size = _body.size();
 	return true;
 }
 
-std::pair<cgi_state, int>	CGI::handle_cgi_proc()
+std::pair<cgi_state, int>	CgiService::handle_cgi_proc()
 {
 	char buf[4096];
 	while (true)
@@ -68,7 +142,6 @@ std::pair<cgi_state, int>	CGI::handle_cgi_proc()
 		{
 			Logger::log<LogLevel::info>("Read ", read_bytes, " bytes from CGI pipe");
 			_body.append(buf, static_cast<std::size_t>(read_bytes));
-			_body_size += static_cast<std::size_t>(read_bytes);
 			continue;
 		}
 		if (read_bytes == 0)
@@ -95,7 +168,7 @@ std::pair<cgi_state, int>	CGI::handle_cgi_proc()
 						return std::make_pair(cgi_state::FINISHED_KO, 500);
 					}
 					std::cout << "CGI HEADERS" << std::endl;
-					for (auto &a : _cgi_header)
+					for (auto &a : _cgi_headers)
 						std::cout << a.first + "=" + a.second << std::endl;
 					return std::make_pair(cgi_state::FINISHED_OK, 200);
 				}
@@ -113,83 +186,11 @@ std::pair<cgi_state, int>	CGI::handle_cgi_proc()
 	}
 }
 
-static std::string to_lower(std::string value)
+cgi_state	CgiService::execute_cgi_proc()
 {
-	for (char &c : value)
-		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-	return value;
-}
-
-static std::string cgi_token(const std::string &token)
-{
-	std::string out;
-	out.reserve(token.size());
-	for (char c : token)
-	{
-		const unsigned char xc = static_cast<unsigned char>(c);
-		if (std::isalnum(xc))
-			out.push_back(static_cast<char>(std::toupper(xc)));
-		else
-			out.push_back('_');
-	}
-	return out;
-}
-
-static const std::string *find_header_case_insensitive(const std::map<std::string, std::string> &headers,
-	const std::string &key_lower)
-{
-	for (const auto &header : headers)
-	{
-		if (to_lower(header.first) == key_lower)
-			return &header.second;
-	}
-	return NULL;
-}
-
-static void push_env(std::vector<std::string> &env_storage, const std::string &key, const std::string &value)
-{
-	env_storage.push_back(key + "=" + value);
-}
-
-static std::vector<std::string> build_cgi_env(const HttpParser &request, const std::string &abs_path)
-{
-	std::vector<std::string> env_storage;
-	const std::map<std::string, std::string> headers = request.getHeadersMap();
-	env_storage.reserve(headers.size());
-
-	for (const auto &header : headers)
-	{
-		std::string cgi_header_key = cgi_token(header.first);
-		if (cgi_header_key == "CONTENT_LENGTH" || cgi_header_key == "CONTENT_TYPE")
-			continue;
-		push_env(env_storage, "HTTP_" + cgi_header_key, header.second);
-	}
-	const std::string *content_length = find_header_case_insensitive(headers, "content-length");
-	const std::string *content_type = find_header_case_insensitive(headers, "content-type");
-	std::string script_name = request.getRequestUri();
-	if (script_name.empty())
-		script_name = "/";
-
-	push_env(env_storage, "REQUEST_METHOD", request.getMethodAsString());
-	push_env(env_storage, "REQUEST_URI", request.getRequestUri());
-	push_env(env_storage, "QUERY_STRING", request.getRequestQuery());
-	push_env(env_storage, "SCRIPT_NAME", script_name);
-	push_env(env_storage, "SERVER_PROTOCOL", request.getHttpVersion());
-	push_env(env_storage, "GATEWAY_INTERFACE", "CGI/1.1");
-	push_env(env_storage, "SCRIPT_FILENAME", abs_path);
-	push_env(env_storage, "REDIRECT_STATUS", "200"); // Important for php-cgi
-	if (content_length != NULL)
-		push_env(env_storage, "HTTP_CONTENT_LENGTH", *content_length);
-	if (content_type != NULL)
-		push_env(env_storage, "HTTP_CONTENT_TYPE", *content_type);
-	return env_storage;
-}
-
-cgi_state	CGI::execute_cgi_proc()
-{
-	const std::string execLocPath = _exec_path;
+	const std::string execLocPath = _bin_exec_path;
 	char* execPath = NULL;
-	char* scriptPath = const_cast<char*>(_abs_path.c_str());
+	char* scriptPath = const_cast<char*>(_script_path.c_str());
 	int p[2];
 
 	//set_status_code(200);
@@ -210,19 +211,13 @@ cgi_state	CGI::execute_cgi_proc()
 	if (pid == 0)
 	{
 		char* const argv[] = { execPath, scriptPath, NULL };
-		std::vector<std::string> env_storage = build_cgi_env(_request, _abs_path);
-		std::vector<char*> env;
-		env.reserve(env_storage.size() + 1);
-		for (std::string& entry : env_storage)
-			env.push_back(const_cast<char*>(entry.c_str()));
-		env.push_back(NULL);
 		close(p[0]);
 		if (dup2(p[1], STDOUT_FILENO) == -1)
 			_exit(1);
 		if (dup2(p[1], STDERR_FILENO) == -1)
 			_exit(1);
 		close(p[1]);
-		execve(execPath, argv, env.data());
+		execve(execPath, argv, _cgi_envs.data());
 		Logger::log<LogLevel::error>("Execve failed");
 		_exit(1);
 	}
@@ -241,17 +236,13 @@ cgi_state	CGI::execute_cgi_proc()
 	return cgi_state::RUNNING;
 }
 
-std::string	CGI::get_body(void)
+std::string	CgiService::get_body(void)
 {
 	return _body;	
 }
 
-std::unordered_map<std::string, std::string>	CGI::get_header_map(void)
+header_map	CgiService::get_header_map(void)
 {
-	return _cgi_header;
+	return _cgi_headers;
 }
 
-size_t	CGI::get_body_size(void)
-{
-	return _body_size;
-}

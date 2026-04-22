@@ -1,5 +1,5 @@
-#ifndef HTTPUPLOAD_HPP
-#define HTTPUPLOAD_HPP
+#ifndef HTTPUPLOAD_SERVICE_HPP
+#define HTTPUPLOAD_SERVICE_HPP
 
 #include <map>
 #include <string>

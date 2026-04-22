@@ -1,4 +1,4 @@
-#include "HttpUpload.hpp"
+#include "HttpUploadService.hpp"
 
 /* Constructors & Destructors */
 HttpUpload::HttpUpload(void)

@@ -44,7 +44,7 @@ void Client::recvMsg()
 }
 
 /* Member Functions */
-uint32_t Client::recvData()
+uint32_t Client::recvData(FdContext* fdCon)
 {
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
@@ -77,31 +77,30 @@ uint32_t Client::recvData()
 	{
 		_parsedHttp.checkHeader();
 		Logger::log<LogLevel::trace>("Client::recvData() ", _parsedHttp);
-		return (sendData());
+		return (sendData(fdCon));
 	}
 	return (EPOLLIN);
 }
 
-uint32_t Client::sendData()
+uint32_t Client::sendData(FdContext* fdCon)
 {
+	(void)fdCon;
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
+	//The request handler just resolves the request into a meaningfull sturct
 	if (_parsingState == state::parsing_done)
-		_parsingState = _response.build(&_parsedHttp, &_srvCfg, _clientFd, _epollFd);
-	else if (_parsingState == state::response_proccessing)
-		_parsingState = _response.handle_cgi_proc();
-	if (_parsingState == state::response_body)
 	{
-		_parsingState = _response.upload_body(_msg); // todo: body timeout  + client_max_body_size -> set to 0 = disabled
-		if (_parsingState == state::response_body)
-			return (EPOLLIN);
+		try {
+			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _srvCfg); // Throws internally but doesn not catch currently
+			ResourceInspection data = _request_handler->get_result();
+			_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd);
+		}
+		catch (...) {
+			Logger::log<LogLevel::error>("RequestHandler failed");
+		}
 	}
-	if (_parsingState == state::response_proccessing)
-		return (EPOLLIN);
-	if (_parsingState != state::response_sending)
-		return (EPOLLHUP);
-	if (_parsingState == state::error)
-		return (EPOLLHUP);
+	_response.set_status(200);
 	std::string msg = _response.get_response_str();
+	_parsingState = state::response_sending;
 	ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
 	if (ret > 0)
 	{
@@ -113,7 +112,7 @@ uint32_t Client::sendData()
 	return (EPOLLHUP);
 }
 
-uint32_t Client::handleConnection(uint32_t event)
+uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 {
 	try
 	{
@@ -121,20 +120,20 @@ uint32_t Client::handleConnection(uint32_t event)
 		{
 			// I need to check if a pipe is processing
 			if (_parsingState == state::response_proccessing)
-				return (sendData());
+				return (sendData(fdCon));
 			else if (_parsingState == state::response_body)
 			{
 				recvMsg();
-				return (sendData());
+				return (sendData(fdCon));
 			}
 			else
 			{
 				recvMsg();
-				return (recvData());
+				return (recvData(fdCon));
 			}
 		}
 		if (event & EPOLLOUT)
-			return (sendData());
+			return (sendData(fdCon));
 		if (event & EPOLLHUP)
 			return (EPOLLHUP);
 		// if (event & EPOLLPRI)
