@@ -34,7 +34,7 @@ state	ServiceHandler::select_service()
 		try
 		{
 			_service_state = ServiceState::PROCESSING_POST;
-			_uploadService = std::make_unique<HttpUpload>(_data.request_headers, _data.abs_path, _clientMaxBodySize);
+			_uploadService = std::make_unique<HttpUpload>(_data.request_headers, _data.upload_path, _clientMaxBodySize);
 			return state::response_body;
 		}
 		catch (const HttpUpload::MissingLengthException &e)
