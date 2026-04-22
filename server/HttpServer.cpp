@@ -43,7 +43,8 @@ void HttpServer::addClient(int serverFd, int clientFd, const cfg::socketCfg& soc
 	}
 	const cfg::srvCfg& srvCfg = it->second;
 	FdContext* clientContext = new FdContext;
-	clientContext->socket = new Client(serverFd, clientFd, _epollFd, srvCfg);
+	Client* c = new Client(serverFd, clientFd, _epollFd, srvCfg);
+	clientContext->socket = c;
 	clientContext->fd = clientFd;
 	clientContext->kind = FdKind::CLIENT_SOCKET;
 	_map.insert({ clientFd, clientContext });
@@ -51,8 +52,7 @@ void HttpServer::addClient(int serverFd, int clientFd, const cfg::socketCfg& soc
 	event.data.ptr = clientContext;
 	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &event))
 		throw std::runtime_error("Failed to add file descriptor to epoll");
-	const auto timeout = std::get<Client*>(clientContext->socket)->getTimeout();
-	_prioQ.push({ timeout, clientFd });
+	_prioQ.push({ c->getTimeout(), clientFd, c->getVersion() });
 	Logger::log<LogLevel::debug>("HttpServer::addClient() - Client added with FD ", clientFd);
 }
 
@@ -91,20 +91,24 @@ void HttpServer::createSockets(Config& conf)
 void HttpServer::checkClientTimeout()
 {
 	auto now = std::chrono::system_clock::now();
-	while (!_prioQ.empty() && now > _prioQ.top().timeout)
+	while (!_prioQ.empty())
 	{
-		int cFd = _prioQ.top().clientFd;
-		auto it = _map.find(cFd);
-		if (it != _map.end())
-		{
-			FdContext* fdCon = it->second;
-			Client* c = std::get<Client*>(fdCon->socket);
-			if (now > c->getTimeout())
-				removeClient(fdCon);
-			else
-				_prioQ.push({ c->getTimeout(), cFd });
-		}
+		sessionTime top = _prioQ.top();
+		if (now < top.timeout)
+			break;
 		_prioQ.pop();
+		int cFd = top.clientFd;
+		auto it = _map.find(cFd);
+		if (it == _map.end())
+			continue;
+		FdContext* fdCon = it->second;
+		Client* c = std::get<Client*>(fdCon->socket);
+		if (c->getVersion() != top.version)
+			continue;
+		if (now > c->getTimeout())
+			removeClient(fdCon);
+		else
+			_prioQ.push({ c->getTimeout(), c->getFd(), top.version });
 		now = std::chrono::system_clock::now();
 	}
 }
@@ -147,5 +151,5 @@ void HttpServer::run()
 
 bool sessionTime::operator<(const sessionTime& rhs) const
 {
-	return (timeout < rhs.timeout);
+	return (rhs.timeout < timeout);
 }

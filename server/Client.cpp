@@ -5,6 +5,7 @@ Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCf
 {
 	_msg = "";
 	_parsingState = state::parsing_request_line;
+	_version = std::chrono::system_clock::now();
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
 }
 
@@ -17,6 +18,7 @@ Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
 	_parsingState = src._parsingState;
 	_parsedHttp = std::move(src._parsedHttp);
 	_sendedBytes = src._sendedBytes;
+	_version = src._version;
 	_timeout = src._timeout;
 	src._serverFd = -1;
 	src._clientFd = -1;
@@ -173,8 +175,12 @@ int Client::getFd() const
 	return (_clientFd);
 }
 
+std::chrono::system_clock::time_point Client::getVersion() const
+{
+	return (_version);
+}
 
-std::chrono::time_point<std::chrono::system_clock> Client::getTimeout() const
+std::chrono::system_clock::time_point Client::getTimeout() const
 {
 	return (_timeout);
 }

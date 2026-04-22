@@ -22,15 +22,15 @@ extern volatile std::sig_atomic_t g_stopServerSignal;
 
 struct sessionTime
 {
-	std::chrono::time_point<std::chrono::system_clock> timeout;
+	std::chrono::system_clock::time_point timeout;
 	int clientFd;
+	std::chrono::system_clock::time_point version;
 	bool operator<(const sessionTime& rhs) const;
 };
 
 class HttpServer {
 private:
 	int _epollFd;
-	// std::vector<FdContext*> _FdList;
 	std::unordered_map<int, FdContext*> _map{};
 	std::priority_queue<sessionTime, std::vector<sessionTime>, std::less<sessionTime>> _prioQ;
 

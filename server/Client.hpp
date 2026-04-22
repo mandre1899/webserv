@@ -21,7 +21,8 @@ private:
 	int _serverFd;
 	int _clientFd;
 	int _epollFd;
-	std::chrono::time_point<std::chrono::system_clock> _timeout;
+	std::chrono::system_clock::time_point _version;
+	std::chrono::system_clock::time_point _timeout;
 	std::string _msg;
 	HttpParser _parsedHttp;
 	size_t	_headerBytes = {};
@@ -55,7 +56,8 @@ public:
 
 	/* Getters & Setters */
 	int getFd() const;
-	std::chrono::time_point<std::chrono::system_clock> getTimeout() const;
+	std::chrono::system_clock::time_point getVersion() const;
+	std::chrono::system_clock::time_point getTimeout() const;
 };
 
 #endif // CLIENT_HPP
