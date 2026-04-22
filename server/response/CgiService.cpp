@@ -1,5 +1,6 @@
 #include "CgiService.hpp"
 #include "server/Client.hpp"
+#include <fcntl.h>
 
 //CGI ENV Helpers
 static std::string to_lower(std::string value)
@@ -88,6 +89,7 @@ CgiService::~CgiService()
 		kill(_cgi_pid, SIGKILL);
 	if (_pipe_write != -1)
 		close(_pipe_write);
+
 	for (auto &a : _ctxTrack)
 		delete a;
 }
@@ -191,9 +193,6 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 
 std::pair<cgi_state, int>	CgiService::handle_cgi_write(const std::string& body_data)
 {
-	if (_pipe_write == -1)
-		return std::make_pair(cgi_state::FAILED, 500);
-
 	ssize_t written_bytes = write(_pipe_write, body_data.c_str(), body_data.size());
 	if (written_bytes < 0)
 	{
@@ -222,11 +221,9 @@ cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 	const std::string execLocPath = _data.cgi_path;
 	char* execPath = NULL;
 	char* scriptPath = const_cast<char*>(_data.abs_path.c_str());
-	int out[2];
-	int in[2];
+	int out[2] = {-1, -1};
+	int in[2] = {-1, -1};
 	bool	expectedBody = _data.body_expected;
-
-	std::cout << "Hello World" << std::endl;
 
 	//set_status_code(200);
 	execPath = const_cast<char*>(execLocPath.c_str());
@@ -249,8 +246,10 @@ cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 	if (pid < 0)
 	{
 		Logger::log<LogLevel::error>("fork() failed");
-		close(in[0]);
-		close(in[1]);
+		if (in[0] != -1)
+			close(in[0]);
+		if (in[1] != -1)
+			close(in[1]);
 		close(out[0]);
 		close(out[1]);
 		return cgi_state::FAILED;
@@ -258,10 +257,13 @@ cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 	if (pid == 0)
 	{
 		char* const argv[] = { execPath, scriptPath, NULL };
-		close(in[1]);
-		if (dup2(in[0], STDIN_FILENO) == -1)
-			_exit(1);
-		close(in[0]);
+		if (expectedBody)
+		{
+			close(in[1]);
+			if (dup2(in[0], STDIN_FILENO) == -1)
+				_exit(1);
+			close(in[0]);
+		}
 		close(out[0]);
 		if (dup2(out[1], STDOUT_FILENO) == -1)
 			_exit(1);
@@ -281,8 +283,8 @@ cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 	}
 	else
 	{
-		close(in[0]);
-		close(in[1]);
+		if (in[0] != -1)
+			close(in[0]);
 	}
 	_cgi_pid = pid;
 	_pipe_read = out[0];

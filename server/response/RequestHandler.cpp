@@ -150,6 +150,11 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	_inspection_result.request_headers = _request.getHeadersMap();
 	_inspection_result.request_method = _request.getMethodAsString();
 	
+	// Set body_expected based on Content-Length header
+	const auto& headers = _request.getHeadersMap();
+	_inspection_result.body_expected = (headers.find("Content-Length") != headers.end() ||
+										headers.find("content-length") != headers.end());
+	
 	// Check if path exists
 	if (stat(abs_path.c_str(), &file_stat) != 0)
 	{
@@ -179,6 +184,7 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		if (!_locationConfig->uploadStore.empty())
 		{
 			_inspection_result.kind = UPLOAD_DIR;
+			_inspection_result.body_required = true;
 			if (_inspection_result.writable)
 			{
 				_inspection_result.status = OK;
@@ -191,6 +197,7 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		else
 		{
 			_inspection_result.kind = DIRECTORY;
+			_inspection_result.body_required = false;
 			if (_locationConfig->autoIndex)
 			{
 				_inspection_result.status = OK;
@@ -210,6 +217,7 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		{
 			_inspection_result.kind = CGI;
 			_inspection_result.cgi_path = _locationConfig->cgiPath;
+			_inspection_result.body_required = (_request.getMethod() == method_type::POST);
 			if (_inspection_result.readable && _inspection_result.executable)
 			{
 				_inspection_result.status = OK;
@@ -222,6 +230,7 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		else
 		{
 			_inspection_result.kind = IS_FILE;
+			_inspection_result.body_required = false;
 			if (_inspection_result.readable)
 			{
 				_inspection_result.status = OK;
@@ -238,6 +247,7 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		_inspection_result.is_directory = false;
 		_inspection_result.kind = NONE;
 		_inspection_result.status = FORBIDDEN;
+		_inspection_result.body_required = false;
 	}
 }
 
