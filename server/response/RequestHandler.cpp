@@ -165,6 +165,12 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	const auto& headers = _request.getHeadersMap();
 	_inspection_result.body_expected = (headers.find("Content-Length") != headers.end() ||
 										headers.find("content-length") != headers.end());
+	if (_locationConfig->ret.has_value())
+	{
+		_inspection_result.has_redirect = true;
+		_inspection_result.redirect_code = _locationConfig->ret->code;
+		_inspection_result.redirect_target = _locationConfig->ret->param;
+	}
 	
 	if (stat(abs_path.c_str(), &file_stat) != 0)
 	{
