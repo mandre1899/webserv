@@ -201,6 +201,7 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		{
 			_inspection_result.kind = UPLOAD_DIR;
 			_inspection_result.body_required = true;
+			_inspection_result.upload_path = _locationConfig->uploadStore;
 			_inspection_result.status = (_inspection_result.writable) ? OK : FORBIDDEN;
 		}
 		else

@@ -41,6 +41,7 @@ struct ResourceInspection
 	std::string		abs_path;
 	std::string		cgi_path;
 	std::string		index_path;
+	std::string		upload_path;
 
 	bool			exists = false;
 	bool			is_file;
