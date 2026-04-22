@@ -29,9 +29,10 @@ class ServiceHandler
 	ServiceState					_service_state;
 	std::unique_ptr<CgiService>		_cgiService;
 	std::unique_ptr<HttpUpload>		_uploadService;
+	size_t							_clientMaxBodySize;
 	public:
 		ServiceHandler(void) = delete;
-		ServiceHandler(ResourceInspection data, HttpResponse &response, int epfd, int socket_fd, Client *currClient);
+		ServiceHandler(ResourceInspection data, HttpResponse &response, int epfd, int socket_fd, Client *currClient, size_t clientMaxBodySize);
 		ServiceHandler	operator=(const ServiceHandler &obj) = delete;
 		~ServiceHandler(void);
 
