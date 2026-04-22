@@ -99,7 +99,10 @@ CgiService::~CgiService()
 		close(_pipe_write);
 
 	for (auto &a : _ctxTrack)
+	{
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, a->fd, NULL);
 		delete a;
+	}
 }
 
 bool	CgiService::parse_cgi_headers(void)
@@ -159,7 +162,6 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 		}
 		if (read_bytes == 0)
 		{
-			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 			close(_pipe_read);
 			_pipe_read = -1;
 			int status = 0;
@@ -191,31 +193,35 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 			return std::make_pair(cgi_state::FINISHED_OK, 200);
 		}
 		Logger::log<LogLevel::error>("Read failed status: ", errno);
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 		close(_pipe_read);
 		_pipe_read = -1;
 		_cgi_pid = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}}
 
-std::pair<cgi_state, int>	CgiService::handle_cgi_write(const std::string& body_data)
+std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 {
-	ssize_t written_bytes = write(_pipe_write, body_data.c_str(), body_data.size());
+	ssize_t written_bytes = write(_pipe_write, body_data.data(), body_data.size());
+	_postWriteTrack += written_bytes;
+	body_data.erase(0, written_bytes);
 	if (written_bytes < 0)
 	{
+		if (errno == EINTR)
+			return std::make_pair(cgi_state::RUNNING, 200);
 		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
 		close(_pipe_write);
 		_pipe_write = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}
-	_postWriteTrack += body_data.size();
-	if (body_data.empty() || _postWriteTrack == _postContentLength)
+	std::cout << "Post Write: " << _postWriteTrack << std::endl;
+	std::cout << "Content length: " << _postContentLength << std::endl;
+	if (_postContentLength <= _postWriteTrack)
 	{
 		close(_pipe_write);
 		_pipe_write = -1;
 		return std::make_pair(cgi_state::FINISHED_OK, 200);
 	}
+
 	return std::make_pair(cgi_state::RUNNING, 200);
 }
 

@@ -51,7 +51,7 @@ public:
 	bool						parse_cgi_headers(void);
 	cgi_state   				execute_cgi_proc(Client *currClient);
 	std::pair<cgi_state, int>	handle_cgi_read();
-	std::pair<cgi_state, int>	handle_cgi_write(const std::string& body_data);
+	std::pair<cgi_state, int>	handle_cgi_write(std::string& body_data);
 
 	//GETTERS
 	std::string										get_body(void);
