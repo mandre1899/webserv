@@ -171,13 +171,11 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	_inspection_result.writable = (access(abs_path.c_str(), W_OK) == 0);
 	_inspection_result.executable = (access(abs_path.c_str(), X_OK) == 0);
 	
-	// Determine if it's a directory or file
 	if (S_ISDIR(file_stat.st_mode))
 	{
 		_inspection_result.is_directory = true;
 		_inspection_result.is_file = false;
 		
-		// Check if this is an upload directory
 		if (!_locationConfig->uploadStore.empty())
 		{
 			_inspection_result.kind = UPLOAD_DIR;
@@ -208,7 +206,6 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
 		
-		// Check if this is a CGI script
 		if (!_locationConfig->cgiPath.empty())
 		{
 			_inspection_result.kind = CGI;
