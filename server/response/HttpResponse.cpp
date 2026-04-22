@@ -129,7 +129,7 @@ void	HttpResponse::set_default_reponse(int status_code)
 
 }
 
-void	HttpResponse::set_default_reponse(int status_code, cfg::wsLocationCtx &location)
+void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx &location)
 {
 	std::unordered_map<http_code, std::string>::const_iterator it_err_page = location.errorPage.find(status_code);
 	if (it_err_page != location.errorPage.end() && !it_err_page->second.empty())
