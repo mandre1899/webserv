@@ -176,30 +176,63 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	{
 		_inspection_result.is_directory = true;
 		_inspection_result.is_file = false;
-		_inspection_result.kind = DIRECTORY;
 		
-		if (_locationConfig->autoIndex)
+		// Check if this is an upload directory
+		if (!_locationConfig->uploadStore.empty())
 		{
-			_inspection_result.status = OK;
+			_inspection_result.kind = UPLOAD_DIR;
+			if (_inspection_result.writable)
+			{
+				_inspection_result.status = OK;
+			}
+			else
+			{
+				_inspection_result.status = FORBIDDEN;
+			}
 		}
 		else
 		{
-			_inspection_result.status = FORBIDDEN;
+			_inspection_result.kind = DIRECTORY;
+			if (_locationConfig->autoIndex)
+			{
+				_inspection_result.status = OK;
+			}
+			else
+			{
+				_inspection_result.status = FORBIDDEN;
+			}
 		}
 	}
 	else if (S_ISREG(file_stat.st_mode))
 	{
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
-		_inspection_result.kind = IS_FILE;
 		
-		if (_inspection_result.readable)
+		// Check if this is a CGI script
+		if (!_locationConfig->cgiPath.empty())
 		{
-			_inspection_result.status = OK;
+			_inspection_result.kind = CGI;
+			_inspection_result.cgi_path = _locationConfig->cgiPath;
+			if (_inspection_result.readable && _inspection_result.executable)
+			{
+				_inspection_result.status = OK;
+			}
+			else
+			{
+				_inspection_result.status = FORBIDDEN;
+			}
 		}
 		else
 		{
-			_inspection_result.status = FORBIDDEN;
+			_inspection_result.kind = IS_FILE;
+			if (_inspection_result.readable)
+			{
+				_inspection_result.status = OK;
+			}
+			else
+			{
+				_inspection_result.status = FORBIDDEN;
+			}
 		}
 	}
 	else
