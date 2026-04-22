@@ -44,7 +44,7 @@ void Client::recvMsg()
 }
 
 /* Member Functions */
-uint32_t Client::recvData()
+uint32_t Client::recvData(FdContext* fdCon)
 {
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
@@ -77,13 +77,14 @@ uint32_t Client::recvData()
 	{
 		_parsedHttp.checkHeader();
 		Logger::log<LogLevel::trace>("Client::recvData() ", _parsedHttp);
-		return (sendData());
+		return (sendData(fdCon));
 	}
 	return (EPOLLIN);
 }
 
-uint32_t Client::sendData()
+uint32_t Client::sendData(FdContext* fdCon)
 {
+	(void)fdCon;
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
 	//The request handler just resolves the request into a meaningfull sturct
 	if (_parsingState == state::parsing_done)
@@ -92,7 +93,8 @@ uint32_t Client::sendData()
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _srvCfg); // Throws internally but doesn not catch currently
 			ResourceInspection data = _request_handler->get_result();
 			_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd);
-		} catch (...) {
+		}
+		catch (...) {
 			Logger::log<LogLevel::error>("RequestHandler failed");
 		}
 	}
@@ -110,7 +112,7 @@ uint32_t Client::sendData()
 	return (EPOLLHUP);
 }
 
-uint32_t Client::handleConnection(uint32_t event)
+uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 {
 	try
 	{
@@ -118,20 +120,20 @@ uint32_t Client::handleConnection(uint32_t event)
 		{
 			// I need to check if a pipe is processing
 			if (_parsingState == state::response_proccessing)
-				return (sendData());
+				return (sendData(fdCon));
 			else if (_parsingState == state::response_body)
 			{
 				recvMsg();
-				return (sendData());
+				return (sendData(fdCon));
 			}
 			else
 			{
 				recvMsg();
-				return (recvData());
+				return (recvData(fdCon));
 			}
 		}
 		if (event & EPOLLOUT)
-			return (sendData());
+			return (sendData(fdCon));
 		if (event & EPOLLHUP)
 			return (EPOLLHUP);
 		// if (event & EPOLLPRI)
