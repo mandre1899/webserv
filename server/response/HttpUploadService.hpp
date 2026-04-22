@@ -28,7 +28,6 @@ private:
 	std::string _filePath;
 	std::string _filename;
 	std::ofstream _file;
-	std::size_t   _clientMaxBody;
 
 	/* Member Functions */
 	std::string extractBoundary(std::string value);

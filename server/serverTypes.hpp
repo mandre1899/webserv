@@ -1,5 +1,7 @@
-#ifndef STATE_MACHINES_H
-# define STATE_MACHINES_H
+#ifndef SERVERTYPES_HPP
+#define SERVERTYPES_HPP
+
+#include <variant>
 
 #define CGI_TIMEOUT_TIME 30
 
@@ -11,7 +13,7 @@ class TcpSocket;
 
 #endif
 
-#include <variant>
+
 
 enum class state {
 	parsing_request_line = 0,
@@ -37,4 +39,4 @@ struct FdContext {
 	std::variant<Client*, TcpSocket*> socket;
 };
 
-#endif // !STATE_MACHINES_H
+#endif // SERVERTYPES_HPP

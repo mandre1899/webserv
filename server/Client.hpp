@@ -14,7 +14,7 @@
 #include "response/RequestHandler.hpp"
 #include "utils/Logger.hpp"
 #include "HttpParser.hpp"
-#include "StateMachines.hpp"
+#include "serverTypes.hpp"
 
 class Client {
 private:
@@ -35,8 +35,8 @@ private:
 	//std::unique_ptr<StaticFileService>	_staticFileService;
 	/* Member Functions */
 	void recvMsg();
-	uint32_t recvData();
-	uint32_t sendData();
+	uint32_t recvData(FdContext* fdCon);
+	uint32_t sendData(FdContext* fdCon);
 
 public:
 	/* Constructors & Destructors */
@@ -47,7 +47,7 @@ public:
 	~Client();
 
 	/* Member Functions */
-	uint32_t handleConnection(uint32_t event);
+	uint32_t handleConnection(uint32_t event, FdContext* fdCon);
 
 	/* Basic Operators */
 	Client& operator=(const Client& src) = delete;

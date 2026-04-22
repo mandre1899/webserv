@@ -97,10 +97,10 @@ void HttpServer::checkClientTimeout()
 		auto it = _map.find(cFd);
 		if (it != _map.end())
 		{
-			FdContext* context = it->second;
-			Client* c = std::get<Client*>(context->socket);
+			FdContext* fdCon = it->second;
+			Client* c = std::get<Client*>(fdCon->socket);
 			if (now > c->getTimeout())
-				removeClient(context);
+				removeClient(fdCon);
 			else
 				_prioQ.push({ c->getTimeout(), cFd });
 		}
@@ -121,20 +121,20 @@ void HttpServer::run()
 	}
 	for (int i = 0; i < eventCount; i++)
 	{
-		FdContext* context = static_cast<FdContext*>(events[i].data.ptr);
-		if (context->kind == FdKind::SERVER_SOCKET) // if (serverSocket)...
+		FdContext* fdCon = static_cast<FdContext*>(events[i].data.ptr);
+		if (fdCon->kind == FdKind::SERVER_SOCKET) // if (serverSocket)...
 		{
-			TcpSocket* socket = std::get<TcpSocket*>(context->socket);
-			addClient(context->fd, socket->acceptClient(), socket->getConfig());
+			TcpSocket* socket = std::get<TcpSocket*>(fdCon->socket);
+			addClient(fdCon->fd, socket->acceptClient(), socket->getConfig());
 		}
 		else // if (clientSocket)...
 		{
-			Client* c = std::get<Client*>(context->socket);
-			events[i].events = c->handleConnection(events[i].events);
-			if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, context->fd, &events[i]))
+			Client* c = std::get<Client*>(fdCon->socket);
+			events[i].events = c->handleConnection(events[i].events, fdCon);
+			if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, fdCon->fd, &events[i]))
 				throw std::runtime_error("Failed to modify file descriptor in epoll");
 			if (events[i].events & EPOLLHUP)
-				removeClient(context);
+				removeClient(fdCon);
 		}
 	}
 	checkClientTimeout();

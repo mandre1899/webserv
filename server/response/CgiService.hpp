@@ -15,7 +15,7 @@
 #include "server/response/ResponseStructs.hpp"
 #include "typedefs.hpp"
 #include "utils/Logger.hpp"
-#include"server/StateMachines.hpp"
+#include "server/serverTypes.hpp"
 
 enum cgi_state {
 	FAILED,
@@ -33,22 +33,22 @@ class CgiService
 	int							_epfd;
 	int							_socket_fd;
 	std::string					_body; //Temporary CGI body
-	std::vector<char *>			_cgi_envs; // They get created at initialisation
+	std::vector<char*>			_cgi_envs; // They get created at initialisation
 	header_map					_cgi_headers;
 
 
-	public:
-		CgiService(ResourceInspection &data, int epfd, int socket_fd);
-		~CgiService(void);
-		CgiService(CgiService &obj) = delete;
-		CgiService	operator=(CgiService &obj) = delete;
-		bool						parse_cgi_headers(void);
-		cgi_state   				execute_cgi_proc();
-		std::pair<cgi_state, int>	handle_cgi_proc();
+public:
+	CgiService(ResourceInspection& data, int epfd, int socket_fd);
+	~CgiService(void);
+	CgiService(CgiService& obj) = delete;
+	CgiService	operator=(CgiService& obj) = delete;
+	bool						parse_cgi_headers(void);
+	cgi_state   				execute_cgi_proc();
+	std::pair<cgi_state, int>	handle_cgi_proc();
 
-		//GETTERS
-		std::string										get_body(void);
-		std::unordered_map<std::string, std::string>	get_header_map(void);
+	//GETTERS
+	std::string										get_body(void);
+	std::unordered_map<std::string, std::string>	get_header_map(void);
 };
 
 #endif // !CGI_H
