@@ -1,11 +1,8 @@
 #include "HttpUploadService.hpp"
 
 /* Constructors & Destructors */
-HttpUpload::HttpUpload(void)
-{
-}
 
-HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody) : _headers(headers)
+HttpUpload::HttpUpload(const header_map &headers, std::string filePath, size_t clientMaxBody) : _headers(headers)
 {
 	_state = body_state::parsing_boundary;;
 	_filePath = filePath + "/";
