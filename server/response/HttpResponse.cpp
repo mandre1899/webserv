@@ -71,7 +71,7 @@ HttpResponse::HttpResponse(void) : _status_code(-1)
 HttpResponse::~HttpResponse(void)
 {}
 
-//Buissness logic intern
+//Buissness logic extern
 void	HttpResponse::set_default_headers(void)
 {
 	if (_header.find("server") == _header.end())
@@ -90,7 +90,6 @@ void	HttpResponse::set_default_headers(void)
 	_header["content-length"] = std::to_string(_body.size());
 }
 
-//Buissness logic extern
 void	HttpResponse::set_default_reponse(int status_code)
 {
 	std::string status_text = "Unknown Error";

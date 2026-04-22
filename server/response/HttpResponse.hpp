@@ -22,8 +22,6 @@ class HttpResponse
 	std::string					_body;
 	static const status_map		_status_code_map;
 
-	//Buissness logic intern
-	void	set_default_headers(void);
 	public:
 		HttpResponse(void);
 		~HttpResponse(void);
@@ -31,6 +29,7 @@ class HttpResponse
 		HttpResponse(HttpResponse &obj) = delete;
 
 		//Buissness logic extern
+		void	set_default_headers(void);
 		void	set_default_reponse(int status_code); // Set default error page
 		void	set_default_reponse(int status_code, const cfg::wsLocationCtx &location); // With check for default error page overwrite
 		bool	read_file_to_body(std::string &abs_path);
