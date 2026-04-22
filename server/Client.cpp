@@ -95,7 +95,20 @@ uint32_t Client::sendData(FdContext* fdCon)
 		try {
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _response, _srvCfg);
 			ResourceInspection data = _request_handler->get_result();
-			if (!data.exists)
+			if (data.has_redirect)
+			{
+				int redir_code = data.redirect_code;
+				if ((redir_code % 300) < 10)
+				{
+					_response.set_status(redir_code);
+					_response.set_header("Location", data.redirect_target);
+				}
+				else
+					_response.set_default_reponse(redir_code, *_request_handler->get_location());
+				_response.set_default_headers();
+				_parsingState = state::response_sending;
+			}
+			else if (!data.exists)
 			{
 				_response.set_default_reponse(404, *_request_handler->get_location());
 				_parsingState = state::response_sending;
