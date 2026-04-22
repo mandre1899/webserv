@@ -86,6 +86,11 @@ uint32_t Client::sendData(FdContext* fdCon)
 {
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
 	//The request handler just resolves the request into a meaningfull sturct
+	if (fdCon->kind == FdKind::CLIENT_SOCKET)
+	{
+		if (_parsingState == state::response_proccessing)
+			return (EPOLLOUT);
+	}
 	if (_parsingState == state::parsing_done)
 	{
 		try {
@@ -93,6 +98,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 			ResourceInspection data = _request_handler->get_result();
 			_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd, this);
 			_parsingState = _service_handler->select_service();
+			return (EPOLLOUT);
 		}
 		catch (...) {
 			Logger::log<LogLevel::error>("RequestHandler failed");
@@ -101,9 +107,8 @@ uint32_t Client::sendData(FdContext* fdCon)
 	else if (_parsingState == state::response_proccessing)
 	{
 		_parsingState = _service_handler->run(fdCon, _msg);
+		return (EPOLLOUT);
 	}
-	if (_parsingState == state::response_proccessing)
-		return (EPOLLIN);
 	_response.set_status(200);
 	std::string msg = _response.get_response_str();
 	_parsingState = state::response_sending;
