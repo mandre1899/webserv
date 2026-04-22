@@ -6,7 +6,7 @@
 /*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/21 14:04:08 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/22 13:18:00 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,7 @@ void HttpParser::parseRequestLine(std::string& line)
 	else if (temp == "DELETE")
 		_method = method_type::DELETE;
 	else
-		throw HttpParsingError();
+		throw HttpMethodNotSupported();
 
 	getline(ss, temp, del);
 	auto uri_and_query_str = request_uri_normalization(temp);
@@ -89,7 +89,7 @@ void HttpParser::parseRequestLine(std::string& line)
 
 	getline(ss, temp, del);
 	if (!(temp == "HTTP/1.1" || temp == "HTTP/1.0")) //  for http/1.1 -> !(temp == "HTTP/1.1" || temp == "HTTP/1.0") -> todo: check http version
-		throw HttpParsingError();
+		throw HttpVersionNotSupported();
 	_http_version = temp;
 	if (!ss.eof()) //extra space seems okay tho ... so trim space at end
 	{
@@ -97,26 +97,6 @@ void HttpParser::parseRequestLine(std::string& line)
 	}
 }
 
-static void trim(std::string& s)
-{
-	auto start = s.find_first_not_of(" \t\r\n");
-	auto end = s.find_last_not_of(" \t\r\n"); // todo: add more header validtion
-
-	if (start == std::string::npos) {
-		s.clear();
-		return;
-	}
-
-	s = s.substr(start, end - start + 1);
-}
-
-std::string str_tolower(std::string s)
-{
-	std::transform(s.begin(), s.end(), s.begin(),
-		[](unsigned char c) { return std::tolower(c); }
-	);
-	return s;
-}
 
 void HttpParser::parseHeaders(std::string& line)
 {
@@ -162,6 +142,16 @@ const char* HttpParser::RequestUriTooLarge::what() const noexcept
 const char* HttpParser::HeadersTooLarge::what() const noexcept
 {
 	return ("Headers Too Large!");
+}
+
+const char* HttpParser::HttpVersionNotSupported::what() const noexcept
+{
+	return ("HTTP Version not supported");
+}
+
+const char* HttpParser::HttpMethodNotSupported::what() const noexcept
+{
+	return ("HTTP Method not supported");
 }
 
 /* Basic Operators */

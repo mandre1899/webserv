@@ -146,17 +146,27 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 	}
 	catch (const HttpParser::RequestUriTooLarge& e)
 	{
-		// TODO send respone with code 414
+		// TODO send Request-URI Too Large 414
 		return (EPOLLHUP);
 	}
 	catch (const HttpParser::HeadersTooLarge& e)
 	{
-		//TODO send respone with 400
+		//TODO send respone with Request Header Or Cookie Too Large 400
 		return (EPOLLHUP);
 	}
 	catch (const HttpParser::HttpVersionConflict& e)
 	{
 		//TODO send bad request with 400
+		return (EPOLLHUP);
+	}
+	catch (const HttpParser::HttpMethodNotSupported& e)
+	{
+		//TODO send 405 Not Allowed
+		return (EPOLLHUP);
+	}
+	catch (const HttpParser::HttpVersionNotSupported& e)
+	{
+		//TODO send 505 HTTP Version Not Supported
 		return (EPOLLHUP);
 	}
 	catch (const std::exception& e)

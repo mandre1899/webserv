@@ -1,11 +1,11 @@
 #include "HttpUploadService.hpp"
 
 /* Constructors & Destructors */
-HttpUpload::HttpUpload(void)
+HttpUploadService::HttpUploadService(void)
 {
 }
 
-HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody) : _headers(headers)
+HttpUploadService::HttpUploadService(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody) : _headers(headers)
 {
 	_state = body_state::parsing_boundary;;
 	_filePath = filePath + "/";
@@ -13,7 +13,8 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 	auto search = _headers.find("Content-Length");
 	if ((search == _headers.end())) // todo: From HTTP/1.1 onward -> _headers_map.find("Transfer-Encoding") != _headers_map.end()
 		throw MissingLengthException();
-	is_number(search->second);
+	if (is_number(search->second) == false)
+		throw std::runtime_error("is_number: invalid number found");
 	_contentLength = std::stoul(search->second);
 
 	auto boundary_header = _headers.find("Content-Type");
@@ -26,7 +27,7 @@ HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::st
 		throw BodyTooLargeException();
 }
 
-HttpUpload::~HttpUpload()
+HttpUploadService::~HttpUploadService()
 {
 	if (_file.is_open())
 	{
@@ -36,7 +37,7 @@ HttpUpload::~HttpUpload()
 }
 
 /* Member Functions */
-std::string HttpUpload::extractBoundary(std::string value)
+std::string HttpUploadService::extractBoundary(std::string value)
 {
 	if (value.substr(0, 30).compare("multipart/form-data; boundary=") != 0)
 		throw BadRequestException();
@@ -44,7 +45,7 @@ std::string HttpUpload::extractBoundary(std::string value)
 	return ("--" + boundary);
 }
 
-std::string HttpUpload::extractFilename(std::string& value)
+std::string HttpUploadService::extractFilename(std::string& value)
 {
 	std::string filename;
 	size_t fileNamePos = value.find("filename=");
@@ -71,7 +72,7 @@ std::string HttpUpload::extractFilename(std::string& value)
 	throw BadRequestException();
 }
 
-void HttpUpload::writeToFile(std::string data)
+void HttpUploadService::writeToFile(std::string data)
 {
 	_file << data;
 	if (_file.fail())
@@ -81,7 +82,7 @@ void HttpUpload::writeToFile(std::string data)
 }
 
 // read body boundery
-bool  HttpUpload::parsingBoundary(std::string& data)
+bool  HttpUploadService::parsingBoundary(std::string& data)
 {
 	size_t pos = data.find(_boundary);
 
@@ -99,7 +100,7 @@ bool  HttpUpload::parsingBoundary(std::string& data)
 }
 
 // read headers
-bool HttpUpload::parsingHeaders(std::string& data)
+bool HttpUploadService::parsingHeaders(std::string& data)
 {
 	bool isProcessCompleted = false;
 
@@ -140,7 +141,7 @@ bool HttpUpload::parsingHeaders(std::string& data)
 	return (isProcessCompleted);
 }
 
-void HttpUpload::openFile()
+void HttpUploadService::openFile()
 {
 	if (_filename.empty())
 		throw BadRequestException();
@@ -155,7 +156,7 @@ void HttpUpload::openFile()
 		throw InternelErrorException();
 }
 
-body_state HttpUpload::saveData(std::string& data)
+body_state HttpUploadService::saveData(std::string& data)
 {
 	size_t pos = 0;
 	size_t i = 0;
@@ -206,7 +207,7 @@ body_state HttpUpload::saveData(std::string& data)
 //   -F "file1=@test.txt" \
 //   -F "file2=@b.png"s
 */
-bool HttpUpload::uploadBody(std::string& data)
+bool HttpUploadService::uploadBody(std::string& data)
 {
 	_bytesRead += data.size();
 	if (_bytesRead > _contentLength)
@@ -251,22 +252,22 @@ bool HttpUpload::uploadBody(std::string& data)
 /* Getters & Setters */
 
 
-const char* HttpUpload::BadRequestException::what() const noexcept
+const char* HttpUploadService::BadRequestException::what() const noexcept
 {
 	return ("Http upload bad request error\n");
 }
 
-const char* HttpUpload::MissingLengthException::what() const noexcept
+const char* HttpUploadService::MissingLengthException::what() const noexcept
 {
 	return ("Http upload missing length error\n");
 }
 
-const char* HttpUpload::BodyTooLargeException::what() const noexcept
+const char* HttpUploadService::BodyTooLargeException::what() const noexcept
 {
 	return ("Http upload body too large error\n");
 }
 
-const char* HttpUpload::InternelErrorException::what() const noexcept
+const char* HttpUploadService::InternelErrorException::what() const noexcept
 {
 	return ("Http upload internel server error\n");
 }

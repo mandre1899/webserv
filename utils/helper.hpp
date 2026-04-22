@@ -6,8 +6,10 @@
 #include <vector>
 #include <stdexcept>
 #include <filesystem>
+#include <algorithm>
+#include <unordered_map>
 
-extern const char *g_execName;
+extern const char* g_execName;
 
 struct filePos
 {
@@ -18,7 +20,7 @@ struct filePos
 
 std::string buildMsg(std::string msg, const filePos& pos);
 std::string normalizePath(const std::string& path, const filePos& pos);
-void is_number(const std::string& s);
+bool is_number(const std::string& s);
 
 //Mateo added
 //Concats n amounts of path args
@@ -42,7 +44,9 @@ std::string join_paths(const Args&... parts)
 	return result;
 }
 std::string init_root_path(void);
-std::string	smart_filetype_detection(std::string &path);
+std::string	smart_filetype_detection(std::string& path);
+std::string str_tolower(std::string s);
+void trim(std::string& s);
 
 #endif // HELPER_HPP
 
