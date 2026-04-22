@@ -26,8 +26,7 @@ enum cgi_state {
 
 class CgiService
 {
-	std::string					_bin_exec_path;
-	const std::string&			_script_path;
+	ResourceInspection			&_data;
 	int							_cgi_pid;
 	int							_pipe_read;
 	int							_pipe_write;

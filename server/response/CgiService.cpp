@@ -69,7 +69,7 @@ static std::vector<std::string> build_cgi_env(ResourceInspection &data)
 }
 
 CgiService::CgiService(ResourceInspection &data, int epfd, int socket_fd)
-	: _bin_exec_path(data.cgi_path), _script_path(data.abs_path), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
+	: _data(data), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
 	_socket_fd(socket_fd)
 {
 	std::vector<std::string> env_storage = build_cgi_env(data);
@@ -188,51 +188,70 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_proc()
 
 cgi_state	CgiService::execute_cgi_proc()
 {
-	const std::string execLocPath = _bin_exec_path;
+	const std::string execLocPath = _data.cgi_path;
 	char* execPath = NULL;
-	char* scriptPath = const_cast<char*>(_script_path.c_str());
-	int p[2];
+	char* scriptPath = const_cast<char*>(_data.abs_path.c_str());
+	int out[2];
+	int in[2];
+	bool	expectedBody = _data.body_expected;
 
 	//set_status_code(200);
 	execPath = const_cast<char*>(execLocPath.c_str());
-	if (pipe(p) == -1)
+	if (pipe(out) == -1)
 	{
 		Logger::log<LogLevel::error>("Pipe creation failed");
 		return cgi_state::FAILED;
+	}
+	if (expectedBody)
+	{
+		if (pipe(in) == -1)
+		{
+			close(out[0]);
+			close(out[1]);
+			Logger::log<LogLevel::error>("Pipe creation failed");
+			return cgi_state::FAILED;
+		}
 	}
 	int pid = fork();
 	if (pid < 0)
 	{
 		Logger::log<LogLevel::error>("fork() failed");
-		close(p[0]);
-		close(p[1]);
+		close(in[0]);
+		close(in[1]);
+		close(out[0]);
+		close(out[1]);
 		return cgi_state::FAILED;
 	}
 	if (pid == 0)
 	{
 		char* const argv[] = { execPath, scriptPath, NULL };
-		close(p[0]);
-		if (dup2(p[1], STDOUT_FILENO) == -1)
+		close(in[1]);
+		if (dup2(in[0], STDIN_FILENO) == -1)
 			_exit(1);
-		if (dup2(p[1], STDERR_FILENO) == -1)
+		close(in[0]);
+		close(out[0]);
+		if (dup2(out[1], STDOUT_FILENO) == -1)
 			_exit(1);
-		close(p[1]);
+		if (dup2(out[1], STDERR_FILENO) == -1)
+			_exit(1);
+		close(out[1]);
 		execve(execPath, argv, _cgi_envs.data());
 		Logger::log<LogLevel::error>("Execve failed");
 		_exit(1);
 	}
-	close(p[1]);
+	close(out[1]);
+	if ()
 	epoll_event	ev;
 	ev.events = EPOLLIN | EPOLLRDHUP;
-	ev.data.fd = _socket_fd;
-	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[0], &ev) == -1)
+	ev.data.fd = out[0];
+	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, out[0], &ev) == -1)
 	{
 		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
-		close(p[0]);
+		close(out[0]);
 		return cgi_state::FAILED;
 	}
 	_cgi_pid = pid;
-	_pipe_read = p[0];
+	_pipe_read = out[0];
 	return cgi_state::RUNNING;
 }
 
