@@ -1,7 +1,7 @@
 #include "RequestHandler.hpp"
 
-RequestHandler::RequestHandler(const HttpParser &request, const cfg::srvCfg &config)
-	: _request(request), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
+RequestHandler::RequestHandler(const HttpParser &request, HttpResponse &response, const cfg::srvCfg &config)
+	: _request(request), _response(response), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
 {
 	resolveVHost();
 	resolveLocation();
@@ -70,6 +70,8 @@ static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 
 void	RequestHandler::resolveLocation(void)
 {
+	if (_serverConfig->location.empty())
+		return ;
 	auto best_match = _serverConfig->location.end();
 	size_t best_len = 0;
 
@@ -94,11 +96,16 @@ void	RequestHandler::resolveLocation(void)
 
 void	RequestHandler::methodLocationValidation(void)
 {
+	if (_locationConfig == NULL)
+		return ;
 	auto requestMethods = _request.getMethod();
 	if ((requestMethods == method_type::GET && !_locationConfig->allowMethods.isGet) ||
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
 		(requestMethods == method_type::DELETE && !_locationConfig->allowMethods.isDelete))
+	{
+		_response.set_default_reponse(405, *_locationConfig);
 		throw RequestHandler::MethodNotAllowed();
+	}
 }
 
 std::string	RequestHandler::pathResolution(void)
@@ -115,6 +122,7 @@ std::string	RequestHandler::pathResolution(void)
 		}
 		else
 		{
+			throw RequestHandler::pathResolutionFailed();
 		}
 	}
 	bool	is_abs = true; // ./ is a relative file and / is a absolute
@@ -259,5 +267,10 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 const char	*RequestHandler::MethodNotAllowed::what() const noexcept
 {
 	return "method not allowed";
+}
+
+const char	*RequestHandler::pathResolutionFailed::what() const noexcept
+{
+	return "path resolution failed";
 }
 
