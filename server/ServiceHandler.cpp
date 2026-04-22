@@ -47,8 +47,10 @@ state	ServiceHandler::run(FdContext *ctx, std::string msg)
 			if (res.first == cgi_state::FINISHED_OK)
 			{
 				_response.set_body(_cgiService->get_body());
+				_cgiService->parse_cgi_headers();
 				header_map headers = _cgiService->get_header_map();
 				_response.set_header(headers.begin(), headers.end());
+				return state::response_sending;
 			}
 			else if (res.first == cgi_state::FINISHED_KO)
 			{
@@ -56,22 +58,17 @@ state	ServiceHandler::run(FdContext *ctx, std::string msg)
 				return state::error;
 			}
 			else if (res.first == cgi_state::RUNNING)
+			{
 				return state::response_proccessing;
+			}
 		}
 		else if (ctx->kind == FdKind::CGI_STDIN_WRITE)
 		{
-			if (!msg.empty())
+			auto res = _cgiService->handle_cgi_write(msg);
+			if (res.first == cgi_state::FINISHED_KO)
 			{
-				auto res = _cgiService->handle_cgi_write(msg);
-				if (res.first == cgi_state::FINISHED_KO)
-				{
-					Logger::log<LogLevel::error>("Failed to write CGI body");
-					return state::error;
-				}
-			}
-			else
-			{
-				_cgiService->handle_cgi_write("");
+				Logger::log<LogLevel::error>("Failed to write CGI body");
+				return state::error;
 			}
 			return state::response_proccessing;
 		}
