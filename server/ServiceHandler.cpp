@@ -54,23 +54,25 @@ state	ServiceHandler::run(FdContext *ctx, std::string msg)
 			}
 			else if (res.first == cgi_state::FINISHED_KO)
 			{
+				_response.set_default_reponse(500);
 				Logger::log<LogLevel::error>("CGI execution failed with status: ", res.second);
 				return state::error;
 			}
 			else if (res.first == cgi_state::RUNNING)
-			{
 				return state::response_proccessing;
-			}
 		}
 		else if (ctx->kind == FdKind::CGI_STDIN_WRITE)
 		{
 			auto res = _cgiService->handle_cgi_write(msg);
 			if (res.first == cgi_state::FINISHED_KO)
 			{
+				_response.set_default_reponse(500);
 				Logger::log<LogLevel::error>("Failed to write CGI body");
 				return state::error;
 			}
-			return state::response_proccessing;
+			else if (res.first == cgi_state::FINISHED_OK)
+				return state::response_proccessing;
+			return state::response_body;
 		}
 	}
 	return state::error;
