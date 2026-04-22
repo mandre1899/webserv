@@ -30,7 +30,7 @@ void	RequestHandler::resolveVHost(void)
 		throw RequestHandler::BadRequest();
 	}
 	header_map::const_iterator matchPair;
-	if ((matchPair = headers.find("Host")) == headers.end())
+	if ((matchPair = headers.find("host")) == headers.end())
 	{
 		_serverConfig = &_config.vHost[0];
 		return ;
