@@ -4,6 +4,7 @@
 #include <memory>
 #include <exception>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "ResponseStructs.hpp"
 #include "utils/Logger.hpp"
@@ -40,12 +41,18 @@ class RequestHandler
 		~RequestHandler(void);
 		ResourceInspection &get_result();
 
+		const cfg::wsLocationCtx	*get_location(void);
+
 	// Exceptions
 	class MethodNotAllowed : public std::exception {
 		public:
 			const char* what() const noexcept override;
 	};
-	class pathResolutionFailed : public std::exception {
+	class PathResolutionFailed : public std::exception {
+		public:
+			const char* what() const noexcept override;
+	};
+	class BadRequest : public std::exception {
 		public:
 			const char* what() const noexcept override;
 	};

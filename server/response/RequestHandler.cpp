@@ -24,10 +24,10 @@ ResourceInspection &RequestHandler::get_result()
 void	RequestHandler::resolveVHost(void)
 {
 	const auto& headers = _request.getHeadersMap();
-	if (headers.empty())
+	if (headers.empty() || _config.vHost.empty())
 	{
-		Logger::log<LogLevel::warn>("Request headers empty");
-		throw std::logic_error("RequestHandler: request headers empty");
+		Logger::log<LogLevel::warn>("Request headers or virtual hosts empty");
+		throw RequestHandler::BadRequest();
 	}
 	header_map::const_iterator matchPair;
 	if ((matchPair = headers.find("Host")) == headers.end())
@@ -70,7 +70,7 @@ static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 
 void	RequestHandler::resolveLocation(void)
 {
-	if (_serverConfig->location.empty())
+	if (_serverConfig == nullptr || _serverConfig->location.empty())
 		return ;
 	auto best_match = _serverConfig->location.end();
 	size_t best_len = 0;
@@ -88,15 +88,16 @@ void	RequestHandler::resolveLocation(void)
 			best_len = location_path.length();
 		}
 	}
-	if (best_match == _serverConfig->location.end())
-		_locationConfig = nullptr;
-	_location_uri = best_match->first;
-	_locationConfig = &best_match->second;
+	if (best_match != _serverConfig->location.end())
+	{
+		_location_uri = best_match->first;
+		_locationConfig = &best_match->second;
+	}
 }
 
 void	RequestHandler::methodLocationValidation(void)
 {
-	if (_locationConfig == NULL)
+	if (_locationConfig == nullptr)
 		return ;
 	auto requestMethods = _request.getMethod();
 	if ((requestMethods == method_type::GET && !_locationConfig->allowMethods.isGet) ||
@@ -110,10 +111,11 @@ void	RequestHandler::methodLocationValidation(void)
 
 std::string	RequestHandler::pathResolution(void)
 {
+	if (_serverConfig == nullptr)
+		throw RequestHandler::BadRequest();
 	if (_serverConfig->location.empty())
 	{
-		if (!_serverConfig->index.empty() &&
-				!_serverConfig->index.empty())
+		if (!_serverConfig->index.empty() && !_serverConfig->root.empty())
 		{
 			if (_serverConfig->root[0] == '.')
 				return join_paths(init_root_path(), _serverConfig->root.substr(1), _serverConfig->index);
@@ -122,17 +124,20 @@ std::string	RequestHandler::pathResolution(void)
 		}
 		else
 		{
-			throw RequestHandler::pathResolutionFailed();
+			Logger::log<LogLevel::error>("No index or root configured for server");
+			throw RequestHandler::PathResolutionFailed();
 		}
 	}
-	bool	is_abs = true; // ./ is a relative file and / is a absolute
+	if (_locationConfig == nullptr)
+		throw RequestHandler::PathResolutionFailed();
+	bool	is_abs = true;
 	std::string loc_root = _locationConfig->root;
 	if (_locationConfig->root[0] == '.')
 	{
 		is_abs = false;
-		loc_root = loc_root.substr(1); // ./html -> /html for path concat
+		loc_root = loc_root.substr(1);
 	}
-	//Exact location was requested
+	
 	if (!_locationConfig->index.empty() && _request.getRequestUri() == _location_uri)
 	{
 		if (is_abs == false)
@@ -140,12 +145,11 @@ std::string	RequestHandler::pathResolution(void)
 		else
 			return join_paths(loc_root, _locationConfig->index);
 	}
-	//When exact file is requested on location
-	std::string tmp;
 	std::string uri_path = _request.getRequestUri();
 	if (is_abs == false)
 		return join_paths(init_root_path(), loc_root, uri_path.substr(_location_uri.length()));
-	return join_paths(init_root_path(), uri_path.substr(_location_uri.length()));
+	else
+		return join_paths(loc_root, uri_path.substr(_location_uri.length()));
 }
 
 void	RequestHandler::filesystemInspection(std::string &abs_path)
@@ -158,14 +162,13 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	_inspection_result.request_headers = _request.getHeadersMap();
 	_inspection_result.request_method = _request.getMethodAsString();
 	
-	// Set body_expected based on Content-Length header
 	const auto& headers = _request.getHeadersMap();
 	_inspection_result.body_expected = (headers.find("Content-Length") != headers.end() ||
 										headers.find("content-length") != headers.end());
 	
-	// Check if path exists
 	if (stat(abs_path.c_str(), &file_stat) != 0)
 	{
+		Logger::log<LogLevel::trace>("Resource not found: ", abs_path);
 		_inspection_result.status = NOT_FOUND;
 		_inspection_result.exists = false;
 		_inspection_result.is_file = false;
@@ -179,7 +182,6 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	
 	_inspection_result.exists = true;
 	
-	// Check permissions
 	_inspection_result.readable = (access(abs_path.c_str(), R_OK) == 0);
 	_inspection_result.writable = (access(abs_path.c_str(), W_OK) == 0);
 	_inspection_result.executable = (access(abs_path.c_str(), X_OK) == 0);
@@ -189,31 +191,20 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		_inspection_result.is_directory = true;
 		_inspection_result.is_file = false;
 		
-		if (!_locationConfig->uploadStore.empty())
+		if (_locationConfig != nullptr && !_locationConfig->uploadStore.empty())
 		{
 			_inspection_result.kind = UPLOAD_DIR;
 			_inspection_result.body_required = true;
-			if (_inspection_result.writable)
-			{
-				_inspection_result.status = OK;
-			}
-			else
-			{
-				_inspection_result.status = FORBIDDEN;
-			}
+			_inspection_result.status = (_inspection_result.writable) ? OK : FORBIDDEN;
 		}
 		else
 		{
 			_inspection_result.kind = DIRECTORY;
 			_inspection_result.body_required = false;
-			if (_locationConfig->autoIndex)
-			{
+			if (_locationConfig != nullptr && _locationConfig->autoIndex)
 				_inspection_result.status = OK;
-			}
 			else
-			{
 				_inspection_result.status = FORBIDDEN;
-			}
 		}
 	}
 	else if (S_ISREG(file_stat.st_mode))
@@ -221,36 +212,23 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
 		
-		if (!_locationConfig->cgiPath.empty())
+		if (_locationConfig != nullptr && !_locationConfig->cgiPath.empty())
 		{
 			_inspection_result.kind = CGI;
 			_inspection_result.cgi_path = _locationConfig->cgiPath;
 			_inspection_result.body_required = (_request.getMethod() == method_type::POST);
-			if (_inspection_result.readable && _inspection_result.executable)
-			{
-				_inspection_result.status = OK;
-			}
-			else
-			{
-				_inspection_result.status = FORBIDDEN;
-			}
+			_inspection_result.status = (_inspection_result.readable && _inspection_result.executable) ? OK : FORBIDDEN;
 		}
 		else
 		{
 			_inspection_result.kind = IS_FILE;
 			_inspection_result.body_required = false;
-			if (_inspection_result.readable)
-			{
-				_inspection_result.status = OK;
-			}
-			else
-			{
-				_inspection_result.status = FORBIDDEN;
-			}
+			_inspection_result.status = (_inspection_result.readable) ? OK : FORBIDDEN;
 		}
 	}
 	else
 	{
+		Logger::log<LogLevel::warn>("Ressource not found: ", abs_path);
 		_inspection_result.is_file = false;
 		_inspection_result.is_directory = false;
 		_inspection_result.kind = NONE;
@@ -259,6 +237,12 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	}
 }
 
+const cfg::wsLocationCtx	*RequestHandler::get_location()
+{
+	if (_locationConfig != nullptr)
+		return _locationConfig;
+	return (nullptr);
+}
 
 /*
  * Exceptions
@@ -269,8 +253,13 @@ const char	*RequestHandler::MethodNotAllowed::what() const noexcept
 	return "method not allowed";
 }
 
-const char	*RequestHandler::pathResolutionFailed::what() const noexcept
+const char	*RequestHandler::PathResolutionFailed::what() const noexcept
 {
 	return "path resolution failed";
+}
+
+const char	*RequestHandler::BadRequest::what() const noexcept
+{
+	return "bad request";
 }
 
