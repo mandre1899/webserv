@@ -1,4 +1,5 @@
 #include "CgiService.hpp"
+#include "server/Client.hpp"
 
 //CGI ENV Helpers
 static std::string to_lower(std::string value)
@@ -87,6 +88,8 @@ CgiService::~CgiService()
 		kill(_cgi_pid, SIGKILL);
 	if (_pipe_write != -1)
 		close(_pipe_write);
+	for (auto &a : _ctxTrack)
+		delete a;
 }
 
 bool	CgiService::parse_cgi_headers(void)
@@ -132,7 +135,7 @@ bool	CgiService::parse_cgi_headers(void)
 	return true;
 }
 
-std::pair<cgi_state, int>	CgiService::handle_cgi_proc()
+std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 {
 	char buf[4096];
 	while (true)
@@ -186,7 +189,35 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_proc()
 	}
 }
 
-cgi_state	CgiService::execute_cgi_proc()
+std::pair<cgi_state, int>	CgiService::handle_cgi_write(const std::string& body_data)
+{
+	if (_pipe_write == -1)
+		return std::make_pair(cgi_state::FAILED, 500);
+
+	ssize_t written_bytes = write(_pipe_write, body_data.c_str(), body_data.size());
+	if (written_bytes < 0)
+	{
+		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
+		close(_pipe_write);
+		_pipe_write = -1;
+		return std::make_pair(cgi_state::FINISHED_KO, 500);
+	}
+
+	if (written_bytes == static_cast<ssize_t>(body_data.size()))
+	{
+		Logger::log<LogLevel::info>("Wrote ", written_bytes, " bytes to CGI pipe");
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
+		close(_pipe_write);
+		_pipe_write = -1;
+		return std::make_pair(cgi_state::RUNNING, 200);
+	}
+
+	Logger::log<LogLevel::warn>("Partial write to CGI: ", written_bytes, " out of ", body_data.size());
+	return std::make_pair(cgi_state::RUNNING, 200);
+}
+
+cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 {
 	const std::string execLocPath = _data.cgi_path;
 	char* execPath = NULL;
@@ -194,6 +225,8 @@ cgi_state	CgiService::execute_cgi_proc()
 	int out[2];
 	int in[2];
 	bool	expectedBody = _data.body_expected;
+
+	std::cout << "Hello World" << std::endl;
 
 	//set_status_code(200);
 	execPath = const_cast<char*>(execLocPath.c_str());
@@ -240,19 +273,39 @@ cgi_state	CgiService::execute_cgi_proc()
 		_exit(1);
 	}
 	close(out[1]);
-	if ()
-	epoll_event	ev;
-	ev.events = EPOLLIN | EPOLLRDHUP;
-	ev.data.fd = out[0];
-	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, out[0], &ev) == -1)
+	set_epoll_event(EPOLLIN | EPOLLRDHUP, out[0], FdKind::CGI_STDOUT_READ, currClient);
+	if (expectedBody)
 	{
-		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
-		close(out[0]);
-		return cgi_state::FAILED;
+		_pipe_write = in[1];
+		set_epoll_event(EPOLLOUT | EPOLLRDHUP, in[1], FdKind::CGI_STDIN_WRITE, currClient);
+	}
+	else
+	{
+		close(in[0]);
+		close(in[1]);
 	}
 	_cgi_pid = pid;
 	_pipe_read = out[0];
 	return cgi_state::RUNNING;
+}
+
+void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client *currClient)
+{
+	epoll_event	ev;
+	FdContext	*tmp = new FdContext;
+	
+	_ctxTrack.push_back(tmp);
+	tmp->fd = fd;
+	tmp->kind = kind;
+	tmp->socket = currClient;
+	ev.events = events;
+	ev.data.fd = fd;
+	ev.data.ptr = (void *)tmp;
+	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd , &ev) == -1)
+	{
+		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
+		close(fd);
+	}
 }
 
 std::string	CgiService::get_body(void)

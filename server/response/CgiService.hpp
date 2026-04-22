@@ -17,6 +17,8 @@
 #include "utils/Logger.hpp"
 #include "server/serverTypes.hpp"
 
+class Client;
+
 enum cgi_state {
 	FAILED,
 	RUNNING,
@@ -35,7 +37,9 @@ class CgiService
 	std::string					_body; //Temporary CGI body
 	std::vector<char*>			_cgi_envs; // They get created at initialisation
 	header_map					_cgi_headers;
+	std::vector<FdContext*>		_ctxTrack;
 
+	void		set_epoll_event(uint32_t events, int fd, FdKind kind, Client *currClient);
 
 public:
 	CgiService(ResourceInspection& data, int epfd, int socket_fd);
@@ -43,8 +47,9 @@ public:
 	CgiService(CgiService& obj) = delete;
 	CgiService	operator=(CgiService& obj) = delete;
 	bool						parse_cgi_headers(void);
-	cgi_state   				execute_cgi_proc();
-	std::pair<cgi_state, int>	handle_cgi_proc();
+	cgi_state   				execute_cgi_proc(Client *currClient);
+	std::pair<cgi_state, int>	handle_cgi_read();
+	std::pair<cgi_state, int>	handle_cgi_write(const std::string& body_data);
 
 	//GETTERS
 	std::string										get_body(void);
