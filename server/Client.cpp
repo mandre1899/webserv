@@ -84,7 +84,6 @@ uint32_t Client::recvData(FdContext* fdCon)
 
 uint32_t Client::sendData(FdContext* fdCon)
 {
-	(void)fdCon;
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
 	//The request handler just resolves the request into a meaningfull sturct
 	if (_parsingState == state::parsing_done)
@@ -92,12 +91,19 @@ uint32_t Client::sendData(FdContext* fdCon)
 		try {
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _srvCfg); // Throws internally but doesn not catch currently
 			ResourceInspection data = _request_handler->get_result();
-			_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd);
+			_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd, this);
+			_parsingState = _service_handler->select_service();
 		}
 		catch (...) {
 			Logger::log<LogLevel::error>("RequestHandler failed");
 		}
 	}
+	else if (_parsingState == state::response_proccessing)
+	{
+		_parsingState = _service_handler->run(fdCon, _msg);
+	}
+	if (_parsingState == state::response_proccessing)
+		return (EPOLLIN);
 	_response.set_status(200);
 	std::string msg = _response.get_response_str();
 	_parsingState = state::response_sending;
