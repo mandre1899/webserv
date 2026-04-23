@@ -52,6 +52,11 @@ class RequestHandler
 		public:
 			const char* what() const noexcept override;
 	};
+	class NotFoundExcept404 : public std::exception {
+		public:
+			const char* what() const noexcept override;
+	};
+
 	class BadRequest : public std::exception {
 		public:
 			const char* what() const noexcept override;

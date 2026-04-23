@@ -1,5 +1,14 @@
 #include "RequestHandler.hpp"
 
+static bool	is_cgi_script(const std::string &path)
+{
+	if (path.find(".php") != std::string::npos)
+		return true;
+	else if (path.find(".py") != std::string::npos)
+		return true;
+	return false;
+}
+
 RequestHandler::RequestHandler(const HttpParser &request, HttpResponse &response, const cfg::srvCfg &config)
 	: _request(request), _response(response), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
 {
@@ -92,6 +101,7 @@ void	RequestHandler::resolveLocation(void)
 	{
 		_location_uri = best_match->first;
 		_locationConfig = &best_match->second;
+		_inspection_result.currLoc = _locationConfig;
 	}
 }
 
@@ -104,7 +114,7 @@ void	RequestHandler::methodLocationValidation(void)
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
 		(requestMethods == method_type::DELETE && !_locationConfig->allowMethods.isDelete))
 	{
-		_response.set_default_reponse(405, *_locationConfig);
+		_response.set_default_reponse(404, *_locationConfig);
 		throw RequestHandler::MethodNotAllowed();
 	}
 }
@@ -125,11 +135,11 @@ std::string	RequestHandler::pathResolution(void)
 		else
 		{
 			Logger::log<LogLevel::error>("No index or root configured for server");
-			throw RequestHandler::PathResolutionFailed();
+			throw RequestHandler::NotFoundExcept404();
 		}
 	}
 	if (_locationConfig == nullptr)
-		throw RequestHandler::PathResolutionFailed();
+		throw RequestHandler::NotFoundExcept404();
 	bool	is_abs = true;
 	std::string loc_root = _locationConfig->root;
 	if (_locationConfig->root[0] == '.')
@@ -155,7 +165,7 @@ std::string	RequestHandler::pathResolution(void)
 void	RequestHandler::filesystemInspection(std::string &abs_path)
 {
 	struct stat file_stat;
-	
+
 	_inspection_result.abs_path = abs_path;
 	_inspection_result.request_uri = _request.getRequestUri();
 	_inspection_result.request_query = _request.getRequestQuery();
@@ -164,7 +174,21 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	
 	const auto& headers = _request.getHeadersMap();
 	_inspection_result.body_expected = (headers.find("Content-Length") != headers.end() ||
-										headers.find("content-length") != headers.end());
+headers.find("content-length") != headers.end());
+
+
+	//No location found
+	if (_locationConfig == nullptr)
+	{
+		_inspection_result.kind = ResourceKind::IS_FILE;
+
+		if (access(abs_path.c_str(), R_OK) == 0)
+			_inspection_result.exists = true;
+		else
+			_inspection_result.exists = false;
+		return ;
+	}
+
 	if (_locationConfig->ret.has_value())
 	{
 		_inspection_result.has_redirect = true;
@@ -219,7 +243,9 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
 		
-		if (_locationConfig != nullptr && !_locationConfig->cgiPath.empty())
+		
+		if (_locationConfig != nullptr && !_locationConfig->cgiPath.empty() &&
+				is_cgi_script(abs_path))
 		{
 			_inspection_result.kind = CGI;
 			_inspection_result.cgi_path = _locationConfig->cgiPath;
@@ -268,5 +294,10 @@ const char	*RequestHandler::PathResolutionFailed::what() const noexcept
 const char	*RequestHandler::BadRequest::what() const noexcept
 {
 	return "bad request";
+}
+
+const char	*RequestHandler::NotFoundExcept404::what() const noexcept
+{
+	return "No index or root condigured as well as no location";
 }
 
