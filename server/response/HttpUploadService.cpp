@@ -1,29 +1,27 @@
 #include "HttpUploadService.hpp"
 
 /* Constructors & Destructors */
-HttpUpload::HttpUpload(void)
-{
-}
 
-HttpUpload::HttpUpload(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody) : _headers(headers)
+HttpUpload::HttpUpload(const header_map &headers, std::string filePath, size_t clientMaxBody) : _headers(headers)
 {
 	_state = body_state::parsing_boundary;;
 	_filePath = filePath + "/";
 
-	auto search = _headers.find("Content-Length");
+	auto search = _headers.find("content-length");
 	if ((search == _headers.end())) // todo: From HTTP/1.1 onward -> _headers_map.find("Transfer-Encoding") != _headers_map.end()
 		throw MissingLengthException();
 	is_number(search->second);
 	_contentLength = std::stoul(search->second);
 
-	auto boundary_header = _headers.find("Content-Type");
+	auto boundary_header = _headers.find("content-type");
 	if (boundary_header == _headers.end())
 		throw BadRequestException();
 	_rawBoundary = extractBoundary(boundary_header->second);
 	_boundary = _rawBoundary + "\r\n";
 	_boundaryClosig = "\r\n" + _rawBoundary;
-	if (_contentLength > clientMaxBody && clientMaxBody != 0)
-		throw BodyTooLargeException();
+	std::cout << clientMaxBody << std::endl;
+	//if (_contentLength > clientMaxBody && clientMaxBody != 0)
+	//	throw BodyTooLargeException();
 }
 
 HttpUpload::~HttpUpload()

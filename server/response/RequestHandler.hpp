@@ -4,6 +4,7 @@
 #include <memory>
 #include <exception>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "ResponseStructs.hpp"
 #include "utils/Logger.hpp"
@@ -17,6 +18,7 @@
 class RequestHandler
 {
 	const HttpParser			&_request;
+	HttpResponse				&_response;
 	const cfg::srvCfg			&_config;			// global config
 	const cfg::vHostCfg			*_serverConfig;		// Have to be pointers to instantiate
 	const cfg::wsLocationCtx	*_locationConfig;	// them with NULL
@@ -35,12 +37,22 @@ class RequestHandler
 	void		filesystemInspection(std::string &abs_path); // Checks given path for ressource availablility
 	public:
 		RequestHandler(void) = delete;
-		RequestHandler(const HttpParser &request, const cfg::srvCfg &config);
+		RequestHandler(const HttpParser &request, HttpResponse &response, const cfg::srvCfg &config);
 		~RequestHandler(void);
 		ResourceInspection &get_result();
 
+		const cfg::wsLocationCtx	*get_location(void);
+
 	// Exceptions
 	class MethodNotAllowed : public std::exception {
+		public:
+			const char* what() const noexcept override;
+	};
+	class PathResolutionFailed : public std::exception {
+		public:
+			const char* what() const noexcept override;
+	};
+	class BadRequest : public std::exception {
 		public:
 			const char* what() const noexcept override;
 	};

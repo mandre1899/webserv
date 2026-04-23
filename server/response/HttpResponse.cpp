@@ -71,7 +71,7 @@ HttpResponse::HttpResponse(void) : _status_code(-1)
 HttpResponse::~HttpResponse(void)
 {}
 
-//Buissness logic intern
+//Buissness logic extern
 void	HttpResponse::set_default_headers(void)
 {
 	if (_header.find("server") == _header.end())
@@ -90,7 +90,6 @@ void	HttpResponse::set_default_headers(void)
 	_header["content-length"] = std::to_string(_body.size());
 }
 
-//Buissness logic extern
 void	HttpResponse::set_default_reponse(int status_code)
 {
 	std::string status_text = "Unknown Error";
@@ -129,14 +128,19 @@ void	HttpResponse::set_default_reponse(int status_code)
 
 }
 
-void	HttpResponse::set_default_reponse(int status_code, cfg::wsLocationCtx &location)
+void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx &location)
 {
 	std::unordered_map<http_code, std::string>::const_iterator it_err_page = location.errorPage.find(status_code);
 	if (it_err_page != location.errorPage.end() && !it_err_page->second.empty())
 	{
-		std::string error_page_path = join_paths(location.root, it_err_page->second); // No root_path concat currently!!!
+		std::string error_page_path;
+		if (it_err_page->second[0] == '.')
+			error_page_path = join_paths(init_root_path(), location.root, it_err_page->second.substr(1));
+		else
+			error_page_path = join_paths(it_err_page->second);
 		if (access(error_page_path.c_str(), R_OK) == 0)
 		{
+			set_status(status_code);
 			read_file_to_body(error_page_path);
 			set_default_headers();
 			return;
@@ -201,6 +205,11 @@ void HttpResponse::set_header(header_map::const_iterator begin, header_map::cons
 {
     for (; begin != end; ++begin)
         _header[begin->first] = begin->second;
+}
+
+void HttpResponse::set_header(std::string key, std::string value)
+{
+	_header[key] = value;
 }
 
 void	HttpResponse::set_body(std::string body)

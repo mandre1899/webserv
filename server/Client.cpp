@@ -39,7 +39,7 @@ void Client::recvMsg()
 	char buffer[1024] = {};
 	int ret;
 
-	ret = recv(_clientFd, buffer, sizeof(buffer), 0);
+	ret = recv(_clientFd, buffer, sizeof(buffer) , 0);
 	if (ret < 1)
 		throw std::runtime_error("Client connection interrupted or client cosed the connection");
 	_msg.append(buffer, ret);
@@ -86,21 +86,75 @@ uint32_t Client::recvData(FdContext* fdCon)
 
 uint32_t Client::sendData(FdContext* fdCon)
 {
-	(void)fdCon;
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
-	//The request handler just resolves the request into a meaningfull sturct
+	if (fdCon->kind == FdKind::CLIENT_SOCKET)
+	{
+		if (_parsingState == state::response_proccessing)
+			return (EPOLLOUT);
+	}
 	if (_parsingState == state::parsing_done)
 	{
 		try {
-			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _srvCfg); // Throws internally but doesn not catch currently
+			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _response, _srvCfg);
 			ResourceInspection data = _request_handler->get_result();
-			_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd);
+			if (data.has_redirect)
+			{
+				int redir_code = data.redirect_code;
+				if ((redir_code % 300) < 10)
+				{
+					_response.set_status(redir_code);
+					_response.set_header("Location", data.redirect_target);
+				}
+				else
+					_response.set_default_reponse(redir_code, *_request_handler->get_location());
+				_response.set_default_headers();
+				_parsingState = state::response_sending;
+			}
+			else if (!data.exists)
+			{
+				_response.set_default_reponse(404, *_request_handler->get_location());
+				_parsingState = state::response_sending;
+			}
+			else
+			{
+				_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd, this, _srvCfg.vHost[0].clientMaxBodySize);
+				_parsingState = _service_handler->select_service();
+				return (EPOLLOUT);
+			}
+		}
+		catch (const RequestHandler::MethodNotAllowed &e) {
+			Logger::log<LogLevel::warn>("Method not allowed: ", e.what());
+			_parsingState = state::response_sending;
+		}
+		catch (const RequestHandler::PathResolutionFailed &e) {
+			Logger::log<LogLevel::error>("Path resolution failed: ", e.what());
+			_response.set_default_reponse(400);
+			_parsingState = state::response_sending;
+		}
+		catch (const RequestHandler::BadRequest &e) {
+			Logger::log<LogLevel::warn>("Bad request: ", e.what());
+			_response.set_default_reponse(400);
+			_parsingState = state::response_sending;
+		}
+		catch (const std::exception &e) {
+			Logger::log<LogLevel::error>("Request handler exception: ", e.what());
+			_response.set_default_reponse(500);
+			_parsingState = state::response_sending;
 		}
 		catch (...) {
-			Logger::log<LogLevel::error>("RequestHandler failed");
+			Logger::log<LogLevel::error>("Unknown exception in request handler");
+			_response.set_default_reponse(500);
+			_parsingState = state::response_sending;
 		}
 	}
-	_response.set_status(200);
+	else if (_parsingState == state::response_proccessing ||
+			_parsingState == state::response_body)
+	{
+		_parsingState = _service_handler->run(fdCon, _msg);
+		if (_parsingState == state::response_body)
+			return (EPOLLIN);
+		return (EPOLLOUT);
+	}
 	std::string msg = _response.get_response_str();
 	_parsingState = state::response_sending;
 	ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
@@ -119,8 +173,7 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 	try
 	{
 		if (event & EPOLLIN)
-		{
-			// I need to check if a pipe is processing
+		{ // I need to check if a pipe is processing
 			if (_parsingState == state::response_proccessing)
 				return (sendData(fdCon));
 			else if (_parsingState == state::response_body)
@@ -149,21 +202,29 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 	catch (const HttpParser::RequestUriTooLarge& e)
 	{
 		// TODO send respone with code 414
-		return (EPOLLHUP);
+		_response.set_default_reponse(414);
+		_parsingState = state::response_sending;
+		return (EPOLLOUT);
 	}
 	catch (const HttpParser::HeadersTooLarge& e)
 	{
 		//TODO send respone with 400
-		return (EPOLLHUP);
+		_response.set_default_reponse(400);
+		_parsingState = state::response_sending;
+		return (EPOLLOUT);
 	}
 	catch (const HttpParser::HttpVersionConflict& e)
 	{
 		//TODO send bad request with 400
-		return (EPOLLHUP);
+		_response.set_default_reponse(400);
+		_parsingState = state::response_sending;
+		return (EPOLLOUT);
 	}
 	catch (const std::exception& e)
 	{
-		return (EPOLLHUP);
+		_response.set_default_reponse(500);
+		_parsingState = state::response_sending;
+		return (EPOLLOUT);
 	}
 }
 

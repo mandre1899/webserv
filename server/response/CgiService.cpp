@@ -24,7 +24,7 @@ static std::string cgi_token(const std::string &token)
 }
 
 static const std::string *find_header_case_insensitive(header_map &headers,
-	const std::string &key_lower)
+		const std::string &key_lower)
 {
 	for (const auto &header : headers)
 	{
@@ -69,9 +69,19 @@ static std::vector<std::string> build_cgi_env(ResourceInspection &data)
 }
 
 CgiService::CgiService(ResourceInspection &data, int epfd, int socket_fd)
-	: _bin_exec_path(data.cgi_path), _script_path(data.abs_path), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
-	_socket_fd(socket_fd)
+	: _data(data), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
+		  _socket_fd(socket_fd)
 {
+	if (data.body_expected)
+	{
+		_postContentLength = std::stoi(data.request_headers.at("content-length"));
+		_postWriteTrack = 0;
+	}
+	else
+	{
+		_postContentLength = -1;
+		_postWriteTrack = -1;
+	}
 	std::vector<std::string> env_storage = build_cgi_env(data);
 	_cgi_envs.reserve(env_storage.size() + 1);
 	for (std::string& entry : env_storage)
@@ -87,6 +97,12 @@ CgiService::~CgiService()
 		kill(_cgi_pid, SIGKILL);
 	if (_pipe_write != -1)
 		close(_pipe_write);
+
+	for (auto &a : _ctxTrack)
+	{
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, a->fd, NULL);
+		delete a;
+	}
 }
 
 bool	CgiService::parse_cgi_headers(void)
@@ -132,7 +148,7 @@ bool	CgiService::parse_cgi_headers(void)
 	return true;
 }
 
-std::pair<cgi_state, int>	CgiService::handle_cgi_proc()
+std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 {
 	char buf[4096];
 	while (true)
@@ -146,7 +162,6 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_proc()
 		}
 		if (read_bytes == 0)
 		{
-			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 			close(_pipe_read);
 			_pipe_read = -1;
 			int status = 0;
@@ -178,62 +193,129 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_proc()
 			return std::make_pair(cgi_state::FINISHED_OK, 200);
 		}
 		Logger::log<LogLevel::error>("Read failed status: ", errno);
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 		close(_pipe_read);
 		_pipe_read = -1;
 		_cgi_pid = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
+	}}
+
+std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
+{
+	ssize_t written_bytes = write(_pipe_write, body_data.data(), body_data.size());
+	_postWriteTrack += written_bytes;
+	body_data.erase(0, written_bytes);
+	if (written_bytes < 0)
+	{
+		if (errno == EINTR)
+			return std::make_pair(cgi_state::RUNNING, 200);
+		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
+		close(_pipe_write);
+		_pipe_write = -1;
+		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}
+	std::cout << "Post Write: " << _postWriteTrack << std::endl;
+	std::cout << "Content length: " << _postContentLength << std::endl;
+	if (_postContentLength <= _postWriteTrack)
+	{
+		close(_pipe_write);
+		_pipe_write = -1;
+		return std::make_pair(cgi_state::FINISHED_OK, 200);
+	}
+
+	return std::make_pair(cgi_state::RUNNING, 200);
 }
 
-cgi_state	CgiService::execute_cgi_proc()
+cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 {
-	const std::string execLocPath = _bin_exec_path;
+	const std::string execLocPath = _data.cgi_path;
 	char* execPath = NULL;
-	char* scriptPath = const_cast<char*>(_script_path.c_str());
-	int p[2];
+	char* scriptPath = const_cast<char*>(_data.abs_path.c_str());
+	int out[2] = {-1, -1};
+	int in[2] = {-1, -1};
+	bool	expectedBody = _data.body_expected;
 
 	//set_status_code(200);
 	execPath = const_cast<char*>(execLocPath.c_str());
-	if (pipe(p) == -1)
+	if (pipe(out) == -1)
 	{
 		Logger::log<LogLevel::error>("Pipe creation failed");
 		return cgi_state::FAILED;
+	}
+	if (expectedBody)
+	{
+		if (pipe(in) == -1)
+		{
+			close(out[0]);
+			close(out[1]);
+			Logger::log<LogLevel::error>("Pipe creation failed");
+			return cgi_state::FAILED;
+		}
 	}
 	int pid = fork();
 	if (pid < 0)
 	{
 		Logger::log<LogLevel::error>("fork() failed");
-		close(p[0]);
-		close(p[1]);
+		if (in[0] != -1)
+			close(in[0]);
+		if (in[1] != -1)
+			close(in[1]);
+		close(out[0]);
+		close(out[1]);
 		return cgi_state::FAILED;
 	}
 	if (pid == 0)
 	{
 		char* const argv[] = { execPath, scriptPath, NULL };
-		close(p[0]);
-		if (dup2(p[1], STDOUT_FILENO) == -1)
+		if (expectedBody)
+		{
+			close(in[1]);
+			if (dup2(in[0], STDIN_FILENO) == -1)
+				_exit(1);
+			close(in[0]);
+		}
+		close(out[0]);
+		if (dup2(out[1], STDOUT_FILENO) == -1)
 			_exit(1);
-		if (dup2(p[1], STDERR_FILENO) == -1)
+		if (dup2(out[1], STDERR_FILENO) == -1)
 			_exit(1);
-		close(p[1]);
+		close(out[1]);
 		execve(execPath, argv, _cgi_envs.data());
 		Logger::log<LogLevel::error>("Execve failed");
 		_exit(1);
 	}
-	close(p[1]);
-	epoll_event	ev;
-	ev.events = EPOLLIN | EPOLLRDHUP;
-	ev.data.fd = _socket_fd;
-	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, p[0], &ev) == -1)
+	close(out[1]);
+	set_epoll_event(EPOLLIN , out[0], FdKind::CGI_STDOUT_READ, currClient);
+	if (expectedBody)
 	{
-		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
-		close(p[0]);
-		return cgi_state::FAILED;
+		_pipe_write = in[1];
+		set_epoll_event(EPOLLOUT , in[1], FdKind::CGI_STDIN_WRITE, currClient);
+	}
+	else
+	{
+		if (in[0] != -1)
+			close(in[0]);
 	}
 	_cgi_pid = pid;
-	_pipe_read = p[0];
+	_pipe_read = out[0];
 	return cgi_state::RUNNING;
+}
+
+void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client *currClient)
+{
+	epoll_event	ev;
+	FdContext	*tmp = new FdContext;
+
+	_ctxTrack.push_back(tmp);
+	tmp->fd = fd;
+	tmp->kind = kind;
+	tmp->socket = currClient;
+	ev.events = events;
+	ev.data.ptr = (void *)tmp;
+	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd , &ev) == -1)
+	{
+		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
+		close(fd);
+	}
 }
 
 std::string	CgiService::get_body(void)

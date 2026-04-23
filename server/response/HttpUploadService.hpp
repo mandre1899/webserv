@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include "server/response/typedefs.hpp"
 #include "utils/helper.hpp"
 #include "utils/Logger.hpp"
 
@@ -20,7 +21,7 @@ private:
 	body_state _state;
 	std::string _buffer;
 	size_t _bytesRead = 0;
-	const std::map<std::string, std::string> _headers;
+	const header_map &_headers;
 	size_t _contentLength;
 	std::string _rawBoundary;
 	std::string _boundary;
@@ -40,8 +41,8 @@ private:
 
 public:
 	/* Constructors & Destructors */
-	HttpUpload(void);
-	HttpUpload(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody);
+	HttpUpload(void) = delete;
+	HttpUpload(const header_map &headers, std::string filePath, size_t clientMaxBody);
 	HttpUpload(const HttpUpload& src) = delete;
 	HttpUpload(HttpUpload&& src) = delete;
 	~HttpUpload();
