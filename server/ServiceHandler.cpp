@@ -19,9 +19,16 @@ state	ServiceHandler::select_service()
 	}
 	else if (_data.kind == ResourceKind::DIRECTORY)
 	{
-		StaticFileService(_data, _response);
-		_response.set_default_headers();
-		return state::response_sending;
+		if (_data.status == InspectStatus::OK)
+		{
+			StaticFileService(_data, _response);
+			_response.set_default_headers();
+			return state::response_sending;
+		}
+		else
+		{
+			_response.set_default_reponse(403, *_data.currLoc);
+		}
 	}
 	else if (_data.kind == ResourceKind::CGI)
 	{
