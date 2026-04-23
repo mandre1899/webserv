@@ -26,9 +26,7 @@ state	ServiceHandler::select_service()
 			return state::response_sending;
 		}
 		else
-		{
-			_response.set_default_reponse(403, *_data.currLoc);
-		}
+			_response.set_default_reponse(404, *_data.currLoc);
 	}
 	else if (_data.kind == ResourceKind::CGI)
 	{
