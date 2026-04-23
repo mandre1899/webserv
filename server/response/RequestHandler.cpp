@@ -1,5 +1,14 @@
 #include "RequestHandler.hpp"
 
+static bool	is_cgi_script(const std::string &path)
+{
+	if (path.find(".php") != std::string::npos)
+		return true;
+	else if (path.find(".py") != std::string::npos)
+		return true;
+	return false;
+}
+
 RequestHandler::RequestHandler(const HttpParser &request, HttpResponse &response, const cfg::srvCfg &config)
 	: _request(request), _response(response), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
 {
@@ -234,7 +243,9 @@ headers.find("content-length") != headers.end());
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
 		
-		if (_locationConfig != nullptr && !_locationConfig->cgiPath.empty())
+		
+		if (_locationConfig != nullptr && !_locationConfig->cgiPath.empty() &&
+				is_cgi_script(abs_path))
 		{
 			_inspection_result.kind = CGI;
 			_inspection_result.cgi_path = _locationConfig->cgiPath;
