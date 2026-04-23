@@ -104,7 +104,7 @@ void	RequestHandler::methodLocationValidation(void)
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
 		(requestMethods == method_type::DELETE && !_locationConfig->allowMethods.isDelete))
 	{
-		_response.set_default_reponse(405, *_locationConfig);
+		_response.set_default_reponse(404, *_locationConfig);
 		throw RequestHandler::MethodNotAllowed();
 	}
 }
@@ -125,7 +125,7 @@ std::string	RequestHandler::pathResolution(void)
 		else
 		{
 			Logger::log<LogLevel::error>("No index or root configured for server");
-			throw RequestHandler::PathResolutionFailed();
+			throw RequestHandler::NotAbleToBuildPath();
 		}
 	}
 	if (_locationConfig == nullptr)
@@ -155,7 +155,7 @@ std::string	RequestHandler::pathResolution(void)
 void	RequestHandler::filesystemInspection(std::string &abs_path)
 {
 	struct stat file_stat;
-	
+
 	_inspection_result.abs_path = abs_path;
 	_inspection_result.request_uri = _request.getRequestUri();
 	_inspection_result.request_query = _request.getRequestQuery();
@@ -164,7 +164,21 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	
 	const auto& headers = _request.getHeadersMap();
 	_inspection_result.body_expected = (headers.find("Content-Length") != headers.end() ||
-										headers.find("content-length") != headers.end());
+headers.find("content-length") != headers.end());
+
+
+	//No location found
+	if (_locationConfig == nullptr)
+	{
+		_inspection_result.kind = ResourceKind::IS_FILE;
+
+		if (access(abs_path.c_str(), R_OK) == 0)
+			_inspection_result.exists = true;
+		else
+			_inspection_result.exists = false;
+		return ;
+	}
+
 	if (_locationConfig->ret.has_value())
 	{
 		_inspection_result.has_redirect = true;
@@ -268,5 +282,10 @@ const char	*RequestHandler::PathResolutionFailed::what() const noexcept
 const char	*RequestHandler::BadRequest::what() const noexcept
 {
 	return "bad request";
+}
+
+const char	*RequestHandler::NotAbleToBuildPath::what() const noexcept
+{
+	return "No index or root condigured as well as no location";
 }
 
