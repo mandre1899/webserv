@@ -133,7 +133,7 @@ private:
 		std::vector<token> t;
 		std::vector<http_code> codes;
 		t.push_back(ts.getNextToken());
-		while (t[i].type == tType::value && t[i].value[0] != '/')
+		while (t[i].type == tType::value && is_number(t[i].value))
 		{
 			unsigned long nbr;
 			try

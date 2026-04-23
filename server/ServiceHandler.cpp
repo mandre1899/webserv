@@ -1,8 +1,9 @@
 #include "ServiceHandler.hpp"
 
-ServiceHandler::ServiceHandler(ResourceInspection data, HttpResponse& response, int epfd, int socket_fd, Client *currClient, size_t clientMaxBodySize)
+ServiceHandler::ServiceHandler(ResourceInspection data, HttpResponse& response, int epfd, int socket_fd, Client* currClient, size_t clientMaxBodySize)
 	: _data(data), _response(response), _epfd(epfd), _socket_fd(socket_fd), _currClient(currClient), _clientMaxBodySize(clientMaxBodySize)
-{}
+{
+}
 
 ServiceHandler::~ServiceHandler(void)
 {
@@ -34,28 +35,28 @@ state	ServiceHandler::select_service()
 		try
 		{
 			_service_state = ServiceState::PROCESSING_POST;
-			_uploadService = std::make_unique<HttpUpload>(_data.request_headers, _data.upload_path, _clientMaxBodySize);
+			_uploadService = std::make_unique<HttpUploadService>(_data.request_headers, _data.upload_path, _clientMaxBodySize);
 			return state::response_body;
 		}
-		catch (const HttpUpload::MissingLengthException &e)
+		catch (const HttpUploadService::MissingLengthException& e)
 		{
 			Logger::log<LogLevel::warn>("Upload missing Content-Length: ", e.what());
 			_response.set_default_reponse(411);
 			return state::response_sending;
 		}
-		catch (const HttpUpload::BadRequestException &e)
+		catch (const HttpUploadService::BadRequestException& e)
 		{
 			Logger::log<LogLevel::warn>("Upload bad request: ", e.what());
 			_response.set_default_reponse(400);
 			return state::response_sending;
 		}
-		catch (const HttpUpload::BodyTooLargeException &e)
+		catch (const HttpUploadService::BodyTooLargeException& e)
 		{
 			Logger::log<LogLevel::warn>("Upload body too large: ", e.what());
 			_response.set_default_reponse(413);
 			return state::response_sending;
 		}
-		catch (const std::exception &e)
+		catch (const std::exception& e)
 		{
 			Logger::log<LogLevel::error>("Upload initialization failed: ", e.what());
 			_response.set_default_reponse(500);
@@ -65,7 +66,7 @@ state	ServiceHandler::select_service()
 	return state::error;
 }
 
-state	ServiceHandler::run(FdContext *ctx, std::string msg)
+state	ServiceHandler::run(FdContext* ctx, std::string msg)
 {
 	if (_service_state == ServiceState::PROCESSING_CGI)
 	{
@@ -122,25 +123,25 @@ state	ServiceHandler::run(FdContext *ctx, std::string msg)
 				return state::response_body;
 			}
 		}
-		catch (const HttpUpload::BadRequestException &e)
+		catch (const HttpUploadService::BadRequestException& e)
 		{
 			Logger::log<LogLevel::warn>("Upload parsing error: ", e.what());
 			_response.set_default_reponse(400);
 			return state::response_sending;
 		}
-		catch (const HttpUpload::BodyTooLargeException &e)
+		catch (const HttpUploadService::BodyTooLargeException& e)
 		{
 			Logger::log<LogLevel::warn>("Upload exceeded max size: ", e.what());
 			_response.set_default_reponse(413);
 			return state::response_sending;
 		}
-		catch (const HttpUpload::InternelErrorException &e)
+		catch (const HttpUploadService::InternelErrorException& e)
 		{
 			Logger::log<LogLevel::error>("Upload internal error: ", e.what());
 			_response.set_default_reponse(500);
 			return state::response_sending;
 		}
-		catch (const std::exception &e)
+		catch (const std::exception& e)
 		{
 			Logger::log<LogLevel::error>("Upload exception: ", e.what());
 			_response.set_default_reponse(500);

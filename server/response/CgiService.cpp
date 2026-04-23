@@ -3,12 +3,12 @@
 //CGI ENV Helpers
 static std::string to_lower(std::string value)
 {
-	for (char &c : value)
+	for (char& c : value)
 		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 	return value;
 }
 
-static std::string cgi_token(const std::string &token)
+static std::string cgi_token(const std::string& token)
 {
 	std::string out;
 	out.reserve(token.size());
@@ -23,10 +23,10 @@ static std::string cgi_token(const std::string &token)
 	return out;
 }
 
-static const std::string *find_header_case_insensitive(header_map &headers,
-		const std::string &key_lower)
+static const std::string* find_header_case_insensitive(header_map& headers,
+	const std::string& key_lower)
 {
-	for (const auto &header : headers)
+	for (const auto& header : headers)
 	{
 		if (to_lower(header.first) == key_lower)
 			return &header.second;
@@ -34,29 +34,29 @@ static const std::string *find_header_case_insensitive(header_map &headers,
 	return NULL;
 }
 
-static void push_env(std::vector<std::string> &env_storage, const std::string &key, const std::string &value)
+static void push_env(std::vector<std::string>& env_storage, const std::string& key, const std::string& value)
 {
 	env_storage.push_back(key + "=" + value);
 }
 
-static std::vector<std::string> build_cgi_env(ResourceInspection &data)
+static std::vector<std::string> build_cgi_env(ResourceInspection& data)
 {
 	std::vector<std::string> env_storage;
 	env_storage.reserve(data.request_headers.size());
 
-	for (const auto &header : data.request_headers)
+	for (const auto& header : data.request_headers)
 	{
 		std::string cgi_header_key = cgi_token(header.first);
 		if (cgi_header_key == "CONTENT_LENGTH" || cgi_header_key == "CONTENT_TYPE")
 			continue;
 		push_env(env_storage, "HTTP_" + cgi_header_key, header.second);
 	}
-	const std::string *content_length = find_header_case_insensitive(data.request_headers, "content-length");
-	const std::string *content_type = find_header_case_insensitive(data.request_headers, "content-type");
+	const std::string* content_length = find_header_case_insensitive(data.request_headers, "content-length");
+	const std::string* content_type = find_header_case_insensitive(data.request_headers, "content-type");
 
 	push_env(env_storage, "REQUEST_METHOD", data.request_method);
 	push_env(env_storage, "REQUEST_URI", data.request_uri);
-	push_env(env_storage, "QUERY_STRING", data.request_query); 
+	push_env(env_storage, "QUERY_STRING", data.request_query);
 	//push_env(env_storage, "SCRIPT_NAME", script_name);
 	//push_env(env_storage, "SERVER_PROTOCOL", data.request_version);.
 	push_env(env_storage, "SCRIPT_FILENAME", data.abs_path);
@@ -68,10 +68,11 @@ static std::vector<std::string> build_cgi_env(ResourceInspection &data)
 	return env_storage;
 }
 
-CgiService::CgiService(ResourceInspection &data, int epfd, int socket_fd)
+CgiService::CgiService(ResourceInspection& data, int epfd, int socket_fd)
 	: _data(data), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
-		  _socket_fd(socket_fd)
+	_socket_fd(socket_fd)
 {
+	(void)_socket_fd; // todo:  '_socket_fd' is not used
 	if (data.body_expected)
 	{
 		_postContentLength = std::stoi(data.request_headers.at("content-length"));
@@ -93,12 +94,12 @@ CgiService::~CgiService()
 {
 	if (_pipe_read != -1)
 		close(_pipe_read);
-	if (_cgi_pid != -1 )
+	if (_cgi_pid != -1)
 		kill(_cgi_pid, SIGKILL);
 	if (_pipe_write != -1)
 		close(_pipe_write);
 
-	for (auto &a : _ctxTrack)
+	for (auto& a : _ctxTrack)
 	{
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, a->fd, NULL);
 		delete a;
@@ -183,7 +184,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 						return std::make_pair(cgi_state::FINISHED_KO, 500);
 					}
 					std::cout << "CGI HEADERS" << std::endl;
-					for (auto &a : _cgi_headers)
+					for (auto& a : _cgi_headers)
 						std::cout << a.first + "=" + a.second << std::endl;
 					return std::make_pair(cgi_state::FINISHED_OK, 200);
 				}
@@ -197,7 +198,8 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 		_pipe_read = -1;
 		_cgi_pid = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
-	}}
+	}
+}
 
 std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 {
@@ -225,13 +227,13 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 	return std::make_pair(cgi_state::RUNNING, 200);
 }
 
-cgi_state	CgiService::execute_cgi_proc(Client *currClient)
+cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 {
 	const std::string execLocPath = _data.cgi_path;
 	char* execPath = NULL;
 	char* scriptPath = const_cast<char*>(_data.abs_path.c_str());
-	int out[2] = {-1, -1};
-	int in[2] = {-1, -1};
+	int out[2] = { -1, -1 };
+	int in[2] = { -1, -1 };
 	bool	expectedBody = _data.body_expected;
 
 	//set_status_code(200);
@@ -284,11 +286,11 @@ cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 		_exit(1);
 	}
 	close(out[1]);
-	set_epoll_event(EPOLLIN , out[0], FdKind::CGI_STDOUT_READ, currClient);
+	set_epoll_event(EPOLLIN, out[0], FdKind::CGI_STDOUT_READ, currClient);
 	if (expectedBody)
 	{
 		_pipe_write = in[1];
-		set_epoll_event(EPOLLOUT , in[1], FdKind::CGI_STDIN_WRITE, currClient);
+		set_epoll_event(EPOLLOUT, in[1], FdKind::CGI_STDIN_WRITE, currClient);
 	}
 	else
 	{
@@ -300,18 +302,18 @@ cgi_state	CgiService::execute_cgi_proc(Client *currClient)
 	return cgi_state::RUNNING;
 }
 
-void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client *currClient)
+void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client* currClient)
 {
 	epoll_event	ev;
-	FdContext	*tmp = new FdContext;
+	FdContext* tmp = new FdContext;
 
 	_ctxTrack.push_back(tmp);
 	tmp->fd = fd;
 	tmp->kind = kind;
 	tmp->socket = currClient;
 	ev.events = events;
-	ev.data.ptr = (void *)tmp;
-	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd , &ev) == -1)
+	ev.data.ptr = (void*)tmp;
+	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
 	{
 		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
 		close(fd);
@@ -320,7 +322,7 @@ void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client *
 
 std::string	CgiService::get_body(void)
 {
-	return _body;	
+	return _body;
 }
 
 header_map	CgiService::get_header_map(void)

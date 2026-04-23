@@ -41,8 +41,8 @@ private:
 
 public:
 	/* Constructors & Destructors */
-	HttpUploadService(void);
-	HttpUploadService(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody);
+	HttpUploadService(void) = delete;
+	HttpUploadService(const header_map& headers, std::string filePath, size_t clientMaxBody);
 	HttpUploadService(const HttpUploadService& src) = delete;
 	HttpUploadService(HttpUploadService&& src) = delete;
 	~HttpUploadService();
