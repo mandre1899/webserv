@@ -184,9 +184,6 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 						Logger::log<LogLevel::error>("CGI script didn't produced HTTP header");
 						return std::make_pair(cgi_state::FINISHED_KO, 500);
 					}
-					std::cout << "CGI HEADERS" << std::endl;
-					for (auto& a : _cgi_headers)
-						std::cout << a.first + "=" + a.second << std::endl;
 					return std::make_pair(cgi_state::FINISHED_OK, 200);
 				}
 				Logger::log<LogLevel::error>("CGI exited with status: ", WEXITSTATUS(status));
