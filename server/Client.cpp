@@ -39,7 +39,7 @@ void Client::recvMsg()
 	char buffer[1024] = {};
 	int ret;
 
-	ret = recv(_clientFd, buffer, sizeof(buffer) , 0);
+	ret = recv(_clientFd, buffer, sizeof(buffer), 0);
 	if (ret < 1)
 		throw std::runtime_error("Client connection interrupted or client cosed the connection");
 	_msg.append(buffer, ret);
@@ -122,21 +122,21 @@ uint32_t Client::sendData(FdContext* fdCon)
 				return (EPOLLOUT);
 			}
 		}
-		catch (const RequestHandler::MethodNotAllowed &e) {
+		catch (const RequestHandler::MethodNotAllowed& e) {
 			Logger::log<LogLevel::warn>("Method not allowed: ", e.what());
 			_parsingState = state::response_sending;
 		}
-		catch (const RequestHandler::PathResolutionFailed &e) {
+		catch (const RequestHandler::PathResolutionFailed& e) {
 			Logger::log<LogLevel::error>("Path resolution failed: ", e.what());
 			_response.set_default_reponse(400);
 			_parsingState = state::response_sending;
 		}
-		catch (const RequestHandler::BadRequest &e) {
+		catch (const RequestHandler::BadRequest& e) {
 			Logger::log<LogLevel::warn>("Bad request: ", e.what());
 			_response.set_default_reponse(400);
 			_parsingState = state::response_sending;
 		}
-		catch (const std::exception &e) {
+		catch (const std::exception& e) {
 			Logger::log<LogLevel::error>("Request handler exception: ", e.what());
 			_response.set_default_reponse(500);
 			_parsingState = state::response_sending;
@@ -148,7 +148,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 		}
 	}
 	else if (_parsingState == state::response_proccessing ||
-			_parsingState == state::response_body)
+		_parsingState == state::response_body)
 	{
 		_parsingState = _service_handler->run(fdCon, _msg);
 		if (_parsingState == state::response_body)

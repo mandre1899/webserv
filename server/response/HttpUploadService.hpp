@@ -16,12 +16,12 @@ enum class body_state {
 	done
 };
 
-class HttpUpload {
+class HttpUploadService {
 private:
 	body_state _state;
 	std::string _buffer;
 	size_t _bytesRead = 0;
-	const header_map &_headers;
+	const header_map& _headers;
 	size_t _contentLength;
 	std::string _rawBoundary;
 	std::string _boundary;
@@ -41,18 +41,18 @@ private:
 
 public:
 	/* Constructors & Destructors */
-	HttpUpload(void) = delete;
-	HttpUpload(const header_map &headers, std::string filePath, size_t clientMaxBody);
-	HttpUpload(const HttpUpload& src) = delete;
-	HttpUpload(HttpUpload&& src) = delete;
-	~HttpUpload();
+	HttpUploadService(void);
+	HttpUploadService(const std::map<std::string, std::string> headers, std::string filePath, size_t clientMaxBody);
+	HttpUploadService(const HttpUploadService& src) = delete;
+	HttpUploadService(HttpUploadService&& src) = delete;
+	~HttpUploadService();
 
 	/* Member Functions */
 	bool uploadBody(std::string& data);
 
 	/* Basic Operators */
-	HttpUpload& operator=(const HttpUpload& src) = delete;
-	HttpUpload& operator=(HttpUpload&& src) = delete;
+	HttpUploadService& operator=(const HttpUploadService& src) = delete;
+	HttpUploadService& operator=(HttpUploadService&& src) = delete;
 
 	/* Getters & Setters */
 

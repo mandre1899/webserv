@@ -1,5 +1,4 @@
 #include "helper.hpp"
-#include <unordered_map>
 
 //Data storage for mime types
 static const std::unordered_map<std::string, std::string> mime_types =
@@ -48,14 +47,14 @@ std::string normalizePath(const std::string& path, const filePos& pos)
 	return (ret);
 }
 
-void is_number(const std::string& s)
+bool is_number(const std::string& s)
 {
 	std::string::const_iterator it = s.begin();
 	while (it != s.end() && std::isdigit(*it))
 		++it;
 	if (!s.empty() && it == s.end())
-		return;
-	throw std::runtime_error("is_number: invalid number found");
+		return true;
+	return false;
 }
 
 /*
@@ -91,7 +90,7 @@ std::string init_root_path(void)
 	return abs;
 }
 
-std::string	smart_filetype_detection(std::string &path) // Detects the content type of the file referenced by the path passed as argument
+std::string	smart_filetype_detection(std::string& path) // Detects the content type of the file referenced by the path passed as argument
 {
 	size_t pos = path.find(".");
 	if (pos == std::string::npos)
@@ -103,3 +102,23 @@ std::string	smart_filetype_detection(std::string &path) // Detects the content t
 	return res->second;
 }
 
+std::string str_tolower(std::string s)
+{
+	std::transform(s.begin(), s.end(), s.begin(),
+		[](unsigned char c) { return std::tolower(c); }
+	);
+	return s;
+}
+
+void trim(std::string& s)
+{
+	auto start = s.find_first_not_of(" \t\r\n");
+	auto end = s.find_last_not_of(" \t\r\n"); // todo: add more header validtion
+
+	if (start == std::string::npos) {
+		s.clear();
+		return;
+	}
+
+	s = s.substr(start, end - start + 1);
+}

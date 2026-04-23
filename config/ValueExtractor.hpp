@@ -8,7 +8,6 @@
 #include "ContextNode.hpp"
 #include "../utils/helper.hpp"
 
-
 #define KILO 1000
 #define MEGA 1000000
 #define GIGA 1000000000
@@ -54,11 +53,36 @@ private:
 	size_t _siUnitToValue(const token& token, bool isTime)
 	{
 		const std::string& str = token.value;
-
-		if (str.size() < 2)
-			throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
-		char unit = str[str.size() - 1];
 		size_t value;
+
+		if (isTime)
+		{
+			char unit = str[str.size() - 1];
+			if (unit != 's')
+				throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
+			try
+			{
+				value = _stoul(str.substr(0, str.size() - 1));
+			}
+			catch (const std::exception& e)
+			{
+				throw std::runtime_error(buildMsg(e.what(), token.pos));
+			}
+			return value;
+		}
+		if (is_number(str) == true)
+		{
+			try
+			{
+				value = _stoul(str);
+			}
+			catch (const std::exception& e)
+			{
+				throw std::runtime_error(buildMsg(e.what(), token.pos));
+			}
+			return value;
+		}
+		char unit = str[str.size() - 1];
 		try
 		{
 			value = _stoul(str.substr(0, str.size() - 1));
@@ -67,8 +91,6 @@ private:
 		{
 			throw std::runtime_error(buildMsg(e.what(), token.pos));
 		}
-		if (isTime && unit == 's')
-			return value;
 		switch (unit)
 		{
 			case 'k':
@@ -81,7 +103,7 @@ private:
 				value *= GIGA;
 				break;
 			default:
-				throw std::runtime_error(buildMsg("This is not a valid unit", token.pos));
+				throw std::runtime_error(buildMsg("This is not a valid prefix", token.pos));
 				break;
 		}
 		return value;
