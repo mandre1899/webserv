@@ -1,8 +1,8 @@
 
-> **Subject:** Directory where the requested file should be located  
-> (e.g., if URL `/kapouet` is rooted to `/tmp/www`, URL `/kapouet/pouic/toto/pouet` will search for `/tmp/www/pouic/toto/pouet`)
+# WebServ
 
----
+This document describes the configuration options for the WebServ web server.
+
 ## 🌐 listen
 
 Sets the address and port for IP on which the server will accept requests.
@@ -11,15 +11,12 @@ You can specify:
 - Both address **and** port
 - Only the port (**Default address:** `0.0.0.0`)
 
-
 **Default:**
-
 ```
 0.0.0.0:80
 ```
 
 **Syntax:**
-
 ```
 [listen address:]port;
 ```
@@ -36,9 +33,7 @@ listen 8000;
 ---
 ## server_name
 
-
-**Syntax:** `server_name name;`  
-**Default:** `server_name "";`  
+**Syntax:** `server_name name;` 
 **Context:** `server`  
 
 **Beschreibung:**  
@@ -57,13 +52,11 @@ server {
 The `root` directive defines the **root directory for requests**. It specifies the folder from which static files will be served.
 
 **Syntax:**
-
 ```
 root path;
 ```
 
-**Default:**
-
+**Examples:**
 ```
 root ./html;
 ```
@@ -72,24 +65,16 @@ root ./html;
 
 ---
 
-
-
 ## 📄 index
 
 Defines files that will be used as an index.
 
-- The file name can contain variables.
-- Files are checked in the specified order.
-- The last element of the list can be a file with an absolute path.
-
 **Syntax:**
-
 ```
-index file ...;
+index file;
 ```
 
-**Default:**
-
+**Examples:**
 ```
 index index.html;
 ```
@@ -114,13 +99,13 @@ The `allow_methods` parameter can be one of the following:
 allow_methods method;
 ```
 
-**Default:** —  
+**Default:** `allow_methods GET POST;`
 **Context:** `location`
 
 ### Example
 
 ```webserv
-allow_methods GET POST;
+allow_methods GET DELETE;
 ```
 
 ---
@@ -134,7 +119,6 @@ The easiest way to do this is to use the `return` directive.
 **Default:** —  
 **Context:** `server`, `location`
 
-
 ### Example
 
 ```webserv
@@ -147,7 +131,6 @@ The first parameter of `return` is a response code.
 The optional second parameter can be:
 
 - The URL of a redirect (for codes `301`, `302`, `303`, and `307`)
-- Or the text to return in the response body
 
 ### Redirect Example
 
@@ -159,30 +142,8 @@ location /permanently/moved/url {
 
 ---
 
-### ⚙️ client_body_timeout  
-Defines a timeout for reading the client request body.  
-The timeout applies only to the period between two successive read operations, not to the transmission of the entire request body.
-
-If a client does not transmit any data within this time, the request is terminated with a **408 (Request Time-out)** error.
-
-**Syntax:**
-
-client_body_timeout time;
-
-**Default:**
-
-client_body_timeout 60s;
-
-**Context:** http, server, location
-
----
 ### ⚙️ client_header_buffer_size  
 Sets the buffer size for reading the client request header.
-
-For most requests, a **1K buffer** is sufficient. However, requests containing **long cookies** or requests from **WAP clients** may exceed this size.  
-If the request line or a header field does not fit into this buffer, larger buffers configured with **large_client_header_buffers** are allocated.
-
-If specified at the **server level**, the value from the **default server** may be used.
 
 **Syntax:**
 
@@ -198,24 +159,34 @@ client_header_buffer_size 1k;
 ### ⚙️ client_header_timeout  
 Defines a timeout for reading the client request header.
 
-If the client does not transmit the entire header within the specified time, the request is terminated with a **408 (Request Time-out)** error.
-
 **Syntax:**
 
 client_header_timeout time;
 
 **Default:**
 
-client_header_timeout 60s;
+client_header_timeout 30s;
 
 **Context:** http, server
 
 ---
+
+### ⚙️ client_body_timeout  
+Defines a timeout for reading the client request body.  
+
+**Syntax:**
+
+client_body_timeout time;
+
+**Default:**
+
+client_body_timeout 30s;
+
+**Context:** http, server, location
+
+---
 ### ⚙️ client_max_body_size  
 Sets the maximum allowed size of the client request body.
-
-If the request body exceeds the configured value, webserv returns a **413 (Request Entity Too Large)** error.  
-Note that browsers often cannot correctly display this error.
 
 Setting the value to **0** disables the request body size check.
 
@@ -258,32 +229,27 @@ Specifies where uploaded files will be saved.
 **Syntax:**
 
 ```
-upload_store directory
+upload_store directory;
 ```
-
-**Default:** —  
-**Context:** `location`
 
 ### Example (Simple Flat Directory)
 
 ```webserv
 upload_store /var/upload;
 ```
-
+**Default:** —  
+**Context:** `location`
 ---
 
 ## ❗ error_page
 
-Defines the URI that will be shown for the specified errors.
+Defines the page that will be shown for the specified errors.
 
 **Syntax:**
 
 ```
-error_page code ... [=[response]] uri;
+error_page code ... path;
 ```
-
-
-**Context:** `http`, `server`, `location`
 
 ### Example
 
@@ -292,15 +258,12 @@ error_page 404             /404.html;
 error_page 500 502 503 504 /50x.html;
 ```
 
-This causes an internal redirect to the specified `uri` with the client request method changed to **GET**.
-
+**Context:** `http`, `server`, `location`
 ---
 
 ## ⚡ CGI Configuration
 
 This `location` block configures webserv to serve **PHP files** using *CGI** with PHP.
-
-**Context:** `http`, `server`, `location`
 
 **Syntax:**
 
@@ -315,6 +278,8 @@ location /wordpress/ {
 - `cgi_path /bin/php;` – Passes PHP requests to the PHP executable. 
 
 This setup allows webserv to process PHP files in `/wordpress/` correctly.
+
+**Context:** `http`, `server`, `location`
 
 ---
 
