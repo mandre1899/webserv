@@ -16,7 +16,7 @@
 #include "utils/Logger.hpp"
 #include "serverTypes.hpp"
 
-#define MAX_EVENTS 5
+#define MAX_EVENTS 1
 
 extern volatile std::sig_atomic_t g_stopServerSignal;
 

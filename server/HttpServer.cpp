@@ -125,6 +125,10 @@ void HttpServer::run()
 	}
 	for (int i = 0; i < eventCount; i++)
 	{
+		if (events[i].data.ptr == NULL)
+		{
+			continue;
+		}
 		FdContext* fdCon = static_cast<FdContext*>(events[i].data.ptr);
 		FdKind type = fdCon->kind;
 		if (fdCon->kind == FdKind::SERVER_SOCKET) // if (serverSocket)...
@@ -137,8 +141,8 @@ void HttpServer::run()
 			Client* c = std::get<Client*>(fdCon->socket);
 			events[i].events = c->handleConnection(events[i].events, fdCon);
 			if (type == FdKind::CGI_STDOUT_READ || type == FdKind::CGI_STDIN_WRITE ||
-					type == FdKind::CGI_STDERR_READ)
-				continue ;
+				type == FdKind::CGI_STDERR_READ)
+				continue;
 			if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, fdCon->fd, &events[i]))
 				throw std::runtime_error("Failed to modify file descriptor in epoll");
 			if (events[i].events & EPOLLHUP)

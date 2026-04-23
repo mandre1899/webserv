@@ -7,6 +7,7 @@ Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCf
 	_parsingState = state::parsing_request_line;
 	_version = std::chrono::system_clock::now();
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
+	_response.set_status(404); //todo: ma: fix READ memory access
 }
 
 Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
@@ -173,7 +174,7 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 	try
 	{
 		if (event & EPOLLIN)
-		{ // I need to check if a pipe is processing
+		{
 			if (_parsingState == state::response_proccessing)
 				return (sendData(fdCon));
 			else if (_parsingState == state::response_body)
@@ -189,40 +190,29 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 		}
 		if (event & EPOLLOUT)
 			return (sendData(fdCon));
-		if (event & EPOLLHUP)
-			return (EPOLLHUP);
-		// if (event & EPOLLPRI)
-		// 	throw "Unexpectet call"; // todo add all epoll events
-		// if (event & EPOLLRDHUP)
-		// 	throw "Unexpectet call";
-		// if (event & EPOLLERR)
-		// 	throw "Unexpectet call";
 		return (EPOLLHUP);
 	}
 	catch (const HttpParser::RequestUriTooLarge& e)
 	{
-		// TODO send respone with code 414
-		_response.set_default_reponse(414);
+		_response.set_default_reponse(414); // send respone with code 414
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
 	catch (const HttpParser::HeadersTooLarge& e)
 	{
-		//TODO send respone with 400
-		_response.set_default_reponse(400);
+		_response.set_default_reponse(400); //send respone with 400
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
 	catch (const HttpParser::HttpVersionConflict& e)
 	{
-		//TODO send bad request with 400
-		_response.set_default_reponse(400);
+		_response.set_default_reponse(400); //send bad request with 400
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
 	catch (const std::exception& e)
 	{
-		_response.set_default_reponse(500);
+		_response.set_default_reponse(500); // todo: close the connection immediately; do not send a response, as this method is also called in the event of read errors
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}

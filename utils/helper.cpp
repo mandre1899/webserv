@@ -113,7 +113,7 @@ std::string str_tolower(std::string s)
 void trim(std::string& s)
 {
 	auto start = s.find_first_not_of(" \t\r\n");
-	auto end = s.find_last_not_of(" \t\r\n"); // todo: add more header validtion
+	auto end = s.find_last_not_of(" \t\r\n");
 
 	if (start == std::string::npos) {
 		s.clear();

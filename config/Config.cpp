@@ -286,6 +286,7 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 				os << " | POST: " << loc.allowMethods.isPost;
 				os << " | DELETE: " << loc.allowMethods.isDelete;
 			}
+			os << std::endl;
 		}
 	}
 	return(os);
