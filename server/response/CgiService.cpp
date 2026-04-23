@@ -83,11 +83,6 @@ CgiService::CgiService(ResourceInspection& data, int epfd, int socket_fd)
 		_postContentLength = -1;
 		_postWriteTrack = -1;
 	}
-	std::vector<std::string> env_storage = build_cgi_env(data);
-	_cgi_envs.reserve(env_storage.size() + 1);
-	for (std::string& entry : env_storage)
-		_cgi_envs.push_back(const_cast<char*>(entry.c_str()));
-	_cgi_envs.push_back(NULL);
 }
 
 CgiService::~CgiService()
@@ -266,6 +261,12 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 	if (pid == 0)
 	{
 		char* const argv[] = { execPath, scriptPath, NULL };
+		std::vector<char*> envs;
+		std::vector<std::string> env_storage = build_cgi_env(_data);
+		envs.reserve(env_storage.size() + 1);
+		for (std::string& entry : env_storage)
+			envs.push_back(const_cast<char*>(entry.c_str()));
+		envs.push_back(NULL);
 		if (expectedBody)
 		{
 			close(in[1]);
@@ -279,7 +280,7 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 		if (dup2(out[1], STDERR_FILENO) == -1)
 			_exit(1);
 		close(out[1]);
-		execve(execPath, argv, _cgi_envs.data());
+		execve(execPath, argv, envs.data());
 		Logger::log<LogLevel::error>("Execve failed");
 		_exit(1);
 	}
