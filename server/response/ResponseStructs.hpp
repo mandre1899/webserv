@@ -43,7 +43,7 @@ struct ResourceInspection
 	std::string		index_path;
 	std::string		upload_path;
 
-	const cfg::wsLocationCtx	*currLoc;
+	const cfg::wsLocationCtx	*currLoc = NULL;
 
 	bool			exists = false;
 	bool			is_file;
