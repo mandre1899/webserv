@@ -9,7 +9,7 @@
 
 enum ResourceKind
 {
-	NONE,
+	NONE = 0,
 	IS_FILE,
 	DIRECTORY,
 	CGI,
@@ -42,6 +42,8 @@ struct ResourceInspection
 	std::string		cgi_path;
 	std::string		index_path;
 	std::string		upload_path;
+
+	const cfg::wsLocationCtx	*currLoc;
 
 	bool			exists = false;
 	bool			is_file;

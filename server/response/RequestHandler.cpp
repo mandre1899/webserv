@@ -92,6 +92,7 @@ void	RequestHandler::resolveLocation(void)
 	{
 		_location_uri = best_match->first;
 		_locationConfig = &best_match->second;
+		_inspection_result.currLoc = _locationConfig;
 	}
 }
 
