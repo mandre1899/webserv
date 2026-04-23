@@ -208,8 +208,6 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 		_pipe_write = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}
-	std::cout << "Post Write: " << _postWriteTrack << std::endl;
-	std::cout << "Content length: " << _postContentLength << std::endl;
 	if (_postContentLength <= _postWriteTrack)
 	{
 		close(_pipe_write);
