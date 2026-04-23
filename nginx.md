@@ -28,7 +28,7 @@ You can specify:
 
 ### Examples
 
-```nginx
+```webserv
 listen 127.0.0.1:8000;
 listen 8000;
 ```
@@ -44,7 +44,7 @@ listen 8000;
 **Beschreibung:**  
 Legt die Namen eines virtuellen Servers fest. Zum Beispiel:
 
-```nginx
+```webserv
 server {
     server_name example.com;
 }
@@ -119,7 +119,7 @@ allow_methods method;
 
 ### Example
 
-```nginx
+```webserv
 allow_methods GET POST;
 ```
 
@@ -137,7 +137,7 @@ The easiest way to do this is to use the `return` directive.
 
 ### Example
 
-```nginx
+```webserv
 location /wrong/url {
     return 404;
 }
@@ -151,7 +151,7 @@ The optional second parameter can be:
 
 ### Redirect Example
 
-```nginx
+```webserv
 location /permanently/moved/url {
     return 301 http://www.example.com/moved/here;
 }
@@ -214,7 +214,7 @@ client_header_timeout 60s;
 ### ⚙️ client_max_body_size  
 Sets the maximum allowed size of the client request body.
 
-If the request body exceeds the configured value, NGINX returns a **413 (Request Entity Too Large)** error.  
+If the request body exceeds the configured value, webserv returns a **413 (Request Entity Too Large)** error.  
 Note that browsers often cannot correctly display this error.
 
 Setting the value to **0** disables the request body size check.
@@ -266,7 +266,7 @@ upload_store directory
 
 ### Example (Simple Flat Directory)
 
-```nginx
+```webserv
 upload_store /var/upload;
 ```
 
@@ -287,7 +287,7 @@ error_page code ... [=[response]] uri;
 
 ### Example
 
-```nginx
+```webserv
 error_page 404             /404.html;
 error_page 500 502 503 504 /50x.html;
 ```
@@ -296,27 +296,25 @@ This causes an internal redirect to the specified `uri` with the client request 
 
 ---
 
-## ⚡ FastCGI Configuration
+## ⚡ CGI Configuration
 
-This `location` block configures Nginx to serve **PHP files** using **FastCGI** with PHP-FPM.
+This `location` block configures webserv to serve **PHP files** using *CGI** with PHP.
 
 **Context:** `http`, `server`, `location`
 
 **Syntax:**
 
-```nginx
+```webserv
 location /wordpress/ {
     cgi_path /bin/php; # custom
-	cgi_index index.php;
 }
 ```
 
 ### Explanation
 
-- `cgi_path /bin/php;` – Passes PHP requests to the PHP executable.
-- `cgi_index index.php;` – Specifies the default index file for CGI requests.  
+- `cgi_path /bin/php;` – Passes PHP requests to the PHP executable. 
 
-This setup allows Nginx to process PHP files in `/wordpress/` correctly.
+This setup allows webserv to process PHP files in `/wordpress/` correctly.
 
 ---
 

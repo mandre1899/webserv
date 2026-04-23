@@ -12,9 +12,9 @@
 #define MEGA 1000000
 #define GIGA 1000000000
 
-// http:     root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size  |
-// server:   root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, | client_header_timeout, client_header_buffer_size, | return, | listen, server_name
-// location: root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, fastcgi_index, |                                                   | return, | allow_methods, upload_store
+// http:     root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, | client_header_timeout, client_header_buffer_size  |
+// server:   root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, | client_header_timeout, client_header_buffer_size, | return, | listen, server_name
+// location: root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, |                                                   | return, | allow_methods, upload_store
 
 template<typename T>
 class ValueExtractor {
@@ -194,12 +194,6 @@ private:
 		ts.expectToken(tType::semi);
 	}
 
-	void _cgiIndex(T& confStruct, TokenStream& ts)
-	{
-		confStruct.cgiIndex = ts.getNextValue();
-		ts.expectToken(tType::semi);
-	}
-
 	void _listen(T& confStruct, TokenStream& ts)
 	{
 		std::string tValue = ts.getNextValue();
@@ -339,9 +333,6 @@ public:
 			};
 		_dispatch["cgi_path"] = [this](T& confStruct, TokenStream& ts) {
 			_cgiPath(confStruct, ts);
-			};
-		_dispatch["cgi_index"] = [this](T& confStruct, TokenStream& ts) {
-			_cgiIndex(confStruct, ts);
 			};
 		if constexpr (std::is_same_v<cfg::vHostCfg, T> || std::is_same_v<cfg::wsLocationCtx, T>)
 		{
