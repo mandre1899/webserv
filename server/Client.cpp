@@ -131,7 +131,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 			_response.set_default_reponse(400);
 			_parsingState = state::response_sending;
 		}
-		catch (const RequestHandler::NotAbleToBuildPath& e) {
+		catch (const RequestHandler::NotFoundExcept404 &e) {
 			Logger::log<LogLevel::error>("Path resolution failed: ", e.what());
 			_response.set_default_reponse(404);
 			_parsingState = state::response_sending;

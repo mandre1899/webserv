@@ -135,11 +135,11 @@ std::string	RequestHandler::pathResolution(void)
 		else
 		{
 			Logger::log<LogLevel::error>("No index or root configured for server");
-			throw RequestHandler::NotAbleToBuildPath();
+			throw RequestHandler::NotFoundExcept404();
 		}
 	}
 	if (_locationConfig == nullptr)
-		throw RequestHandler::PathResolutionFailed();
+		throw RequestHandler::NotFoundExcept404();
 	bool	is_abs = true;
 	std::string loc_root = _locationConfig->root;
 	if (_locationConfig->root[0] == '.')
@@ -296,7 +296,7 @@ const char	*RequestHandler::BadRequest::what() const noexcept
 	return "bad request";
 }
 
-const char	*RequestHandler::NotAbleToBuildPath::what() const noexcept
+const char	*RequestHandler::NotFoundExcept404::what() const noexcept
 {
 	return "No index or root condigured as well as no location";
 }
