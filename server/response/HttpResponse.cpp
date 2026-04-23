@@ -48,28 +48,30 @@ const status_map	HttpResponse::_status_code_map =
 	{505, "HTTP Version Not Supported"}
 };
 
-std::ostream	&operator<<(std::ostream& os, HttpResponse& obj)
+std::ostream& operator<<(std::ostream& os, HttpResponse& obj)
 {
-    os << "Status code: " << obj.get_status() << '\n';
+	os << "Status code: " << obj.get_status() << '\n';
 
-    os << "Headers:\n";
-    for (const auto& header : obj.get_headers())
-    {
-        os << "  " << header.first
-           << ": " << header.second << '\n';
-    }
+	os << "Headers:\n";
+	for (const auto& header : obj.get_headers())
+	{
+		os << "  " << header.first
+			<< ": " << header.second << '\n';
+	}
 
-    os << "\nBody:\n";
-    os << obj.get_body();
+	os << "\nBody:\n";
+	os << obj.get_body();
 
-    return os;
+	return os;
 }
 
 HttpResponse::HttpResponse(void) : _status_code(-1)
-{}
+{
+}
 
 HttpResponse::~HttpResponse(void)
-{}
+{
+}
 
 //Buissness logic extern
 void	HttpResponse::set_default_headers(void)
@@ -128,7 +130,7 @@ void	HttpResponse::set_default_reponse(int status_code)
 
 }
 
-void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx &location)
+void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx& location)
 {
 	std::unordered_map<http_code, std::string>::const_iterator it_err_page = location.errorPage.find(status_code);
 	if (it_err_page != location.errorPage.end() && !it_err_page->second.empty())
@@ -153,6 +155,8 @@ const std::string	HttpResponse::get_response_str(void) const
 {
 	std::ostringstream	tmp;
 
+	// if (_status_code_map.find(_status_code) == _status_code_map.end()) //todo: ma:  Maybe it's better to catch the error here: _status_code is undefined
+	// 	_status_code = 404;
 	tmp << "HTTP/1.1 " << _status_code << " " << _status_code_map.find(_status_code)->second << "\r\n";
 	for (const auto& a : _header)
 		tmp << a.first << ": " << a.second << "\r\n";
@@ -163,7 +167,7 @@ const std::string	HttpResponse::get_response_str(void) const
 
 }
 
-bool	HttpResponse::read_file_to_body(std::string &abs_path)
+bool	HttpResponse::read_file_to_body(std::string& abs_path)
 {
 	struct stat file_stat;
 	if (stat(abs_path.c_str(), &file_stat) != 0)
@@ -197,14 +201,14 @@ void	HttpResponse::set_status(int status_code)
 
 void HttpResponse::set_header(header_map::iterator begin, header_map::iterator end) // Replaces the values if matching keys with the new ones passed
 {
-    for (; begin != end; ++begin)
-        _header[begin->first] = begin->second;
+	for (; begin != end; ++begin)
+		_header[begin->first] = begin->second;
 }
 
 void HttpResponse::set_header(header_map::const_iterator begin, header_map::const_iterator end) // Replaces the values if matching keys with the new ones passed
 {
-    for (; begin != end; ++begin)
-        _header[begin->first] = begin->second;
+	for (; begin != end; ++begin)
+		_header[begin->first] = begin->second;
 }
 
 void HttpResponse::set_header(std::string key, std::string value)
@@ -219,7 +223,7 @@ void	HttpResponse::set_body(std::string body)
 
 void	HttpResponse::set_content_type(std::string type)
 {
-	header_map tmp = {{"Content-Type", type}};
+	header_map tmp = { {"Content-Type", type} };
 	set_header(tmp.begin(), tmp.end());
 }
 

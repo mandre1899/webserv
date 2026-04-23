@@ -7,7 +7,7 @@ HttpUploadService::HttpUploadService(const header_map& headers, std::string file
 	_filePath = filePath + "/";
 
 	auto search = _headers.find("content-length");
-	if ((search == _headers.end())) // todo: From HTTP/1.1 onward -> _headers_map.find("Transfer-Encoding") != _headers_map.end()
+	if ((search == _headers.end()))
 		throw MissingLengthException();
 	if (is_number(search->second) == false)
 		throw std::runtime_error("is_number: invalid number found");
@@ -240,7 +240,7 @@ bool HttpUploadService::uploadBody(std::string& data)
 		}
 	}
 	if (_bytesRead == _contentLength && _state == body_state::done)
-		return true; // todo: need to reset bytes_read? can same client get here a second time?
+		return true;
 	return false;
 }
 

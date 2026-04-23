@@ -101,7 +101,8 @@ CgiService::~CgiService()
 
 	for (auto& a : _ctxTrack)
 	{
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, a->fd, NULL);
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, a->fd, NULL); // todo: add 		delete ->socket; 
+
 		delete a;
 	}
 }
@@ -312,7 +313,7 @@ void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client* 
 	tmp->kind = kind;
 	tmp->socket = currClient;
 	ev.events = events;
-	ev.data.ptr = (void*)tmp;
+	ev.data.ptr = (void*)tmp; // todo: ma: remove c style cast
 	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
 	{
 		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");

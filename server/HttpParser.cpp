@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpParser.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
+/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/22 13:18:00 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/23 11:24:15 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,7 +88,7 @@ void HttpParser::parseRequestLine(std::string& line)
 		throw HttpParsingError();
 
 	getline(ss, temp, del);
-	if (!(temp == "HTTP/1.1" || temp == "HTTP/1.0")) //  for http/1.1 -> !(temp == "HTTP/1.1" || temp == "HTTP/1.0") -> todo: check http version
+	if (!(temp == "HTTP/1.1" || temp == "HTTP/1.0"))
 		throw HttpVersionNotSupported();
 	_http_version = temp;
 	if (!ss.eof()) //extra space seems okay tho ... so trim space at end
