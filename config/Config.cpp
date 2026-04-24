@@ -61,7 +61,8 @@ void Config::buildLocation(const ctxNode& ctx, cfg::vHostCfg& serverCtx)
 
 	setLocationConfDefaults(locConf, serverCtx);
 	path = ts.getNextToken().value;
-	path = normalizePath(path, ts.getPositon());
+	path = normalizeConfigSubPath(path, ts.getPositon());
+	path = "/" + path;
 	locationPos = ts.getPositon();
 	t = ts.getNextToken();
 	while (t.type != tType::end)

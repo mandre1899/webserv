@@ -111,13 +111,13 @@ private:
 
 	void _root(T& confStruct, TokenStream& ts)
 	{
-		confStruct.root = normalizePath(ts.getNextValue(), ts.getPositon());
+		confStruct.root = normalizeConfigRootPath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
 	void _index(T& confStruct, TokenStream& ts)
 	{
-		confStruct.index = ts.getNextValue();
+		confStruct.index = normalizeConfigSubPath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
@@ -155,6 +155,7 @@ private:
 			path = t[i].value;
 		else
 			throw TokenStream::UnexpectedTokenException(t[i].pos);
+		normalizeConfigSubPath(path, t[i].pos);
 		for (size_t j = 0; j < codes.size(); j++)
 		{
 			bool isInserted = static_cast<bool>(confStruct.errorPage.insert({ codes[j] , path }).second);
@@ -190,7 +191,7 @@ private:
 
 	void _cgiPath(T& confStruct, TokenStream& ts)
 	{
-		confStruct.cgiPath = ts.getNextValue();
+		confStruct.cgiPath = normalizeConfigSubPath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
@@ -289,7 +290,7 @@ private:
 
 	void _uploadStore(T& confStruct, TokenStream& ts)
 	{
-		confStruct.uploadStore = normalizePath(ts.getNextValue(), ts.getPositon());
+		confStruct.uploadStore = normalizeConfigSubPath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 

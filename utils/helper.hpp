@@ -19,7 +19,8 @@ struct filePos
 };
 
 std::string buildMsg(std::string msg, const filePos& pos);
-std::string normalizePath(const std::string& path, const filePos& pos);
+std::string normalizeConfigSubPath(const std::string& path, const filePos& pos);
+std::string normalizeConfigRootPath(const std::string& path, const filePos& pos);
 bool is_number(const std::string& s);
 
 //Mateo added
