@@ -114,7 +114,7 @@ void	RequestHandler::methodLocationValidation(void)
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
 		(requestMethods == method_type::DELETE && !_locationConfig->allowMethods.isDelete))
 	{
-		_response.set_default_reponse(404, *_locationConfig);
+		_response.set_default_reponse(405, *_locationConfig);
 		throw RequestHandler::MethodNotAllowed();
 	}
 }
