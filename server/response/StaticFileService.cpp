@@ -4,15 +4,13 @@ StaticFileService::StaticFileService(ResourceInspection data, HttpResponse &resp
 	: _data(data), _response(response)
 {	
 	_response.set_content_type(smart_filetype_detection(data.abs_path));
-	if (!data.is_directory)
+	if (data.kind == ResourceKind::IS_FILE)
 	{
 		response.set_status(200);
 		response.read_file_to_body(data.abs_path);
 	}
 	else
-	{
-		generate_dir_listing();
-	}
+			generate_dir_listing();
 }
 
 StaticFileService::~StaticFileService(void)

@@ -11,13 +11,8 @@ ServiceHandler::~ServiceHandler(void)
 
 state	ServiceHandler::select_service()
 {
-	if (_data.kind == ResourceKind::IS_FILE)
-	{
-		StaticFileService(_data, _response);
-		_response.set_default_headers();
-		return state::response_sending;
-	}
-	else if (_data.kind == ResourceKind::DIRECTORY)
+	if (_data.kind == ResourceKind::DIRECTORY ||
+			_data.kind == ResourceKind::IS_FILE)
 	{
 		if (_data.status == InspectStatus::OK)
 		{
@@ -26,7 +21,7 @@ state	ServiceHandler::select_service()
 			return state::response_sending;
 		}
 		else
-			_response.set_default_reponse(404, _data.currLoc, _data.currServer);
+			_response.set_default_reponse(403, _data.currLoc, _data.currServer);
 	}
 	else if (_data.kind == ResourceKind::CGI)
 	{
