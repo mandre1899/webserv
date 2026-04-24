@@ -84,11 +84,12 @@ void	RequestHandler::resolveLocation(void)
 	auto best_match = _serverConfig->location.end();
 	size_t best_len = 0;
 
+	std::string request_uri = _request.getRequestUri();
 	for (auto it = _serverConfig->location.begin(); it != _serverConfig->location.end(); ++it)
 	{
 		const std::string& location_path = it->first;
 
-		if (!loc_uri_comp(location_path, _request.getRequestUri()))
+		if (!loc_uri_comp(location_path, request_uri))
 			continue;
 
 		if (location_path.length() > best_len)
@@ -127,10 +128,21 @@ std::string	RequestHandler::pathResolution(void)
 	{
 		if (!_serverConfig->index.empty() && !_serverConfig->root.empty())
 		{
-			if (_serverConfig->root[0] == '.')
-				return join_paths(init_root_path(), _serverConfig->root.substr(1), _serverConfig->index);
+			if (_request.getRequestUri() == "/")
+			{
+				if (_serverConfig->root[0] == '.')
+					return join_paths(init_root_path(), _serverConfig->root.substr(1), _serverConfig->index);
+				else
+					return join_paths(_serverConfig->root, _serverConfig->index);
+			}
 			else
-				return join_paths(_serverConfig->root, _serverConfig->index);
+			{
+				if (_serverConfig->root[0] == '.')
+					return join_paths(init_root_path(), _serverConfig->root.substr(1), _request.getRequestUri());
+				else
+					return join_paths(_serverConfig->root, _request.getRequestUri());
+
+			}
 		}
 		else
 		{
