@@ -242,6 +242,8 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 		os << "clientBodyTimeout: " << ctx.clientBodyTimeout << std::endl;
 		if (!ctx.cgiPath.empty())
 			os << "cgiPath: " << ctx.cgiPath << std::endl;
+		if (!ctx.cgiExt.empty())
+			os << "cgiExt: " << ctx.cgiExt << std::endl;
 		if (ctx.ret.has_value())
 		{
 			os << "return: \n";
@@ -280,6 +282,8 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 				}
 				if (!loc.cgiPath.empty())
 					os << "      cgiPath: " << loc.cgiPath << std::endl;
+				if (!loc.cgiExt.empty())
+					os << "      cgiExt: " << loc.cgiExt << std::endl;
 				if (!loc.uploadStore.empty())
 					os << "      uploadStore: " << loc.uploadStore << std::endl;
 				os << "      allowMethods: \n";

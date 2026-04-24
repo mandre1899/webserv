@@ -195,6 +195,17 @@ private:
 		ts.expectToken(tType::semi);
 	}
 
+	void _cgiExt(T& confStruct, TokenStream& ts)
+	{
+		const std::string& tmp = ts.getNextValue();
+		if (tmp[0] != '.')
+			throw std::runtime_error(buildMsg("Invalid extension; must begin with a dot.", ts.getPositon()));
+		if (tmp.find("/") != std::string::npos)
+			throw std::runtime_error(buildMsg("Invalid extension", ts.getPositon()));
+		confStruct.cgiExt = tmp;
+		ts.expectToken(tType::semi);
+	}
+
 	void _listen(T& confStruct, TokenStream& ts)
 	{
 		std::string tValue = ts.getNextValue();
@@ -334,6 +345,9 @@ public:
 			};
 		_dispatch["cgi_path"] = [this](T& confStruct, TokenStream& ts) {
 			_cgiPath(confStruct, ts);
+			};
+		_dispatch["cgi_ext"] = [this](T& confStruct, TokenStream& ts) {
+			_cgiExt(confStruct, ts);
 			};
 		if constexpr (std::is_same_v<cfg::vHostCfg, T> || std::is_same_v<cfg::wsLocationCtx, T>)
 		{
