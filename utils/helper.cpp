@@ -66,6 +66,8 @@ std::string normalize_part(const std::string& part, bool is_first)
 {
 	if (part.empty())
 		return "";
+	if (is_first && part == "/")
+		return "/";
 	size_t start = 0;
 	size_t end = part.size();
 	if (!is_first)

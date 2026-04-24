@@ -22,6 +22,7 @@ std::string buildMsg(std::string msg, const filePos& pos);
 std::string normalizePath(const std::string& path, const filePos& pos);
 bool is_number(const std::string& s);
 
+#include <iostream>
 //Mateo added
 //Concats n amounts of path args
 std::string normalize_part(const std::string& part, bool is_first);
@@ -36,7 +37,7 @@ std::string join_paths(const Args&... parts)
 		std::string cleaned = normalize_part(part, first);
 		if (cleaned.empty())
 			continue;
-		if (!result.empty())
+		if (!result.empty() && result != "/")
 			result += "/";
 		result.append(cleaned);
 		first = false;
