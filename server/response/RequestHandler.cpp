@@ -88,8 +88,7 @@ static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 	if (uri == loc)
 		return true;
 	if (uri.size() > loc.size() &&
-		uri.compare(0, loc.size(), loc) == 0 &&
-		uri[loc.size()] == '/')
+			uri.compare(0, loc.size(), loc) == 0)
 		return true;
 	return false;
 }
@@ -117,6 +116,7 @@ void	RequestHandler::resolveLocation(void)
 	for (auto it = _serverConfig->location.begin(); it != _serverConfig->location.end(); ++it)
 	{
 		const std::string& location_path = it->first;
+
 
 		if (!loc_uri_comp(location_path, request_uri))
 			continue;
@@ -305,19 +305,18 @@ void	RequestHandler::filesystemInspection(std::string& abs_path)
 
 	populateRequestMetadata(abs_path);
 
-	// No location found - simplified fallback
 	if (_locationConfig == nullptr)
 	{
 		handleNoLocationConfig(abs_path);
 		return;
 	}
 
-	// Handle location redirects
 	if (_locationConfig->ret.has_value())
 	{
 		_inspection_result.has_redirect = true;
 		_inspection_result.redirect_code = _locationConfig->ret->code;
 		_inspection_result.redirect_target = _locationConfig->ret->param;
+		return ;
 	}
 
 	// Inspect filesystem stats
