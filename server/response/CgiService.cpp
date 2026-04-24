@@ -93,6 +93,10 @@ CgiService::~CgiService()
 		kill(_cgi_pid, SIGKILL);
 	if (_pipe_write != -1)
 		close(_pipe_write);
+	if(!_writeIsDel)
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
+	if (!_readIsDel)
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 
 	for (auto& a : _ctxTrack)
 		delete a;
@@ -159,6 +163,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 			_pipe_read = -1;
 			int status = 0;
 			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
+			_readIsDel = true;
 			pid_t ret = waitpid(_cgi_pid, &status, WNOHANG);
 			if (ret == -1)
 			{
@@ -184,6 +189,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 			return std::make_pair(cgi_state::FINISHED_OK, 200);
 		}
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
+		_readIsDel = true;
 		Logger::log<LogLevel::error>("Read failed status: ", errno);
 		close(_pipe_read);
 		_pipe_read = -1;
@@ -200,6 +206,7 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 	if (written_bytes < 0)
 	{
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL); // todo: ad
+		_writeIsDel = true;
 		if (errno == EINTR)
 			return std::make_pair(cgi_state::RUNNING, 200);
 		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
@@ -210,6 +217,7 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 	if (_postContentLength <= _postWriteTrack)
 	{
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL); // todo: ad
+		_writeIsDel = true;
 		close(_pipe_write);
 		_pipe_write = -1;
 		return std::make_pair(cgi_state::FINISHED_OK, 200);
@@ -286,10 +294,12 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 	}
 	close(out[1]);
 	set_epoll_event(EPOLLIN, out[0], FdKind::CGI_STDOUT_READ, currClient);
+	_readIsDel = false;
 	if (expectedBody)
 	{
 		_pipe_write = in[1];
 		set_epoll_event(EPOLLOUT, in[1], FdKind::CGI_STDIN_WRITE, currClient);
+		_writeIsDel = false;
 	}
 	else
 	{

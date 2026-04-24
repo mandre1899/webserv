@@ -41,6 +41,10 @@ class CgiService
 	unsigned int				_postWriteTrack; //tracks the bytest already written to the pipe stdin
 	unsigned int				_postContentLength;
 
+	//Test
+	bool		_writeIsDel;
+	bool		_readIsDel;
+
 	void		set_epoll_event(uint32_t events, int fd, FdKind kind, Client *currClient);
 
 public:
