@@ -67,6 +67,8 @@ void	StaticFileService::generate_dir_listing()
 		<< "</body>\n"
 		<< "</html>\n";
 	_response.set_content_type("text/html");
+	_response.set_default_headers();
+	_response.set_status(200);
 	_response.set_body(ss.str());
 }
 

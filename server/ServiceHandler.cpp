@@ -19,9 +19,14 @@ state	ServiceHandler::select_service()
 	}
 	else if (_data.kind == ResourceKind::DIRECTORY)
 	{
-		StaticFileService(_data, _response);
-		_response.set_default_headers();
-		return state::response_sending;
+		if (_data.status == InspectStatus::OK)
+		{
+			StaticFileService(_data, _response);
+			_response.set_default_headers();
+			return state::response_sending;
+		}
+		else
+			_response.set_default_reponse(404, *_data.currLoc);
 	}
 	else if (_data.kind == ResourceKind::CGI)
 	{
@@ -78,6 +83,16 @@ state	ServiceHandler::run(FdContext* ctx, std::string msg)
 				_response.set_body(_cgiService->get_body());
 				_cgiService->parse_cgi_headers();
 				header_map headers = _cgiService->get_header_map();
+				int status_code = 200;
+				if (headers.find("Status") != headers.end()) {
+				    try {
+				        status_code = std::stoi(headers.at("Status"));
+				    } catch (const std::exception& e) {
+				        Logger::log<LogLevel::warn>("Invalid CGI Status header, defaulting to 200: ", e.what());
+				        status_code = 200;
+				    }
+				}
+				_response.set_status(status_code);
 				_response.set_header(headers.begin(), headers.end());
 				_response.set_default_headers();
 				return state::response_sending;
