@@ -100,6 +100,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 			ResourceInspection data = _request_handler->get_result();
 			if (data.has_redirect)
 			{
+				std::cout << "Hello QOe"<< std::endl;
 				int redir_code = data.redirect_code;
 				if ((redir_code % 300) < 10)
 				{
@@ -107,7 +108,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 					_response.set_header("Location", data.redirect_target);
 				}
 				else
-					_response.set_default_reponse(404, _request_handler->get_location(), _request_handler->get_vHost());
+					_response.set_default_reponse(data.redirect_code, _request_handler->get_location(), _request_handler->get_vHost());
 				_response.set_default_headers();
 				_parsingState = state::response_sending;
 			}
