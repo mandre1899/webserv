@@ -32,6 +32,9 @@ RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response
 	resolveLocation();
 	methodLocationValidation();
 	std::string abs_path = pathResolution();
+	populateRequestMetadata(abs_path);
+	if (validatePostRequest()) // if its a pure file upload it returns true
+		return ;
 	filesystemInspection(abs_path);
 }
 
@@ -299,10 +302,10 @@ void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, c
 	}
 }
 
-void	RequestHandler::validatePostRequest(void)
+bool	RequestHandler::validatePostRequest(void)
 {
 	if (_request.getMethod() != method_type::POST)
-		return;
+		return false;
 	std::string uploadStore = getUploadStore(_locationConfig);
 	std::string cgiExec = getCgiExecutor(_serverConfig, _locationConfig);
 	// POST is only allowed if there's an upload directory or CGI
@@ -313,21 +316,28 @@ void	RequestHandler::validatePostRequest(void)
 		_inspection_result.status = METHOD_NOT_ALLOWED;
 		throw RequestHandler::MethodNotAllowed();
 	}
+	_inspection_result.body_required = true;
+	if (!uploadStore.empty())
+	{
+		_inspection_result.kind = UPLOAD_DIR;
+		_inspection_result.upload_path = join_paths(_base_path, uploadStore);
+		Logger::log<LogLevel::trace>("POST request configured for file upload: ", _location_uri);
+		return true;
+	}
+	else if (!cgiExec.empty())
+		Logger::log<LogLevel::trace>("POST request allowed for CGI processing");
+	return false;
 }
 
 void	RequestHandler::filesystemInspection(std::string& abs_path)
 {
 	struct stat file_stat;
 
-	populateRequestMetadata(abs_path);
-
 	if (_locationConfig == nullptr)
 	{
 		handleNoLocationConfig(abs_path);
 		return;
 	}
-
-	validatePostRequest();
 
 	if (_locationConfig->ret.has_value())
 	{

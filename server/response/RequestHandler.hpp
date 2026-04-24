@@ -43,7 +43,7 @@ class RequestHandler
 	bool		inspectFilesystemStats(const std::string &abs_path, struct stat &file_stat);
 	void		inspectResourcePermissions(const std::string &abs_path);
 	void		classifyAndConfigureResource(const std::string &abs_path, const struct stat &file_stat);
-	void		validatePostRequest(void);
+	bool		validatePostRequest(void);
 	public:
 		RequestHandler(void) = delete;
 		RequestHandler(const HttpParser &request, HttpResponse &response, const cfg::srvCfg &config);
