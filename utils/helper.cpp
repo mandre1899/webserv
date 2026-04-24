@@ -4,6 +4,7 @@
 static const std::unordered_map<std::string, std::string> mime_types =
 {
 	{".html", "text/html"},
+	{".txt", "text/plain"},
 	{".css", "text/css"},
 	{".js", "application/javascript"},
 	{".json", "application/json"},
