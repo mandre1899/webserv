@@ -100,7 +100,6 @@ uint32_t Client::sendData(FdContext* fdCon)
 			ResourceInspection data = _request_handler->get_result();
 			if (data.has_redirect)
 			{
-				std::cout << "Hello QOe"<< std::endl;
 				int redir_code = data.redirect_code;
 				if ((redir_code % 300) < 10)
 				{
