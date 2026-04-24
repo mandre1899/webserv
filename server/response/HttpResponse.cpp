@@ -154,10 +154,15 @@ void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx
 const std::string	HttpResponse::get_response_str(void) const
 {
 	std::ostringstream	tmp;
+	
+	std::string status_text = "Unknown Error";
 
-	// if (_status_code_map.find(_status_code) == _status_code_map.end()) //todo: ma:  Maybe it's better to catch the error here: _status_code is undefined
-	// 	_status_code = 404;
-	tmp << "HTTP/1.1 " << _status_code << " " << _status_code_map.find(_status_code)->second << "\r\n";
+	status_map::const_iterator it = _status_code_map.find(_status_code);
+	if (it != _status_code_map.end())
+		status_text = it->second;
+	else
+		status_text = "Error not found in the map";
+	tmp << "HTTP/1.1 " << _status_code << " " << status_text << "\r\n";
 	for (const auto& a : _header)
 		tmp << a.first << ": " << a.second << "\r\n";
 	tmp << "\r\n";
