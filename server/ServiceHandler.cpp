@@ -71,7 +71,7 @@ state	ServiceHandler::select_service()
 	return state::error;
 }
 
-state	ServiceHandler::run(FdContext* ctx, std::string msg)
+state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 {
 	if (_service_state == ServiceState::PROCESSING_CGI)
 	{
@@ -85,12 +85,13 @@ state	ServiceHandler::run(FdContext* ctx, std::string msg)
 				header_map headers = _cgiService->get_header_map();
 				int status_code = 200;
 				if (headers.find("Status") != headers.end()) {
-				    try {
-				        status_code = std::stoi(headers.at("Status"));
-				    } catch (const std::exception& e) {
-				        Logger::log<LogLevel::warn>("Invalid CGI Status header, defaulting to 200: ", e.what());
-				        status_code = 200;
-				    }
+					try {
+						status_code = std::stoi(headers.at("Status"));
+					}
+					catch (const std::exception& e) {
+						Logger::log<LogLevel::warn>("Invalid CGI Status header, defaulting to 200: ", e.what());
+						status_code = 200;
+					}
 				}
 				_response.set_status(status_code);
 				_response.set_header(headers.begin(), headers.end());

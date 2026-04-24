@@ -37,7 +37,7 @@ public:
 	~ServiceHandler(void);
 
 	state	select_service(void);
-	state	run(FdContext* ctx, std::string msg);
+	state	run(FdContext* ctx, std::string& msg);
 };
 
 #endif // !SERVICE_HANDLER_H

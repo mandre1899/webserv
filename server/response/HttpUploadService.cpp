@@ -19,9 +19,10 @@ HttpUploadService::HttpUploadService(const header_map& headers, std::string file
 	_rawBoundary = extractBoundary(boundary_header->second);
 	_boundary = _rawBoundary + "\r\n";
 	_boundaryClosig = "\r\n" + _rawBoundary;
-	std::cout << clientMaxBody << std::endl;
-	//if (_contentLength > clientMaxBody && clientMaxBody != 0)
-	//	throw BodyTooLargeException();
+	std::cout << "Client max body is" << clientMaxBody << std::endl; //TODO muss weg
+	std::cout << "content Length is" << _contentLength << std::endl;
+	if (_contentLength > clientMaxBody && clientMaxBody != 0)
+		throw BodyTooLargeException();
 }
 
 HttpUploadService::~HttpUploadService()
@@ -199,18 +200,16 @@ body_state HttpUploadService::saveData(std::string& data)
 	return (body_state::save_data);
 }
 
-/*
-// curl -X POST http://localhost:8085/upload \
-//   -F "file1=@test.txt" \
-//   -F "file2=@b.png"s
-*/
 bool HttpUploadService::uploadBody(std::string& data)
 {
 	_bytesRead += data.size();
+	std::cout << "data size ist" << data.size() << std::endl;
+	std::cout << "Bytes read is" << _bytesRead << std::endl;
 	if (_bytesRead > _contentLength)
 		throw BodyTooLargeException();
 	_buffer.append(data, 0, data.size());
 	data.erase();
+	std::cout << "Data after erase" << data << std::endl;
 	while (_state != body_state::done)
 	{
 		if (_state == body_state::parsing_boundary)
