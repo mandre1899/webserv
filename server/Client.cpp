@@ -113,7 +113,10 @@ uint32_t Client::sendData(FdContext* fdCon)
 			}
 			else if (!data.exists)
 			{
-				_response.set_default_reponse(404, *_request_handler->get_location());
+				if (_request_handler->get_location())
+					_response.set_default_reponse(404, *_request_handler->get_location());
+				else
+					_response.set_default_reponse(404);
 				_parsingState = state::response_sending;
 			}
 			else
@@ -132,7 +135,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 			_response.set_default_reponse(400);
 			_parsingState = state::response_sending;
 		}
-		catch (const RequestHandler::NotFoundExcept404 &e) {
+		catch (const RequestHandler::NotFoundExcept404& e) {
 			Logger::log<LogLevel::error>("Path resolution failed: ", e.what());
 			_response.set_default_reponse(404);
 			_parsingState = state::response_sending;
