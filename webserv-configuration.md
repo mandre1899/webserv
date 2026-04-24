@@ -36,8 +36,8 @@ listen 8000;
 **Syntax:** `server_name name;` 
 **Context:** `server`  
 
-**Beschreibung:**  
-Legt die Namen eines virtuellen Servers fest. Zum Beispiel:
+**Description:**  
+Set the name of a virtual server. For example:
 
 ```webserv
 server {
@@ -263,7 +263,7 @@ error_page 500 502 503 504 /50x.html;
 
 ## ⚡ CGI Configuration
 
-This `location` block configures webserv to serve **PHP files** using *CGI** with PHP.
+This `location` block configures webserv to serve **PHP files** using *CGI* with PHP.
 
 **Syntax:**
 
@@ -283,11 +283,11 @@ This setup allows webserv to process PHP files in `/wordpress/` correctly.
 
 ---
 
-### SI Standard
+### Symbol explanation
 
 | Symbol | Meaning | Value |
 | --- | --- | --- |
-| k | kilo | 1,000 |
-| M | mega | 1,000,000 |
-| G | giga | 1,000,000,000 |
+| k | kilobyte | 1,000 Byte|
+| M | megabyte | 1,000,000 Byte|
+| G | gigabyte | 1,000,000,000 Byte|
 | s | second | unit of time |
