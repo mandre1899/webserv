@@ -38,12 +38,28 @@ std::string buildMsg(std::string msg, const filePos& pos)
 
 std::string normalizePath(const std::string& path, const filePos& pos)
 {
+	size_t posToFind = 1;
 	std::string ret = path;
-	if (ret.back() == '/' && ret.size() > 1)
+
+	if (ret.find("../", 0) != std::string::npos)
+		throw std::runtime_error(buildMsg("\"" + path + "\" is not a valid path", pos));;
+	while (true)
 	{
-		ret = ret.substr(0, ret.size() - 1);
-		if (ret.back() == '/')
-			throw std::runtime_error(buildMsg("\"" + path + "\" is not a valid path", pos));;
+		size_t pos = ret.find("./", posToFind);
+		if (pos == std::string::npos)
+			break;
+		posToFind = pos + 1;
+		if (pos > 0 && ret[pos - 1] != '/')
+			continue;
+		ret.erase(pos, 1);
+	}
+	for (size_t i = 0; i < ret.size(); i++)
+	{
+		if (ret[i] == '/')
+		{
+			if (i >= 1 && ret[i - 1] == '/')
+				ret.erase(--i, 1);
+		}
 	}
 	return (ret);
 }
