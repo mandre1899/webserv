@@ -299,6 +299,22 @@ void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, c
 	}
 }
 
+void	RequestHandler::validatePostRequest(void)
+{
+	if (_request.getMethod() != method_type::POST)
+		return;
+	std::string uploadStore = getUploadStore(_locationConfig);
+	std::string cgiExec = getCgiExecutor(_serverConfig, _locationConfig);
+	// POST is only allowed if there's an upload directory or CGI
+	if (uploadStore.empty() && cgiExec.empty())
+	{
+		Logger::log<LogLevel::trace>("POST request on location without upload or CGI support");
+		_response.set_default_reponse(405, _locationConfig, _serverConfig);
+		_inspection_result.status = METHOD_NOT_ALLOWED;
+		throw RequestHandler::MethodNotAllowed();
+	}
+}
+
 void	RequestHandler::filesystemInspection(std::string& abs_path)
 {
 	struct stat file_stat;
@@ -311,6 +327,8 @@ void	RequestHandler::filesystemInspection(std::string& abs_path)
 		return;
 	}
 
+	validatePostRequest();
+
 	if (_locationConfig->ret.has_value())
 	{
 		_inspection_result.has_redirect = true;
@@ -319,11 +337,9 @@ void	RequestHandler::filesystemInspection(std::string& abs_path)
 		return ;
 	}
 
-	// Inspect filesystem stats
 	if (!inspectFilesystemStats(abs_path, file_stat))
 		return;
 
-	// Inspect permissions and classify resource
 	inspectResourcePermissions(abs_path);
 	classifyAndConfigureResource(abs_path, file_stat);
 }
