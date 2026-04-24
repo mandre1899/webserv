@@ -9,6 +9,7 @@
 #include <sys/epoll.h>
 #include <unordered_map>
 #include <sstream>
+#include <fcntl.h>
 #include <vector>
 #include <cctype>
 

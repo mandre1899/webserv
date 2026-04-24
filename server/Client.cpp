@@ -196,6 +196,8 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 				return (recvData(fdCon));
 			}
 		}
+		else if(fdCon->kind == FdKind::CGI_STDOUT_READ && event == EPOLLHUP)
+			return (sendData(fdCon));
 		if (event & EPOLLOUT)
 			return (sendData(fdCon));
 		return (EPOLLHUP);

@@ -148,54 +148,45 @@ bool	CgiService::parse_cgi_headers(void)
 std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 {
 	char buf[4096];
-	while (true)
+	ssize_t read_bytes = read(_pipe_read, buf, sizeof(buf));
+	if (read_bytes > 0)
 	{
-		ssize_t read_bytes = read(_pipe_read, buf, sizeof(buf));
-		if (read_bytes > 0)
-		{
-			Logger::log<LogLevel::info>("Read ", read_bytes, " bytes from CGI pipe");
-			_body.append(buf, static_cast<std::size_t>(read_bytes));
-			continue;
-		}
-		if (read_bytes == 0)
-		{
-			close(_pipe_read);
-			_pipe_read = -1;
-			int status = 0;
-			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
-			_readIsDel = true;
-			pid_t ret = waitpid(_cgi_pid, &status, WNOHANG);
-			if (ret == -1)
-			{
-				Logger::log<LogLevel::error>("waitpid failed for CGI child");
-				_cgi_pid = -1;
-				return std::make_pair(cgi_state::FINISHED_KO, 500);
-			}
-			if (ret > 0)
-			{
-				_cgi_pid = -1;
-				if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-				{
-					if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
-					{
-						Logger::log<LogLevel::error>("CGI didn't produce headers");
-						return std::make_pair(cgi_state::FINISHED_KO, 500);
-					}
-					return std::make_pair(cgi_state::FINISHED_OK, 200);
-				}
-				Logger::log<LogLevel::error>("CGI exited with status: ", WEXITSTATUS(status));
-				return std::make_pair(cgi_state::FINISHED_KO, 500);
-			}
-			return std::make_pair(cgi_state::FINISHED_OK, 200);
-		}
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
-		_readIsDel = true;
-		Logger::log<LogLevel::error>("Read failed status: ", errno);
+		Logger::log<LogLevel::info>("Read ", read_bytes, " bytes from CGI pipe");
+		_body.append(buf, static_cast<std::size_t>(read_bytes));
+		return std::make_pair(cgi_state::RUNNING, 200);
+	}
+	if (read_bytes == 0)
+	{
 		close(_pipe_read);
 		_pipe_read = -1;
-		_cgi_pid = -1;
-		return std::make_pair(cgi_state::FINISHED_KO, 500);
+		int status = 0;
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
+		_readIsDel = true;
+		pid_t ret = waitpid(_cgi_pid, &status, WNOHANG);
+		if (ret == -1)
+		{
+			Logger::log<LogLevel::error>("waitpid failed for CGI child");
+			_cgi_pid = -1;
+			return std::make_pair(cgi_state::FINISHED_KO, 500);
+		}
+		if (ret > 0)
+		{
+			_cgi_pid = -1;
+			if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+			{
+				if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
+				{
+					Logger::log<LogLevel::error>("CGI didn't produce headers");
+					return std::make_pair(cgi_state::FINISHED_KO, 500);
+				}
+				return std::make_pair(cgi_state::FINISHED_OK, 200);
+			}
+			Logger::log<LogLevel::error>("CGI exited with status: ", WEXITSTATUS(status));
+			return std::make_pair(cgi_state::FINISHED_KO, 500);
+		}
+		return std::make_pair(cgi_state::FINISHED_OK, 200);
 	}
+	return std::make_pair(cgi_state::RUNNING, 200);
 }
 
 std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
@@ -294,6 +285,7 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 	}
 	close(out[1]);
 	set_epoll_event(EPOLLIN, out[0], FdKind::CGI_STDOUT_READ, currClient);
+	fcntl(out[0], F_SETFL, O_NONBLOCK);
 	_readIsDel = false;
 	if (expectedBody)
 	{
