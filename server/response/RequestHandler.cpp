@@ -1,6 +1,6 @@
 #include "RequestHandler.hpp"
 
-static bool	is_cgi_script(const std::string &path)
+static bool	is_cgi_script(const std::string& path)
 {
 	if (path.find(".php") != std::string::npos)
 		return true;
@@ -9,7 +9,7 @@ static bool	is_cgi_script(const std::string &path)
 	return false;
 }
 
-RequestHandler::RequestHandler(const HttpParser &request, HttpResponse &response, const cfg::srvCfg &config)
+RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response, const cfg::srvCfg& config)
 	: _request(request), _response(response), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
 {
 	resolveVHost();
@@ -17,12 +17,14 @@ RequestHandler::RequestHandler(const HttpParser &request, HttpResponse &response
 	methodLocationValidation();
 	std::string abs_path = pathResolution();
 	filesystemInspection(abs_path);
+	std::cout << abs_path << std::endl;
 }
 
 RequestHandler::~RequestHandler(void)
-{}
+{
+}
 
-ResourceInspection &RequestHandler::get_result()
+ResourceInspection& RequestHandler::get_result()
 {
 	return _inspection_result;
 }
@@ -42,13 +44,13 @@ void	RequestHandler::resolveVHost(void)
 	if ((matchPair = headers.find("host")) == headers.end())
 	{
 		_serverConfig = &_config.vHost[0];
-		return ;
+		return;
 	}
 	std::string hostValue = matchPair->second;
 	if (hostValue.empty())
 	{
 		_serverConfig = &_config.vHost[0];
-		return ;
+		return;
 	}
 	//Erase port specifier ":8080" (if present)
 	size_t portPrefix = hostValue.find(":");
@@ -80,7 +82,7 @@ static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 void	RequestHandler::resolveLocation(void)
 {
 	if (_serverConfig == nullptr || _serverConfig->location.empty())
-		return ;
+		return;
 	auto best_match = _serverConfig->location.end();
 	size_t best_len = 0;
 
@@ -109,7 +111,7 @@ void	RequestHandler::resolveLocation(void)
 void	RequestHandler::methodLocationValidation(void)
 {
 	if (_locationConfig == nullptr)
-		return ;
+		return;
 	auto requestMethods = _request.getMethod();
 	if ((requestMethods == method_type::GET && !_locationConfig->allowMethods.isGet) ||
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
@@ -159,7 +161,7 @@ std::string	RequestHandler::pathResolution(void)
 		is_abs = false;
 		loc_root = loc_root.substr(1);
 	}
-	
+
 	if (!_locationConfig->index.empty() && _request.getRequestUri() == _location_uri)
 	{
 		if (is_abs == false)
@@ -174,7 +176,7 @@ std::string	RequestHandler::pathResolution(void)
 		return join_paths(loc_root, uri_path.substr(_location_uri.length()));
 }
 
-void	RequestHandler::filesystemInspection(std::string &abs_path)
+void	RequestHandler::filesystemInspection(std::string& abs_path)
 {
 	struct stat file_stat;
 
@@ -183,10 +185,10 @@ void	RequestHandler::filesystemInspection(std::string &abs_path)
 	_inspection_result.request_query = _request.getRequestQuery();
 	_inspection_result.request_headers = _request.getHeadersMap();
 	_inspection_result.request_method = _request.getMethodAsString();
-	
+
 	const auto& headers = _request.getHeadersMap();
 	_inspection_result.body_expected = (headers.find("Content-Length") != headers.end() ||
-headers.find("content-length") != headers.end());
+		headers.find("content-length") != headers.end());
 
 
 	//No location found
@@ -198,7 +200,7 @@ headers.find("content-length") != headers.end());
 			_inspection_result.exists = true;
 		else
 			_inspection_result.exists = false;
-		return ;
+		return;
 	}
 
 	if (_locationConfig->ret.has_value())
@@ -207,7 +209,7 @@ headers.find("content-length") != headers.end());
 		_inspection_result.redirect_code = _locationConfig->ret->code;
 		_inspection_result.redirect_target = _locationConfig->ret->param;
 	}
-	
+
 	if (stat(abs_path.c_str(), &file_stat) != 0)
 	{
 		Logger::log<LogLevel::trace>("Resource not found: ", abs_path);
@@ -221,18 +223,18 @@ headers.find("content-length") != headers.end());
 		_inspection_result.kind = NONE;
 		return;
 	}
-	
+
 	_inspection_result.exists = true;
-	
+
 	_inspection_result.readable = (access(abs_path.c_str(), R_OK) == 0);
 	_inspection_result.writable = (access(abs_path.c_str(), W_OK) == 0);
 	_inspection_result.executable = (access(abs_path.c_str(), X_OK) == 0);
-	
+
 	if (S_ISDIR(file_stat.st_mode))
 	{
 		_inspection_result.is_directory = true;
 		_inspection_result.is_file = false;
-		
+
 		if (_locationConfig != nullptr && !_locationConfig->uploadStore.empty())
 		{
 			_inspection_result.kind = UPLOAD_DIR;
@@ -254,10 +256,10 @@ headers.find("content-length") != headers.end());
 	{
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
-		
-		
+
+
 		if (_locationConfig != nullptr && !_locationConfig->cgiPath.empty() &&
-				is_cgi_script(abs_path))
+			is_cgi_script(abs_path))
 		{
 			_inspection_result.kind = CGI;
 			_inspection_result.cgi_path = _locationConfig->cgiPath;
@@ -282,7 +284,7 @@ headers.find("content-length") != headers.end());
 	}
 }
 
-const cfg::wsLocationCtx	*RequestHandler::get_location()
+const cfg::wsLocationCtx* RequestHandler::get_location()
 {
 	if (_locationConfig != nullptr)
 		return _locationConfig;
@@ -293,23 +295,23 @@ const cfg::wsLocationCtx	*RequestHandler::get_location()
  * Exceptions
 */
 
-const char	*RequestHandler::MethodNotAllowed::what() const noexcept
+const char* RequestHandler::MethodNotAllowed::what() const noexcept
 {
 	return "method not allowed";
 }
 
-const char	*RequestHandler::PathResolutionFailed::what() const noexcept
+const char* RequestHandler::PathResolutionFailed::what() const noexcept
 {
 	return "path resolution failed";
 }
 
-const char	*RequestHandler::BadRequest::what() const noexcept
+const char* RequestHandler::BadRequest::what() const noexcept
 {
 	return "bad request";
 }
 
-const char	*RequestHandler::NotFoundExcept404::what() const noexcept
+const char* RequestHandler::NotFoundExcept404::what() const noexcept
 {
-	return "No index or root condigured as well as no location";
+	return "No index or root configured as well as no location";
 }
 
