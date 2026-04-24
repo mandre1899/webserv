@@ -42,6 +42,7 @@ class RequestHandler
 		ResourceInspection &get_result();
 
 		const cfg::wsLocationCtx	*get_location(void);
+		const cfg::vHostCfg			*get_vHost(void);
 
 	// Exceptions
 	class MethodNotAllowed : public std::exception {

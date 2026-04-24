@@ -44,6 +44,7 @@ struct ResourceInspection
 	std::string		upload_path;
 
 	const cfg::wsLocationCtx	*currLoc = NULL;
+	const cfg::vHostCfg			*currServer = NULL;
 
 	bool			exists = false;
 	bool			is_file;

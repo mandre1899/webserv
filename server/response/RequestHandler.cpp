@@ -116,63 +116,62 @@ void	RequestHandler::methodLocationValidation(void)
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
 		(requestMethods == method_type::DELETE && !_locationConfig->allowMethods.isDelete))
 	{
-		_response.set_default_reponse(405, *_locationConfig);
+		_response.set_default_reponse(404, _locationConfig, _serverConfig);
 		throw RequestHandler::MethodNotAllowed();
 	}
 }
 
-std::string	RequestHandler::pathResolution(void)
+std::string RequestHandler::pathResolution(void)
 {
-	if (_serverConfig == nullptr)
-		throw RequestHandler::BadRequest();
-	if (_serverConfig->location.empty())
-	{
-		if (!_serverConfig->index.empty() && !_serverConfig->root.empty())
-		{
-			if (_request.getRequestUri() == "/")
-			{
-				if (_serverConfig->root[0] == '.')
-					return join_paths(init_root_path(), _serverConfig->root.substr(1), _serverConfig->index);
-				else
-					return join_paths(_serverConfig->root, _serverConfig->index);
-			}
-			else
-			{
-				if (_serverConfig->root[0] == '.')
-					return join_paths(init_root_path(), _serverConfig->root.substr(1), _request.getRequestUri());
-				else
-					return join_paths(_serverConfig->root, _request.getRequestUri());
+    if (_serverConfig == nullptr)
+        throw RequestHandler::BadRequest();
 
-			}
-		}
-		else
-		{
-			Logger::log<LogLevel::error>("No index or root configured for server");
-			throw RequestHandler::NotFoundExcept404();
-		}
-	}
-	if (_locationConfig == nullptr)
-		throw RequestHandler::NotFoundExcept404();
-	bool	is_abs = true;
-	std::string loc_root = _locationConfig->root;
-	if (_locationConfig->root[0] == '.')
-	{
-		is_abs = false;
-		loc_root = loc_root.substr(1);
-	}
+    if (_locationConfig != nullptr)
+    {
+        std::string loc_root = _locationConfig->root;
+        bool is_abs = true;
+        if (loc_root.empty())
+            throw RequestHandler::NotFoundExcept404();
+        if (loc_root[0] == '.')
+        {
+            is_abs = false;
+            loc_root = loc_root.substr(1);
+        }
+        if (!_locationConfig->index.empty()
+            && _request.getRequestUri() == _location_uri)
+        {
+            if (!is_abs)
+                return join_paths(init_root_path(), loc_root, _locationConfig->index);
+            return join_paths(loc_root, _locationConfig->index);
+        }
+        std::string rest = _request.getRequestUri().substr(_location_uri.length());
 
-	if (!_locationConfig->index.empty() && _request.getRequestUri() == _location_uri)
-	{
-		if (is_abs == false)
-			return join_paths(init_root_path(), loc_root, _locationConfig->index);
-		else
-			return join_paths(loc_root, _locationConfig->index);
-	}
-	std::string uri_path = _request.getRequestUri();
-	if (is_abs == false)
-		return join_paths(init_root_path(), loc_root, uri_path.substr(_location_uri.length()));
-	else
-		return join_paths(loc_root, uri_path.substr(_location_uri.length()));
+        if (!is_abs)
+            return join_paths(init_root_path(), loc_root, rest);
+        return join_paths(loc_root, rest);
+    }
+    if (_serverConfig->root.empty())
+    {
+        Logger::log<LogLevel::error>("No root configured for server");
+        throw RequestHandler::NotFoundExcept404();
+    }
+    std::string root = _serverConfig->root;
+    bool is_abs = true;
+
+    if (root[0] == '.')
+    {
+        is_abs = false;
+        root = root.substr(1);
+    }
+    if (_request.getRequestUri() == "/" && !_serverConfig->index.empty())
+    {
+        if (!is_abs)
+            return join_paths(init_root_path(), root, _serverConfig->index);
+        return join_paths(root, _serverConfig->index);
+    }
+    if (!is_abs)
+        return join_paths(init_root_path(), root, _request.getRequestUri());
+    return join_paths(root, _request.getRequestUri());
 }
 
 void	RequestHandler::filesystemInspection(std::string& abs_path)
@@ -189,6 +188,8 @@ void	RequestHandler::filesystemInspection(std::string& abs_path)
 	_inspection_result.body_expected = (headers.find("Content-Length") != headers.end() ||
 		headers.find("content-length") != headers.end());
 
+	if (_serverConfig)
+		_inspection_result.currServer = _serverConfig;
 
 	//No location found
 	if (_locationConfig == nullptr)
@@ -288,6 +289,13 @@ const cfg::wsLocationCtx* RequestHandler::get_location()
 	if (_locationConfig != nullptr)
 		return _locationConfig;
 	return (nullptr);
+}
+
+const cfg::vHostCfg*	RequestHandler::get_vHost(void)
+{
+	if (_serverConfig != nullptr)
+		return _serverConfig;
+	return nullptr;
 }
 
 /*
