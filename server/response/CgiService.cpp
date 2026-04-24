@@ -44,7 +44,7 @@ static std::vector<std::string> build_cgi_env(ResourceInspection& data)
 	std::vector<std::string> env_storage;
 	env_storage.reserve(data.request_headers.size());
 
-	for (const auto& header : data.request_headers)
+	for (auto& header : data.request_headers)
 	{
 		std::string cgi_header_key = cgi_token(header.first);
 		if (cgi_header_key == "CONTENT_LENGTH" || cgi_header_key == "CONTENT_TYPE")
@@ -95,11 +95,7 @@ CgiService::~CgiService()
 		close(_pipe_write);
 
 	for (auto& a : _ctxTrack)
-	{
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, a->fd, NULL); // todo: add 		delete ->socket; 
-
 		delete a;
-	}
 }
 
 bool	CgiService::parse_cgi_headers(void)
@@ -162,6 +158,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 			close(_pipe_read);
 			_pipe_read = -1;
 			int status = 0;
+			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 			pid_t ret = waitpid(_cgi_pid, &status, WNOHANG);
 			if (ret == -1)
 			{
@@ -176,7 +173,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 				{
 					if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
 					{
-						Logger::log<LogLevel::error>("CGI script didn't produced HTTP header");
+						Logger::log<LogLevel::error>("CGI didn't produce headers");
 						return std::make_pair(cgi_state::FINISHED_KO, 500);
 					}
 					return std::make_pair(cgi_state::FINISHED_OK, 200);
@@ -186,6 +183,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 			}
 			return std::make_pair(cgi_state::FINISHED_OK, 200);
 		}
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 		Logger::log<LogLevel::error>("Read failed status: ", errno);
 		close(_pipe_read);
 		_pipe_read = -1;
@@ -201,6 +199,7 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 	body_data.erase(0, written_bytes);
 	if (written_bytes < 0)
 	{
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL); // todo: ad
 		if (errno == EINTR)
 			return std::make_pair(cgi_state::RUNNING, 200);
 		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
@@ -210,6 +209,7 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 	}
 	if (_postContentLength <= _postWriteTrack)
 	{
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL); // todo: ad
 		close(_pipe_write);
 		_pipe_write = -1;
 		return std::make_pair(cgi_state::FINISHED_OK, 200);
@@ -220,15 +220,10 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 
 cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 {
-	const std::string execLocPath = _data.cgi_path;
-	char* execPath = NULL;
-	char* scriptPath = const_cast<char*>(_data.abs_path.c_str());
 	int out[2] = { -1, -1 };
 	int in[2] = { -1, -1 };
 	bool	expectedBody = _data.body_expected;
 
-	//set_status_code(200);
-	execPath = const_cast<char*>(execLocPath.c_str());
 	if (pipe(out) == -1)
 	{
 		Logger::log<LogLevel::error>("Pipe creation failed");
@@ -258,13 +253,6 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 	}
 	if (pid == 0)
 	{
-		char* const argv[] = { execPath, scriptPath, NULL };
-		std::vector<char*> envs;
-		std::vector<std::string> env_storage = build_cgi_env(_data);
-		envs.reserve(env_storage.size() + 1);
-		for (std::string& entry : env_storage)
-			envs.push_back(const_cast<char*>(entry.c_str()));
-		envs.push_back(NULL);
 		if (expectedBody)
 		{
 			close(in[1]);
@@ -278,7 +266,21 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 		if (dup2(out[1], STDERR_FILENO) == -1)
 			_exit(1);
 		close(out[1]);
-		execve(execPath, argv, envs.data());
+		
+		std::string safe_execPath(_data.cgi_path);
+		std::string safe_scriptPath(_data.abs_path);
+		char* argv[] = { const_cast<char*>(safe_execPath.c_str()), 
+						const_cast<char*>(safe_scriptPath.c_str()), 
+						NULL };
+		
+		std::vector<std::string> env_storage = build_cgi_env(_data);
+		std::vector<char*> envs;
+		envs.reserve(env_storage.size() + 1);
+		for (auto& entry : env_storage)
+			envs.push_back(const_cast<char*>(entry.c_str()));
+		envs.push_back(NULL);
+		
+		execve(safe_execPath.c_str(), argv, envs.data());
 		Logger::log<LogLevel::error>("Execve failed");
 		_exit(1);
 	}
@@ -309,7 +311,7 @@ void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client* 
 	tmp->kind = kind;
 	tmp->socket = currClient;
 	ev.events = events;
-	ev.data.ptr = (void*)tmp; // todo: ma: remove c style cast
+	ev.data.ptr = static_cast<void *>(tmp); // todo: ma: remove c style cast
 	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
 	{
 		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
