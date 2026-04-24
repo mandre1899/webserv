@@ -42,8 +42,19 @@ void HttpServer::addClient(int serverFd, int clientFd, const cfg::socketCfg& soc
 		}
 	}
 	const cfg::srvCfg& srvCfg = it->second;
-	FdContext* clientContext = new FdContext;
-	Client* c = new Client(serverFd, clientFd, _epollFd, srvCfg);
+	FdContext* clientContext = nullptr;
+	Client* c = nullptr;
+	try
+	{
+		clientContext = new FdContext;
+		c = new Client(serverFd, clientFd, _epollFd, srvCfg);
+	}
+	catch (const std::exception& e)
+	{
+		delete c;
+		delete clientContext;
+		throw std::runtime_error(e.what());
+	}
 	clientContext->socket = c;
 	clientContext->fd = clientFd;
 	clientContext->kind = FdKind::CLIENT_SOCKET;
@@ -74,10 +85,21 @@ void HttpServer::createSockets(Config& conf)
 	{
 		const struct cfg::socketCfg& srv = conf.socAt(i);
 		struct epoll_event event;
-
-		FdContext* clientContext = new FdContext;
-		clientContext->socket = new TcpSocket(srv.port, srv);
-		clientContext->fd = std::get<TcpSocket*>(clientContext->socket)->getSocketFd();
+		TcpSocket* s = nullptr;
+		FdContext* clientContext = nullptr;
+		try
+		{
+			clientContext = new FdContext;
+			s = new TcpSocket(srv.port, srv);
+		}
+		catch (const std::exception& e)
+		{
+			delete s;
+			delete clientContext;
+			throw std::runtime_error(e.what());
+		}
+		clientContext->socket = s;
+		clientContext->fd = s->getSocketFd();
 		clientContext->kind = FdKind::SERVER_SOCKET;
 		_map.insert({ clientContext->fd, clientContext });
 		event.events = EPOLLIN;

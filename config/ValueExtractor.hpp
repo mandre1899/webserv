@@ -111,13 +111,13 @@ private:
 
 	void _root(T& confStruct, TokenStream& ts)
 	{
-		confStruct.root = normalizePath(ts.getNextValue(), ts.getPositon());
+		confStruct.root = normalizeConfigRootPath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
 	void _index(T& confStruct, TokenStream& ts)
 	{
-		confStruct.index = ts.getNextValue();
+		confStruct.index = normalizeConfigSubPath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
@@ -155,6 +155,7 @@ private:
 			path = t[i].value;
 		else
 			throw TokenStream::UnexpectedTokenException(t[i].pos);
+		normalizeConfigSubPath(path, t[i].pos);
 		for (size_t j = 0; j < codes.size(); j++)
 		{
 			bool isInserted = static_cast<bool>(confStruct.errorPage.insert({ codes[j] , path }).second);
@@ -190,7 +191,18 @@ private:
 
 	void _cgiPath(T& confStruct, TokenStream& ts)
 	{
-		confStruct.cgiPath = ts.getNextValue();
+		confStruct.cgiPath = normalizeConfigSubPath(ts.getNextValue(), ts.getPositon());
+		ts.expectToken(tType::semi);
+	}
+
+	void _cgiExt(T& confStruct, TokenStream& ts)
+	{
+		const std::string& tmp = ts.getNextValue();
+		if (tmp[0] != '.')
+			throw std::runtime_error(buildMsg("Invalid extension; must begin with a dot.", ts.getPositon()));
+		if (tmp.find("/") != std::string::npos)
+			throw std::runtime_error(buildMsg("Invalid extension", ts.getPositon()));
+		confStruct.cgiExt = tmp;
 		ts.expectToken(tType::semi);
 	}
 
@@ -289,7 +301,7 @@ private:
 
 	void _uploadStore(T& confStruct, TokenStream& ts)
 	{
-		confStruct.uploadStore = normalizePath(ts.getNextValue(), ts.getPositon());
+		confStruct.uploadStore = normalizeConfigSubPath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
@@ -333,6 +345,9 @@ public:
 			};
 		_dispatch["cgi_path"] = [this](T& confStruct, TokenStream& ts) {
 			_cgiPath(confStruct, ts);
+			};
+		_dispatch["cgi_ext"] = [this](T& confStruct, TokenStream& ts) {
+			_cgiExt(confStruct, ts);
 			};
 		if constexpr (std::is_same_v<cfg::vHostCfg, T> || std::is_same_v<cfg::wsLocationCtx, T>)
 		{

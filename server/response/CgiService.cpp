@@ -306,8 +306,17 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client* currClient)
 {
 	epoll_event	ev;
-	FdContext* tmp = new FdContext;
+	FdContext* tmp = nullptr;
 
+	try
+	{
+		tmp = new FdContext;
+	}
+	catch (const std::exception& e)
+	{
+		delete tmp;
+		throw std::runtime_error(e.what());
+	}
 	_ctxTrack.push_back(tmp);
 	tmp->fd = fd;
 	tmp->kind = kind;
