@@ -93,7 +93,7 @@ CgiService::~CgiService()
 		kill(_cgi_pid, SIGKILL);
 	if (_pipe_write != -1)
 		close(_pipe_write);
-	if(!_writeIsDel)
+	if (!_writeIsDel)
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
 	if (!_readIsDel)
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
@@ -159,10 +159,10 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 		}
 		if (read_bytes == 0)
 		{
+			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 			close(_pipe_read);
 			_pipe_read = -1;
 			int status = 0;
-			epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
 			_readIsDel = true;
 			pid_t ret = waitpid(_cgi_pid, &status, WNOHANG);
 			if (ret == -1)
@@ -274,20 +274,20 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 		if (dup2(out[1], STDERR_FILENO) == -1)
 			_exit(1);
 		close(out[1]);
-		
+
 		std::string safe_execPath(_data.cgi_path);
 		std::string safe_scriptPath(_data.abs_path);
-		char* argv[] = { const_cast<char*>(safe_execPath.c_str()), 
-						const_cast<char*>(safe_scriptPath.c_str()), 
+		char* argv[] = { const_cast<char*>(safe_execPath.c_str()),
+						const_cast<char*>(safe_scriptPath.c_str()),
 						NULL };
-		
+
 		std::vector<std::string> env_storage = build_cgi_env(_data);
 		std::vector<char*> envs;
 		envs.reserve(env_storage.size() + 1);
 		for (auto& entry : env_storage)
 			envs.push_back(const_cast<char*>(entry.c_str()));
 		envs.push_back(NULL);
-		
+
 		execve(safe_execPath.c_str(), argv, envs.data());
 		Logger::log<LogLevel::error>("Execve failed");
 		_exit(1);
@@ -321,7 +321,7 @@ void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client* 
 	tmp->kind = kind;
 	tmp->socket = currClient;
 	ev.events = events;
-	ev.data.ptr = static_cast<void *>(tmp); // todo: ma: remove c style cast
+	ev.data.ptr = static_cast<void*>(tmp); // todo: ma: remove c style cast
 	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
 	{
 		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");
