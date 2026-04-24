@@ -125,10 +125,6 @@ void HttpServer::run()
 	}
 	for (int i = 0; i < eventCount; i++)
 	{
-		if (events[i].data.ptr == NULL)
-		{
-			continue;
-		}
 		FdContext* fdCon = static_cast<FdContext*>(events[i].data.ptr);
 		FdKind type = fdCon->kind;
 		if (fdCon->kind == FdKind::SERVER_SOCKET) // if (serverSocket)...

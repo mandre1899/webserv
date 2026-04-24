@@ -17,7 +17,6 @@ RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response
 	methodLocationValidation();
 	std::string abs_path = pathResolution();
 	filesystemInspection(abs_path);
-	std::cout << abs_path << std::endl;
 }
 
 RequestHandler::~RequestHandler(void)
