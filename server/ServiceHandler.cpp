@@ -122,8 +122,7 @@ state	ServiceHandler::run(FdContext* ctx, std::string msg)
 			if (_uploadService->uploadBody(msg))
 			{
 				Logger::log<LogLevel::info>("Upload completed successfully");
-				_response.set_status(201);
-				_response.set_body("File uploaded successfully\r\n");
+				_response.set_default_reponse(201, _data.currLoc, _data.currServer);
 				_response.set_content_type("text/plain");
 				_response.set_default_headers();
 				return state::response_sending;
