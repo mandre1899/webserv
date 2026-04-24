@@ -111,7 +111,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 				_response.set_default_headers();
 				_parsingState = state::response_sending;
 			}
-			else if (!data.exists)
+			else if (!data.exists && data.kind != ResourceKind::UPLOAD_DIR)
 			{
 				_response.set_default_reponse(404, _request_handler->get_location(), _request_handler->get_vHost());
 				_parsingState = state::response_sending;
