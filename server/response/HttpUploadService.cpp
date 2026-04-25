@@ -260,5 +260,5 @@ const char* HttpUploadService::BodyTooLargeException::what() const noexcept
 
 const char* HttpUploadService::InternelErrorException::what() const noexcept
 {
-	return ("Http upload internel server error\n");
+	return ("Http upload internal server error\n");
 }
