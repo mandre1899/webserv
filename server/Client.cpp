@@ -169,7 +169,8 @@ uint32_t Client::sendData(FdContext* fdCon)
 	else if (_parsingState == state::response_proccessing ||
 		_parsingState == state::response_body)
 	{
-		_parsingState = _service_handler->run(fdCon, _msg);
+		if (fdCon->kind != FdKind::CLIENT_SOCKET)
+			_parsingState = _service_handler->run(fdCon, _msg);
 		if (_parsingState == state::response_body)
 			return (EPOLLIN);
 		return (EPOLLOUT);
