@@ -245,64 +245,53 @@ void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, c
 		_inspection_result.is_directory = true;
 		_inspection_result.is_file = false;
 
-		std::string uploadStore = getUploadStore(_locationConfig);
-		if (!uploadStore.empty())
+		// Determine if autoindex is enabled (location has higher priority than the server)
+		bool autoIndexEnabled = false;
+		if (_locationConfig != nullptr)
+			autoIndexEnabled = _locationConfig->autoIndex;
+		else if (_serverConfig != nullptr)
+			autoIndexEnabled = _serverConfig->autoIndex;
+
+		// If autoindex is enabled, show directory listing
+		if (autoIndexEnabled)
 		{
-			_inspection_result.kind = UPLOAD_DIR;
-			_inspection_result.body_required = true;
-			_inspection_result.upload_path = join_paths(_base_path, uploadStore);
-			_inspection_result.status = (_inspection_result.writable) ? OK : FORBIDDEN;
+			_inspection_result.kind = DIRECTORY;
+			_inspection_result.body_required = false;
+			_inspection_result.status = OK;
 		}
 		else
 		{
-			// Determine if autoindex is enabled (location has higher priority than the server)
-			bool autoIndexEnabled = false;
-			if (_locationConfig != nullptr)
-				autoIndexEnabled = _locationConfig->autoIndex;
-			else if (_serverConfig != nullptr)
-				autoIndexEnabled = _serverConfig->autoIndex;
-			
-			// If autoindex is enabled, show directory listing
-			if (autoIndexEnabled)
-			{
-				_inspection_result.kind = DIRECTORY;
-				_inspection_result.body_required = false;
-				_inspection_result.status = OK;
-			}
-			else
-			{
-				// autoindex off -> try to serve index file instead
-				std::string request_uri = _request.getRequestUri();
-				std::string index_file;
+			// autoindex off -> try to serve index file instead
+			std::string request_uri = _request.getRequestUri();
+			std::string index_file;
 
-				if (!_locationConfig || _locationConfig->index.empty())
-					index_file = (_serverConfig ? _serverConfig->index : "");
-				else if (_locationConfig)
-					index_file = _locationConfig->index;
+			if (!_locationConfig || _locationConfig->index.empty())
+				index_file = (_serverConfig ? _serverConfig->index : "");
+			else if (_locationConfig)
+				index_file = _locationConfig->index;
 
-				if (!index_file.empty() && !request_uri.empty() && request_uri.back() == '/')
+			if (!index_file.empty() && !request_uri.empty() && request_uri.back() == '/')
+			{
+				std::string index_path = join_paths(abs_path, index_file);
+				struct stat index_stat;
+				if (stat(index_path.c_str(), &index_stat) == 0 && S_ISREG(index_stat.st_mode))
 				{
-					std::string index_path = join_paths(abs_path, index_file);
-					struct stat index_stat;
-					if (stat(index_path.c_str(), &index_stat) == 0 && S_ISREG(index_stat.st_mode))
-					{
-						// Index file exists, treat it as a file
-						_inspection_result.abs_path = index_path;
-						_inspection_result.is_file = true;
-						_inspection_result.is_directory = false;
-						_inspection_result.kind = IS_FILE;
-						_inspection_result.body_required = false;
-						_inspection_result.readable = (access(index_path.c_str(), R_OK) == 0);
-						_inspection_result.status = _inspection_result.readable ? OK : FORBIDDEN;
-						return;
-					}
+					// Index file exists, treat it as a file
+					_inspection_result.abs_path = index_path;
+					_inspection_result.is_file = true;
+					_inspection_result.is_directory = false;
+					_inspection_result.kind = IS_FILE;
+					_inspection_result.body_required = false;
+					_inspection_result.readable = (access(index_path.c_str(), R_OK) == 0);
+					_inspection_result.status = _inspection_result.readable ? OK : FORBIDDEN;
+					return;
 				}
-				
-				// No index file found, return FORBIDDEN
-				_inspection_result.kind = DIRECTORY;
-				_inspection_result.body_required = false;
-				_inspection_result.status = FORBIDDEN;
 			}
+
+			// No index file found, return FORBIDDEN
+			_inspection_result.kind = DIRECTORY;
+			_inspection_result.body_required = false;
+			_inspection_result.status = FORBIDDEN;
 		}
 	}
 	else if (S_ISREG(file_stat.st_mode))
