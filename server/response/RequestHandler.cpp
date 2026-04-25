@@ -9,12 +9,10 @@ static bool	is_cgi_script(const std::string& path)
 	return false;
 }
 
-static std::string getCgiExecutor(const cfg::vHostCfg* serverConfig, const cfg::wsLocationCtx* locationConfig)
+static std::string getCgiExecutor(const cfg::wsLocationCtx* locationConfig)
 {
 	if (locationConfig != nullptr && !locationConfig->cgiPath.empty())
 		return locationConfig->cgiPath;
-	if (serverConfig != nullptr && !serverConfig->cgiPath.empty())
-		return serverConfig->cgiPath;
 	return "";
 }
 
@@ -62,11 +60,11 @@ void	RequestHandler::resolveVHost(void)
 	else
 	{
 		_serverConfig = &_config.vHost[0];
-		return ;
+		return;
 	}
 	header_map::const_iterator matchPair;
 	if ((matchPair = headers.find("host")) == headers.end() &&
-		 _request.getHttpVersion() == "HTTP/1.0" )
+		_request.getHttpVersion() == "HTTP/1.0")
 	{
 		_serverConfig = &_config.vHost[0];
 		return;
@@ -333,7 +331,7 @@ void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, c
 
 		if (is_cgi_script(abs_path))
 		{
-			std::string cgiExec = getCgiExecutor(_serverConfig, _locationConfig);
+			std::string cgiExec = getCgiExecutor(_locationConfig);
 			if (!cgiExec.empty())
 			{
 				_inspection_result.kind = CGI;
@@ -371,7 +369,7 @@ bool	RequestHandler::validatePostRequest(void)
 	if (_request.getMethod() != method_type::POST)
 		return false;
 	std::string uploadStore = getUploadStore(_locationConfig);
-	std::string cgiExec = getCgiExecutor(_serverConfig, _locationConfig);
+	std::string cgiExec = getCgiExecutor(_locationConfig);
 	// POST is only allowed if there's an upload directory or CGI
 	if (uploadStore.empty() && cgiExec.empty())
 	{

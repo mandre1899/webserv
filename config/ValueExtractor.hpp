@@ -311,6 +311,12 @@ private:
 		throw std::runtime_error(buildMsg("Duplicate directive found", ts.getPositon()));
 	}
 
+	void _conflicting(T& confStruct, TokenStream& ts)
+	{
+		(void)confStruct;
+		throw std::runtime_error(buildMsg("Conflicting directive found; cgi_path and upload_store are not permitted in the same site configuration", ts.getPositon()));
+	}
+
 
 public:
 	/* Constructors & Destructors */
@@ -343,12 +349,6 @@ public:
 		_dispatch["client_body_timeout"] = [this](T& confStruct, TokenStream& ts) {
 			_clientBodyTimeout(confStruct, ts);
 			};
-		_dispatch["cgi_path"] = [this](T& confStruct, TokenStream& ts) {
-			_cgiPath(confStruct, ts);
-			};
-		_dispatch["cgi_ext"] = [this](T& confStruct, TokenStream& ts) {
-			_cgiExt(confStruct, ts);
-			};
 		if constexpr (std::is_same_v<cfg::vHostCfg, T> || std::is_same_v<cfg::wsLocationCtx, T>)
 		{
 			_dispatch["return"] = [this](T& confStruct, TokenStream& ts) {
@@ -372,6 +372,12 @@ public:
 			_dispatch["upload_store"] = [this](T& confStruct, TokenStream& ts) {
 				_uploadStore(confStruct, ts);
 				};
+			_dispatch["cgi_path"] = [this](T& confStruct, TokenStream& ts) {
+				_cgiPath(confStruct, ts);
+				};
+			_dispatch["cgi_ext"] = [this](T& confStruct, TokenStream& ts) {
+				_cgiExt(confStruct, ts);
+				};
 		}
 	}
 
@@ -391,6 +397,20 @@ public:
 		it->second = [this](T& confStruct, TokenStream& ts) {
 			_duplicate(confStruct, ts);
 			};
+		if (id == "cgi_path")
+		{
+			it = _dispatch.find("upload_store");
+			it->second = [this](T& confStruct, TokenStream& ts) {
+				_conflicting(confStruct, ts);
+				};
+		}
+		if (id == "upload_store")
+		{
+			it = _dispatch.find("cgi_path");
+			it->second = [this](T& confStruct, TokenStream& ts) {
+				_conflicting(confStruct, ts);
+				};
+		}
 	}
 
 	/* Basic Operators */
