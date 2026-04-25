@@ -31,12 +31,12 @@ RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response
 	resolveVHost();
 	resolveLocation();
 	methodLocationValidation();
-	std::cout << _location_uri << std::endl;
 	std::string abs_path = pathResolution();
 	populateRequestMetadata(abs_path);
 	if (validatePostRequest()) // if its a pure file upload it returns true
 		return;
 	filesystemInspection(abs_path);
+	validateDeleteRequest();// Check if it is a delete request and sets the struct
 }
 
 RequestHandler::~RequestHandler(void)
@@ -364,6 +364,37 @@ void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, c
 		_inspection_result.status = FORBIDDEN;
 		_inspection_result.body_required = false;
 	}
+}
+
+bool	RequestHandler::validateDeleteRequest(void)
+{
+	if (_request.getMethod() != method_type::DELETE)
+		return false;
+	if (!_inspection_result.exists)
+	{
+		Logger::log<LogLevel::trace>("DELETE file does not exitst: ", _inspection_result.abs_path);
+		_inspection_result.status = NOT_FOUND;
+		return true;
+	}
+	
+	// writeable for deletion
+	if (!_inspection_result.writable)
+	{
+		Logger::log<LogLevel::trace>("DELETE request not enough permission: ", _inspection_result.abs_path);
+		_inspection_result.status = FORBIDDEN;
+		return true;
+	}
+
+	if (_inspection_result.is_file)
+		_inspection_result.kind = IS_FILE;
+	else if (_inspection_result.is_directory)
+		_inspection_result.kind = DIRECTORY;
+
+	_inspection_result.delete_file = true;
+
+	_inspection_result.status = OK;
+	Logger::log<LogLevel::trace>("DELETE request for: ", _inspection_result.abs_path);
+	return true;
 }
 
 bool	RequestHandler::validatePostRequest(void)

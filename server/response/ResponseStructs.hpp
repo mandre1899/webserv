@@ -49,6 +49,7 @@ struct ResourceInspection
 
 	bool			exists = false;
 	bool			is_file;
+	bool			delete_file = false;
 
 	bool			is_directory;
 	bool			readable; // Maybe this is useful somehow
