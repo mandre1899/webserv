@@ -62,9 +62,9 @@ static std::vector<std::string> build_cgi_env(ResourceInspection& data)
 	push_env(env_storage, "SCRIPT_FILENAME", data.abs_path);
 	push_env(env_storage, "REDIRECT_STATUS", "200"); // Important for php-cgi
 	if (content_length != NULL)
-		push_env(env_storage, "HTTP_CONTENT_LENGTH", *content_length);
+		push_env(env_storage, "CONTENT_LENGTH", *content_length);
 	if (content_type != NULL)
-		push_env(env_storage, "HTTP_CONTENT_TYPE", *content_type);
+		push_env(env_storage, "CONTENT_TYPE", *content_type);
 	return env_storage;
 }
 
