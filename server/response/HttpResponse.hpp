@@ -31,7 +31,7 @@ class HttpResponse
 		//Buissness logic extern
 		void	set_default_headers(void);
 		void	set_default_reponse(int status_code); // Set default error page
-		void	set_default_reponse(int status_code, const cfg::wsLocationCtx *location, const cfg::vHostCfg *server); // With check for default error page overwrite
+		void	set_default_reponse(int status_code, const cfg::wsLocationCtx *location, const cfg::vHostCfg *server, const std::string &base_path); // With check for default error page overwrite
 		bool	read_file_to_body(std::string &abs_path);
 		//Setters
 		void	set_status(int status_code);

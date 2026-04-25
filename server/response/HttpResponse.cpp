@@ -130,18 +130,14 @@ void	HttpResponse::set_default_reponse(int status_code)
 
 }
 
-void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx* location, const cfg::vHostCfg *server)
+void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx* location, const cfg::vHostCfg *server, const std::string &base_path)
 {
 	if (location)
 	{
 		std::unordered_map<http_code, std::string>::const_iterator it_err_page = location->errorPage.find(status_code);
 		if (it_err_page != location->errorPage.end() && !it_err_page->second.empty())
 		{
-			std::string error_page_path;
-			if (it_err_page->second[0] == '.')
-				error_page_path = join_paths(init_root_path(), location->root, it_err_page->second.substr(1));
-			else
-				error_page_path = join_paths(it_err_page->second);
+			std::string error_page_path = join_paths(base_path, it_err_page->second);
 			if (access(error_page_path.c_str(), R_OK) == 0)
 			{
 				set_status(status_code);
@@ -156,11 +152,7 @@ void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx
 		std::unordered_map<http_code, std::string>::const_iterator it_err_page = server->errorPage.find(status_code);
 		if (it_err_page != server->errorPage.end() && !it_err_page->second.empty())
 		{
-			std::string error_page_path;
-			if (it_err_page->second[0] == '.')
-				error_page_path = join_paths(init_root_path(), server->root, it_err_page->second.substr(1));
-			else
-				error_page_path = join_paths(it_err_page->second);
+			std::string error_page_path = join_paths(base_path, it_err_page->second);
 			if (access(error_page_path.c_str(), R_OK) == 0)
 			{
 				set_status(status_code);
