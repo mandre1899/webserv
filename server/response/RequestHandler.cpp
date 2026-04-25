@@ -273,10 +273,13 @@ void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, c
 			{
 				// autoindex off -> try to serve index file instead
 				std::string request_uri = _request.getRequestUri();
-				std::string index_file = (!_locationConfig || _locationConfig->index.empty()) 
-					? (_serverConfig ? _serverConfig->index : "")
-					: _locationConfig->index;
-				
+				std::string index_file;
+
+				if (!_locationConfig || _locationConfig->index.empty())
+					index_file = (_serverConfig ? _serverConfig->index : "");
+				else if (_locationConfig)
+					index_file = _locationConfig->index;
+
 				if (!index_file.empty() && !request_uri.empty() && request_uri.back() == '/')
 				{
 					std::string index_path = join_paths(abs_path, index_file);
