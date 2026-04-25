@@ -34,9 +34,6 @@ namespace cfg
 		size_t clientHeaderBufferSize;
 		size_t clientHeaderTimeout;
 		size_t clientMaxBodySize;
-		size_t clientBodyTimeout;
-		std::string cgiPath;
-		std::string cgiExt;
 	};
 
 	struct wsShared : public wsHttpCtx
@@ -49,6 +46,8 @@ namespace cfg
 	{
 		std::string uploadStore;
 		wsAllowMethods allowMethods;
+		std::string cgiPath;
+		std::string cgiExt;
 	};
 
 	// corresponds to the server{} scope in the conf file

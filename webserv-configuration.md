@@ -170,21 +170,6 @@ client_header_timeout 30s;
 **Context:** http, server
 
 ---
-
-### ⚙️ client_body_timeout  
-Defines a timeout for reading the client request body.  
-
-**Syntax:**
-
-client_body_timeout time;
-
-**Default:**
-
-client_body_timeout 30s;
-
-**Context:** http, server, location
-
----
 ### ⚙️ client_max_body_size  
 Sets the maximum allowed size of the client request body.
 
@@ -269,17 +254,17 @@ This `location` block configures webserv to serve **PHP files** using *CGI* with
 
 ```webserv
 location /wordpress/ {
-    cgi_path /bin/php; # custom
+    cgi_path /bin/php;
+    cgi_ext .php;
 }
 ```
 
 ### Explanation
 
 - `cgi_path /bin/php;` – Passes PHP requests to the PHP executable. 
+- `cgi_ext .php;` – Specify the file extension
 
-This setup allows webserv to process PHP files in `/wordpress/` correctly.
-
-**Context:** `http`, `server`, `location`
+**Context:** `location`
 
 ---
 

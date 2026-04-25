@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 #include <dirent.h>
+#include <unistd.h>
+#include <cstdio>
 
 #include "HttpResponse.hpp"
 #include "ResponseStructs.hpp"
@@ -15,6 +17,7 @@ class StaticFileService
 
 	// Buissness logic intern
 	void	generate_dir_listing();
+	void	delete_ressource();
 	public:
 		StaticFileService(ResourceInspection data, HttpResponse &response);
 		~StaticFileService(void);

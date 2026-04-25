@@ -37,12 +37,13 @@ class RequestHandler
 									  // ressource availablility
 	void		filesystemInspection(std::string &abs_path); // Checks given path for ressource availablility
 	
-	// Private filesystem inspection helpers
+	// helpers
 	void		populateRequestMetadata(const std::string &abs_path);
 	void		handleNoLocationConfig(const std::string &abs_path);
 	bool		inspectFilesystemStats(const std::string &abs_path, struct stat &file_stat);
 	void		inspectResourcePermissions(const std::string &abs_path);
 	void		classifyAndConfigureResource(const std::string &abs_path, const struct stat &file_stat);
+	bool		validateDeleteRequest(void);
 	bool		validatePostRequest(void);
 	public:
 		RequestHandler(void) = delete;

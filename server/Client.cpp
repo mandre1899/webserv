@@ -89,7 +89,7 @@ uint32_t Client::recvData(FdContext* fdCon)
 
 uint32_t Client::sendData(FdContext* fdCon)
 {
-	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
+	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(BODY_TIMEOUT_TIME);
 	if (fdCon->kind == FdKind::CLIENT_SOCKET)
 	{
 		if (_parsingState == state::response_proccessing)
@@ -101,6 +101,10 @@ uint32_t Client::sendData(FdContext* fdCon)
 			_response.set_http_version(_parsedHttp.getHttpVersion());
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _response, _srvCfg);
 			ResourceInspection data = _request_handler->get_result();
+			if (data.delete_file)
+				std::cout << "Delete file " << std::endl;
+			if (data.kind == ResourceKind::CGI)
+				std::cout << data.cgi_path << std::endl;
 			if (data.has_redirect)
 			{
 				int redir_code = data.redirect_code;

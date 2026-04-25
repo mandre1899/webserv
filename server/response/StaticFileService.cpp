@@ -3,18 +3,43 @@
 StaticFileService::StaticFileService(ResourceInspection data, HttpResponse &response)
 	: _data(data), _response(response)
 {	
-	_response.set_content_type(smart_filetype_detection(data.abs_path));
-	if (data.kind == ResourceKind::IS_FILE)
+	if (!data.delete_file)
 	{
-		response.set_status(200);
-		response.read_file_to_body(data.abs_path);
+		if (data.kind == ResourceKind::IS_FILE)
+		{
+			_response.set_content_type(smart_filetype_detection(data.abs_path));
+			response.set_status(200);
+			response.read_file_to_body(data.abs_path);
+		}
+		else if (data.kind == ResourceKind::DIRECTORY)
+				generate_dir_listing();
 	}
 	else
-			generate_dir_listing();
+		delete_ressource();
 }
 
 StaticFileService::~StaticFileService(void)
 {}
+
+void	StaticFileService::delete_ressource()
+{
+	_response.set_default_headers();
+
+	if (_data.kind == ResourceKind::DIRECTORY)
+	{
+		if (rmdir(_data.abs_path.c_str()) == 0)
+			_response.set_default_reponse(204, _data.currLoc, _data.currServer, _data.base_path);
+		else
+			_response.set_default_reponse(409, _data.currLoc, _data.currServer, _data.base_path);
+	}
+	else if (_data.kind == ResourceKind::IS_FILE)
+	{
+		if (unlink(_data.abs_path.c_str()) == 0)
+			_response.set_default_reponse(204, _data.currLoc, _data.currServer, _data.base_path);
+		else
+			_response.set_default_reponse(500, _data.currLoc, _data.currServer, _data.base_path);
+	}
+}
 
 //Buisness logic intern
 void	StaticFileService::generate_dir_listing()
