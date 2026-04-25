@@ -205,7 +205,7 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 				return (recvData(fdCon));
 			}
 		}
-		else if(fdCon->kind == FdKind::CGI_STDOUT_READ && event == EPOLLHUP)
+		else if (fdCon->kind == FdKind::CGI_STDOUT_READ && event == EPOLLHUP)
 			return (sendData(fdCon));
 		if (event & EPOLLOUT)
 			return (sendData(fdCon));
@@ -217,7 +217,7 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
-	catch (const HttpParser::HttpMethodNotSupported &e)
+	catch (const HttpParser::HttpMethodNotSupported& e)
 	{
 		_response.set_default_reponse(501);
 		_parsingState = state::response_sending;

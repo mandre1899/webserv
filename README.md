@@ -3,7 +3,7 @@
 # webserv
 
 ## Desciption
-This project is about creating a non-blocking HTTP/1.1 web server written in C++. Besides that, he goal was to understand webservers like nginx and the Hyptext Transfer Protocol (HTTP). This is implemented with function calls like epoll, socket, accept, send, recv and many other. The server is able to serve a fully static website, the client can upload files and you can use CGI with a PHP or Python backend.
+This project is about creating a non-blocking HTTP/1.1 web server written in C++. Besides that, the goal was to understand webservers like nginx and the Hypertext Transfer Protocol (HTTP). This is implemented with function calls like epoll, socket, accept, send, recv and many other. The server is able to serve a fully static website, the client can upload files and you can use CGI with a PHP or Python backend.
 This webserver is designed for linux only, as it uses the linux exclusive function epoll.
 
 ## Instruction
@@ -20,7 +20,7 @@ Execute the binary from the root of this repository:
 $ ./webserv <config>
 ```
 ### Connect 
-You can now access the webserver with your browser at localhost:8085 as specified in the config file.
+You can now access the webserver with your browser at < address > < port > as specified in the config file.
 Alternatively you can send requests with telnet using correct HTTP syntax with the methods GET, POST, DELETE and versions HTTP/1.0 or HTTP/1.1, where HTTP/1.1 requires a host header field. Example:
 ```
 GET / HTTP/1.0

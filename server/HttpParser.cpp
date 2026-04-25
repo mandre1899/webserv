@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpParser.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/23 11:24:15 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/25 11:28:16 by tschulle         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,9 +121,6 @@ void HttpParser::checkHeader()
 		throw (HttpParser::HttpVersionConflict());
 }
 
-
-// curl -X POST http://localhost:8085/upload 
-//   -F "myfile=@./test.txt"
 const char* HttpParser::HttpParsingError::what() const noexcept
 {
 	return ("Http parsing error\n");
