@@ -291,8 +291,10 @@ void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, c
 						_inspection_result.body_required = false;
 						_inspection_result.readable = (access(index_path.c_str(), R_OK) == 0);
 						_inspection_result.status = _inspection_result.readable ? OK : FORBIDDEN;
-						return;
 					}
+					else
+						_inspection_result.exists = false;
+					return;
 				}
 
 				// No index file found, return FORBIDDEN
