@@ -119,7 +119,7 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 			}
 			catch (CgiService::ExceedesClientMaxBody &e)
 			{
-				_response.set_default_reponse(413, _data.currLoc, _data.currServer);
+				_response.set_default_reponse(413, _data.currLoc, _data.currServer, _data.base_path);
 				Logger::log<LogLevel::error>("CgiService: ", e.what());
 				return state::error;
 			}
