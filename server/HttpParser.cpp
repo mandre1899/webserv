@@ -77,7 +77,7 @@ void HttpParser::parseRequestLine(std::string& line)
 	if (!(temp == "HTTP/1.1" || temp == "HTTP/1.0"))
 		throw HttpVersionNotSupported();
 	_http_version = temp;
-	if (!ss.eof()) //extra space seems okay tho ... so trim space at end
+	if (!ss.eof())
 	{
 		throw HttpParsingError();
 	}
@@ -92,9 +92,11 @@ void HttpParser::parseHeaders(std::string& line)
 	std::string key = line.substr(0, pos);
 	if (key.empty())
 		throw HttpParsingError();
+	auto it = _headers_map.find(key);
+	if (it != _headers_map.end())
+		throw HttpParsingError();
 	if (key.find_first_of(" \t\r\n") != std::string::npos)
 		throw HttpParsingError();
-	//TODO maybe do more validation on header names
 	std::string value = line.substr(pos + 1);
 	trim(value);
 	_headers_map.insert(std::pair<std::string, std::string>{str_tolower(key), value});
@@ -104,6 +106,9 @@ void HttpParser::checkHeader()
 {
 	auto pos = _headers_map.find("host");
 	if (_http_version == "HTTP/1.1" && pos == _headers_map.end())
+		throw (HttpParser::HttpParsingError());
+	pos = _headers_map.find("content-length");
+	if (pos != _headers_map.end() && !is_number(pos->second))
 		throw (HttpParser::HttpParsingError());
 }
 
