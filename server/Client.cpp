@@ -96,6 +96,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 	if (_parsingState == state::parsing_done)
 	{
 		try {
+			_response.set_http_version(_parsedHttp.getHttpVersion());
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _response, _srvCfg);
 			ResourceInspection data = _request_handler->get_result();
 			if (data.kind == ResourceKind::DIRECTORY)
