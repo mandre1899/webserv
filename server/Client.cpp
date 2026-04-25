@@ -53,6 +53,8 @@ uint32_t Client::recvData(FdContext* fdCon)
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
+		if (_msg.length() > REQUESTLINE_MAX_SIZE)
+			throw HttpParser::RequestUriTooLarge();
 		if (pos == std::string::npos)
 			break;
 		std::string line = _msg.substr(0, pos);
