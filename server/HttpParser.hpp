@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpParser.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: tschulle <tschulle@student.42heilbronn.    +#+  +:+       +#+        */
+/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:39 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/22 13:12:15 by tschulle         ###   ########.fr       */
+/*   Updated: 2026/04/25 10:19:19 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,8 +21,6 @@
 #include "utils/helper.hpp"
 #include "utils/Logger.hpp"
 #include "response/typedefs.hpp"
-
-#define REQUESTLINE_MAX_SIZE 8192 // 8 KiB
 
 enum class method_type
 {
@@ -53,10 +51,6 @@ public:
 	void parseHeaders(std::string& line);
 	void checkHeader();
 	class HttpParsingError : public std::exception {
-	public:
-		const char* what() const noexcept override;
-	};
-	class HttpVersionConflict : public std::exception {
 	public:
 		const char* what() const noexcept override;
 	};

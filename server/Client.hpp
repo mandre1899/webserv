@@ -16,6 +16,8 @@
 #include "HttpParser.hpp"
 #include "serverTypes.hpp"
 
+#define REQUESTLINE_MAX_SIZE 8192 // 8 KiB
+
 class Client {
 private:
 	int _serverFd;

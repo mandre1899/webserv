@@ -6,7 +6,7 @@
 /*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/23 11:24:15 by mausperg         ###   ########.fr       */
+/*   Updated: 2026/04/25 10:18:27 by mausperg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,8 +65,6 @@ static std::pair<std::string, std::string> request_uri_normalization(const std::
 /* Member Functions */
 void HttpParser::parseRequestLine(std::string& line)
 {
-	if (line.length() > REQUESTLINE_MAX_SIZE)
-		throw RequestUriTooLarge();
 	std::stringstream ss(line);
 	std::string temp;
 	char del = ' ';
@@ -118,7 +116,7 @@ void HttpParser::checkHeader()
 {
 	auto pos = _headers_map.find("host");
 	if (_http_version == "HTTP/1.1" && pos == _headers_map.end())
-		throw (HttpParser::HttpVersionConflict());
+		throw (HttpParser::HttpParsingError());
 }
 
 
@@ -127,11 +125,6 @@ void HttpParser::checkHeader()
 const char* HttpParser::HttpParsingError::what() const noexcept
 {
 	return ("Http parsing error\n");
-}
-
-const char* HttpParser::HttpVersionConflict::what() const noexcept
-{
-	return ("Syntax of HTTP versions conflict, adhere to HTTP/1.1 or HTTP/1.0");
 }
 
 const char* HttpParser::RequestUriTooLarge::what() const noexcept
