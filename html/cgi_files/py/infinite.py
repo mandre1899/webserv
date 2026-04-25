@@ -1,5 +1,7 @@
 import requests
 import time
+print("Content-type: text/plain")
+print()
 
 URL = "http://localhost:8081/cgi-bin/test.cgi"
 
