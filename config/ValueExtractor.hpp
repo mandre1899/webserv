@@ -191,7 +191,7 @@ private:
 
 	void _cgiPath(T& confStruct, TokenStream& ts)
 	{
-		confStruct.cgiPath = normalizeConfigSubPath(ts.getNextValue(), ts.getPositon());
+		confStruct.cgiPath = "/" + normalizeConfigSubPath(ts.getNextValue(), ts.getPositon());
 		ts.expectToken(tType::semi);
 	}
 
