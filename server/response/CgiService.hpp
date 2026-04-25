@@ -29,7 +29,7 @@ enum cgi_state {
 
 class CgiService
 {
-	ResourceInspection			&_data;
+	ResourceInspection& _data;
 	int							_cgi_pid;
 	int							_pipe_read;
 	int							_pipe_write;
@@ -46,7 +46,7 @@ class CgiService
 	bool		_writeIsDel;
 	bool		_readIsDel;
 
-	void		set_epoll_event(uint32_t events, int fd, FdKind kind, Client *currClient);
+	void		set_epoll_event(uint32_t events, int fd, FdKind kind, Client* currClient);
 
 public:
 	CgiService(ResourceInspection& data, int epfd, int socket_fd, size_t client_max_body);
@@ -54,7 +54,7 @@ public:
 	CgiService(CgiService& obj) = delete;
 	CgiService	operator=(CgiService& obj) = delete;
 	bool						parse_cgi_headers(void);
-	cgi_state   				execute_cgi_proc(Client *currClient);
+	cgi_state   				execute_cgi_proc(Client* currClient);
 	std::pair<cgi_state, int>	handle_cgi_read();
 	std::pair<cgi_state, int>	handle_cgi_write(std::string& body_data);
 

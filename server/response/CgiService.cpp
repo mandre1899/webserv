@@ -146,6 +146,13 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 {
 	char buf[4096];
 	ssize_t read_bytes = read(_pipe_read, buf, sizeof(buf));
+	if (read_bytes < 0)
+	{
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_read, NULL);
+		close(_pipe_read);
+		_pipe_read = -1;
+		return std::make_pair(cgi_state::FINISHED_KO, 500);
+	}
 	if (read_bytes > 0)
 	{
 		Logger::log<LogLevel::info>("Read ", read_bytes, " bytes from CGI pipe");
@@ -194,6 +201,15 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 {
 	ssize_t written_bytes = write(_pipe_write, body_data.data(), body_data.size());
+	if (written_bytes < 0)
+	{
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
+		_writeIsDel = true;
+		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
+		close(_pipe_write);
+		_pipe_write = -1;
+		return std::make_pair(cgi_state::FINISHED_KO, 500);
+	}
 	_postWriteTrack += written_bytes;
 	body_data.erase(0, written_bytes);
 	if (_postContentLength < _postWriteTrack)
@@ -203,15 +219,6 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 		close(_pipe_write);
 		_pipe_write = -1;
 		throw ExceedesClientMaxBody();
-	}
-	if (written_bytes < 0)
-	{
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
-		_writeIsDel = true;
-		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
-		close(_pipe_write);
-		_pipe_write = -1;
-		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}
 	if (_postContentLength <= _postWriteTrack)
 	{
