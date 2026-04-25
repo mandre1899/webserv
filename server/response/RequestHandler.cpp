@@ -31,6 +31,7 @@ RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response
 	resolveVHost();
 	resolveLocation();
 	methodLocationValidation();
+	std::cout << _location_uri << std::endl;
 	std::string abs_path = pathResolution();
 	populateRequestMetadata(abs_path);
 	if (validatePostRequest()) // if its a pure file upload it returns true
@@ -53,16 +54,27 @@ ResourceInspection& RequestHandler::get_result()
 void	RequestHandler::resolveVHost(void)
 {
 	const auto& headers = _request.getHeadersMap();
-	if (headers.empty() || _config.vHost.empty())
+	if ((headers.empty() || _config.vHost.empty()) && _request.getHttpVersion() == "HTTP/1.1")
 	{
 		Logger::log<LogLevel::warn>("Request headers or virtual hosts empty");
 		throw RequestHandler::BadRequest();
 	}
+	else
+	{
+		_serverConfig = &_config.vHost[0];
+		return ;
+	}
 	header_map::const_iterator matchPair;
-	if ((matchPair = headers.find("host")) == headers.end())
+	if ((matchPair = headers.find("host")) == headers.end() &&
+		 _request.getHttpVersion() == "HTTP/1.0" )
 	{
 		_serverConfig = &_config.vHost[0];
 		return;
+	}
+	else
+	{
+		Logger::log<LogLevel::warn>("Http version 1.1 needs a request header");
+		throw RequestHandler::BadRequest();
 	}
 	std::string hostValue = matchPair->second;
 	if (hostValue.empty())
@@ -147,7 +159,7 @@ void	RequestHandler::methodLocationValidation(void)
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
 		(requestMethods == method_type::DELETE && !_locationConfig->allowMethods.isDelete))
 	{
-		_response.set_default_reponse(405, _locationConfig, _serverConfig);
+		_response.set_default_reponse(405, _locationConfig, _serverConfig, _base_path);
 		throw RequestHandler::MethodNotAllowed();
 	}
 }
@@ -245,13 +257,18 @@ void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, c
 		_inspection_result.is_directory = true;
 		_inspection_result.is_file = false;
 
-		std::string uploadStore = getUploadStore(_locationConfig);
-		if (!uploadStore.empty())
+		// Determine if autoindex is enabled (location has higher priority than the server)
+		bool autoIndexEnabled = false;
+		if (_locationConfig != nullptr)
+			autoIndexEnabled = _locationConfig->autoIndex;
+		else if (_serverConfig != nullptr)
+			autoIndexEnabled = _serverConfig->autoIndex;
+		// If autoindex is enabled, show directory listing
+		if (autoIndexEnabled)
 		{
-			_inspection_result.kind = UPLOAD_DIR;
-			_inspection_result.body_required = true;
-			_inspection_result.upload_path = join_paths(_base_path, uploadStore);
-			_inspection_result.status = (_inspection_result.writable) ? OK : FORBIDDEN;
+			_inspection_result.kind = DIRECTORY;
+			_inspection_result.body_required = false;
+			_inspection_result.status = OK;
 		}
 		else
 		{
@@ -302,6 +319,11 @@ void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, c
 				_inspection_result.body_required = false;
 				_inspection_result.status = FORBIDDEN;
 			}
+
+			// No index file found, return FORBIDDEN
+			_inspection_result.kind = DIRECTORY;
+			_inspection_result.body_required = false;
+			_inspection_result.status = FORBIDDEN;
 		}
 	}
 	else if (S_ISREG(file_stat.st_mode))
@@ -354,7 +376,7 @@ bool	RequestHandler::validatePostRequest(void)
 	if (uploadStore.empty() && cgiExec.empty())
 	{
 		Logger::log<LogLevel::trace>("POST request on location without upload or CGI support");
-		_response.set_default_reponse(405, _locationConfig, _serverConfig);
+		_response.set_default_reponse(405, _locationConfig, _serverConfig, _base_path);
 		_inspection_result.status = METHOD_NOT_ALLOWED;
 		throw RequestHandler::MethodNotAllowed();
 	}

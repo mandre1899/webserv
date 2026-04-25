@@ -21,7 +21,7 @@ state	ServiceHandler::select_service()
 			return state::response_sending;
 		}
 		else
-			_response.set_default_reponse(403, _data.currLoc, _data.currServer);
+			_response.set_default_reponse(403, _data.currLoc, _data.currServer, _data.base_path);
 	}
 	else if (_data.kind == ResourceKind::CGI)
 	{
@@ -123,7 +123,7 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 			if (_uploadService->uploadBody(msg))
 			{
 				Logger::log<LogLevel::info>("Upload completed successfully");
-				_response.set_default_reponse(201, _data.currLoc, _data.currServer);
+				_response.set_default_reponse(201, _data.currLoc, _data.currServer, _data.base_path);
 				_response.set_default_headers();
 				return state::response_sending;
 			}
