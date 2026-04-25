@@ -243,12 +243,6 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
-	catch (const HttpParser::HttpParsingError& e)
-	{
-		_response.set_default_reponse(400); //send bad request with 400
-		_parsingState = state::response_sending;
-		return (EPOLLOUT);
-	}
 	catch (const std::exception& e)
 	{
 		_response.set_default_reponse(500); // todo: close the connection immediately; do not send a response, as this method is also called in the event of read errors
