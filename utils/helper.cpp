@@ -73,7 +73,14 @@ std::string normalizeConfigSubPath(const std::string& path, const filePos& pos)
 	std::string ret = normalizeConfigPath(path, pos, 0);
 	if (ret.size() > 0 && ret[0] == '/')
 		ret.erase(0, 1);
+	if (ret.size() > 1 && ret.back() == '/')
+		ret.erase(ret.size() - 1, 1);
 	return (ret);
+}
+
+std::string normalizeConfigLocationPath(const std::string& path, const filePos& pos)
+{
+	return (normalizeConfigPath(path, pos, 0));
 }
 
 bool is_number(const std::string& s)

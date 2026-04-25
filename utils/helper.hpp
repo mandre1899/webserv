@@ -21,6 +21,7 @@ struct filePos
 std::string buildMsg(std::string msg, const filePos& pos);
 std::string normalizeConfigSubPath(const std::string& path, const filePos& pos);
 std::string normalizeConfigRootPath(const std::string& path, const filePos& pos);
+std::string normalizeConfigLocationPath(const std::string& path, const filePos& pos);
 bool is_number(const std::string& s);
 
 #include <iostream>
