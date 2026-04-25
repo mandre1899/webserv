@@ -31,6 +31,7 @@ RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response
 	resolveVHost();
 	resolveLocation();
 	methodLocationValidation();
+	std::cout << _location_uri << std::endl;
 	std::string abs_path = pathResolution();
 	populateRequestMetadata(abs_path);
 	if (validatePostRequest()) // if its a pure file upload it returns true
@@ -251,7 +252,6 @@ void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, c
 			autoIndexEnabled = _locationConfig->autoIndex;
 		else if (_serverConfig != nullptr)
 			autoIndexEnabled = _serverConfig->autoIndex;
-
 		// If autoindex is enabled, show directory listing
 		if (autoIndexEnabled)
 		{
