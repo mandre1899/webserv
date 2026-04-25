@@ -1,4 +1,3 @@
 <?php
-print("\n");
-print("Hello from php!")
+print("Hello from php!");
 ?>

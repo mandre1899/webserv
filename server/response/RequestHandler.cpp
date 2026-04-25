@@ -1,6 +1,6 @@
 #include "RequestHandler.hpp"
 
-static bool	is_cgi_script(const std::string& path, cfg::wsLocationCtx *locationConfig)
+static bool	is_cgi_script(const std::string& path, const cfg::wsLocationCtx* locationConfig)
 {
 	if (locationConfig && !locationConfig->cgiExt.empty())
 	{
@@ -380,7 +380,7 @@ bool	RequestHandler::validateDeleteRequest(void)
 		_inspection_result.status = NOT_FOUND;
 		return true;
 	}
-	
+
 	// writeable for deletion
 	if (!_inspection_result.writable)
 	{
