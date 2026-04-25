@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>Webserver Test Page</title>
 	<link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
 	<header class="hero">
 		<div class="container">
@@ -22,22 +24,10 @@
 			<p>Sends form data using POST.</p>
 			<form action="/submit" method="POST" class="form-grid">
 				<label for="username">Username</label>
-				<input
-					type="text"
-					id="username"
-					name="username"
-					placeholder="mateo"
-					required
-				/>
+				<input type="text" id="username" name="username" placeholder="mateo" required />
 
 				<label for="message">Message</label>
-				<textarea
-					id="message"
-					name="message"
-					rows="4"
-					placeholder="Testing POST body..."
-					required
-				></textarea>
+				<textarea id="message" name="message" rows="4" placeholder="Testing POST body..." required></textarea>
 
 				<button type="submit">Send POST Request</button>
 			</form>
@@ -46,7 +36,7 @@
 		<section class="card">
 			<h2>File Upload Test</h2>
 			<p>Checks multipart/form-data handling.</p>
-			<form action="/upload" method="POST" enctype="multipart/form-data" class="form-grid">
+			<form action="/upload/" method="POST" enctype="multipart/form-data" class="form-grid">
 				<label for="file">Choose File</label>
 				<input type="file" id="file" name="file" required />
 
@@ -63,13 +53,7 @@
 				<input type="hidden" name="_method" value="DELETE" />
 
 				<label for="item-id">Item ID</label>
-				<input
-					type="text"
-					id="item-id"
-					name="id"
-					placeholder="123"
-					required
-				/>
+				<input type="text" id="item-id" name="id" placeholder="123" required />
 
 				<button type="submit" class="danger">Send DELETE-like Request</button>
 			</form>
@@ -140,4 +124,5 @@
 		</div>
 	</footer>
 </body>
+
 </html>

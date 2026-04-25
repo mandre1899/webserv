@@ -19,9 +19,8 @@ HttpUploadService::HttpUploadService(const header_map& headers, std::string file
 	_rawBoundary = extractBoundary(boundary_header->second);
 	_boundary = _rawBoundary + "\r\n";
 	_boundaryClosig = "\r\n" + _rawBoundary;
-	std::cout << clientMaxBody << std::endl;
-	//if (_contentLength > clientMaxBody && clientMaxBody != 0)
-	//	throw BodyTooLargeException();
+	if (_contentLength > clientMaxBody && clientMaxBody != 0)
+		throw BodyTooLargeException();
 }
 
 HttpUploadService::~HttpUploadService()
@@ -199,11 +198,6 @@ body_state HttpUploadService::saveData(std::string& data)
 	return (body_state::save_data);
 }
 
-/*
-// curl -X POST http://localhost:8085/upload \
-//   -F "file1=@test.txt" \
-//   -F "file2=@b.png"s
-*/
 bool HttpUploadService::uploadBody(std::string& data)
 {
 	_bytesRead += data.size();

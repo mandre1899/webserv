@@ -127,37 +127,43 @@ uint32_t Client::sendData(FdContext* fdCon)
 			{
 				_service_handler = std::make_unique<ServiceHandler>(data, _response, _epollFd, _clientFd, this, _srvCfg.vHost[0].clientMaxBodySize);
 				_parsingState = _service_handler->select_service();
-				return (EPOLLOUT);
 			}
+			return (EPOLLOUT);
 		}
 		catch (const RequestHandler::MethodNotAllowed& e) {
 			Logger::log<LogLevel::warn>("Method not allowed: ", e.what());
 			_parsingState = state::response_sending;
+			return (EPOLLOUT);
 		}
 		catch (const RequestHandler::PathResolutionFailed& e) {
 			Logger::log<LogLevel::error>("Path resolution failed: ", e.what());
 			_response.set_default_reponse(400);
 			_parsingState = state::response_sending;
+			return (EPOLLOUT);
 		}
 		catch (const RequestHandler::NotFoundExcept404& e) {
 			Logger::log<LogLevel::error>("Path resolution failed: ", e.what());
 			_response.set_default_reponse(404);
 			_parsingState = state::response_sending;
+			return (EPOLLOUT);
 		}
 		catch (const RequestHandler::BadRequest& e) {
 			Logger::log<LogLevel::warn>("Bad request: ", e.what());
 			_response.set_default_reponse(400);
 			_parsingState = state::response_sending;
+			return (EPOLLOUT);
 		}
 		catch (const std::exception& e) {
 			Logger::log<LogLevel::error>("Request handler exception: ", e.what());
 			_response.set_default_reponse(500);
 			_parsingState = state::response_sending;
+			return (EPOLLOUT);
 		}
 		catch (...) {
 			Logger::log<LogLevel::error>("Unknown exception in request handler");
 			_response.set_default_reponse(500);
 			_parsingState = state::response_sending;
+			return (EPOLLOUT);
 		}
 	}
 	else if (_parsingState == state::response_proccessing ||
@@ -169,7 +175,6 @@ uint32_t Client::sendData(FdContext* fdCon)
 		return (EPOLLOUT);
 	}
 	std::string msg = _response.get_response_str();
-	_parsingState = state::response_sending;
 	ssize_t ret = send(_clientFd, msg.c_str() + _sendedBytes, msg.size() - _sendedBytes, 0);
 	if (ret > 0)
 	{
@@ -200,7 +205,7 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 				return (recvData(fdCon));
 			}
 		}
-		else if(fdCon->kind == FdKind::CGI_STDOUT_READ && event == EPOLLHUP)
+		else if (fdCon->kind == FdKind::CGI_STDOUT_READ && event == EPOLLHUP)
 			return (sendData(fdCon));
 		if (event & EPOLLOUT)
 			return (sendData(fdCon));
@@ -212,7 +217,7 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
-	catch (const HttpParser::HttpMethodNotSupported &e)
+	catch (const HttpParser::HttpMethodNotSupported& e)
 	{
 		_response.set_default_reponse(501);
 		_parsingState = state::response_sending;
@@ -224,7 +229,7 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
-	catch (const HttpParser::HttpVersionConflict& e)
+	catch (const HttpParser::HttpParsingError& e)
 	{
 		_response.set_default_reponse(400); //send bad request with 400
 		_parsingState = state::response_sending;

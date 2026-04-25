@@ -34,7 +34,7 @@ RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response
 	std::string abs_path = pathResolution();
 	populateRequestMetadata(abs_path);
 	if (validatePostRequest()) // if its a pure file upload it returns true
-		return ;
+		return;
 	filesystemInspection(abs_path);
 }
 
@@ -91,7 +91,7 @@ static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 	if (uri == loc)
 		return true;
 	if (uri.size() > loc.size() &&
-			uri.compare(0, loc.size(), loc) == 0)
+		uri.compare(0, loc.size(), loc) == 0)
 		return true;
 	return false;
 }
@@ -101,7 +101,7 @@ void	RequestHandler::resolveLocation(void)
 	if (_serverConfig == nullptr)
 		throw RequestHandler::BadRequest();
 	_base_path = _serverConfig->root;
-	if(_base_path.empty())
+	if (_base_path.empty())
 		_base_path = init_root_path();
 	else
 	{
@@ -111,7 +111,7 @@ void	RequestHandler::resolveLocation(void)
 			_base_path = _serverConfig->root;
 	}
 	if (_serverConfig->location.empty())
-		return ;
+		return;
 	auto best_match = _serverConfig->location.end();
 	size_t best_len = 0;
 
@@ -154,12 +154,12 @@ void	RequestHandler::methodLocationValidation(void)
 
 std::string RequestHandler::pathResolution(void)
 {
-    if (_serverConfig == nullptr)
-        throw RequestHandler::BadRequest();
+	if (_serverConfig == nullptr)
+		throw RequestHandler::BadRequest();
 
-    if (_locationConfig != nullptr)
-    {
-        std::string loc_root = _locationConfig->root;
+	if (_locationConfig != nullptr)
+	{
+		std::string loc_root = _locationConfig->root;
 		if (loc_root.empty())
 			_base_path = init_root_path();
 		else
@@ -169,21 +169,21 @@ std::string RequestHandler::pathResolution(void)
 			else
 				_base_path = loc_root;
 		}
-        // Only append index if autoindex is OFF
-        if (!_locationConfig->autoIndex && !_locationConfig->index.empty()
-            && _request.getRequestUri() == _location_uri)
-            return join_paths(_base_path, _locationConfig->index);
-        std::string rest = _request.getRequestUri().substr(_location_uri.length());
+		// Only append index if autoindex is OFF
+		if (!_locationConfig->autoIndex && !_locationConfig->index.empty()
+			&& _request.getRequestUri() == _location_uri)
+			return join_paths(_base_path, _locationConfig->index);
+		std::string rest = _request.getRequestUri().substr(_location_uri.length());
 
-        return join_paths(_base_path, rest);
-    }
-    // Only append index at root if autoindex is OFF
-    if (_request.getRequestUri() == "/" && !_serverConfig->autoIndex && !_serverConfig->index.empty())
-        return join_paths(_base_path, _serverConfig->index);
-    return join_paths(_base_path, _request.getRequestUri());
+		return join_paths(_base_path, rest);
+	}
+	// Only append index at root if autoindex is OFF
+	if (_request.getRequestUri() == "/" && !_serverConfig->autoIndex && !_serverConfig->index.empty())
+		return join_paths(_base_path, _serverConfig->index);
+	return join_paths(_base_path, _request.getRequestUri());
 }
 
-void	RequestHandler::populateRequestMetadata(const std::string &abs_path)
+void	RequestHandler::populateRequestMetadata(const std::string& abs_path)
 {
 	_inspection_result.abs_path = abs_path;
 	_inspection_result.base_path = _base_path;
@@ -200,7 +200,7 @@ void	RequestHandler::populateRequestMetadata(const std::string &abs_path)
 		_inspection_result.currServer = _serverConfig;
 }
 
-void	RequestHandler::handleNoLocationConfig(const std::string &abs_path)
+void	RequestHandler::handleNoLocationConfig(const std::string& abs_path)
 {
 	struct stat file_stat;
 
@@ -211,7 +211,7 @@ void	RequestHandler::handleNoLocationConfig(const std::string &abs_path)
 	classifyAndConfigureResource(abs_path, file_stat);
 }
 
-bool	RequestHandler::inspectFilesystemStats(const std::string &abs_path, struct stat &file_stat)
+bool	RequestHandler::inspectFilesystemStats(const std::string& abs_path, struct stat& file_stat)
 {
 	if (stat(abs_path.c_str(), &file_stat) != 0)
 	{
@@ -226,19 +226,19 @@ bool	RequestHandler::inspectFilesystemStats(const std::string &abs_path, struct 
 		_inspection_result.kind = NONE;
 		return false;
 	}
-	
+
 	_inspection_result.exists = true;
 	return true;
 }
 
-void	RequestHandler::inspectResourcePermissions(const std::string &abs_path)
+void	RequestHandler::inspectResourcePermissions(const std::string& abs_path)
 {
 	_inspection_result.readable = (access(abs_path.c_str(), R_OK) == 0);
 	_inspection_result.writable = (access(abs_path.c_str(), W_OK) == 0);
 	_inspection_result.executable = (access(abs_path.c_str(), X_OK) == 0);
 }
 
-void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, const struct stat &file_stat)
+void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, const struct stat& file_stat)
 {
 	if (S_ISDIR(file_stat.st_mode))
 	{
@@ -261,31 +261,52 @@ void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, c
 		}
 		else
 		{
-			// autoindex off -> try to serve index file instead
-			std::string request_uri = _request.getRequestUri();
-			std::string index_file;
+			// Determine if autoindex is enabled (location has higher priority than the server)
+			bool autoIndexEnabled = false;
+			if (_locationConfig != nullptr)
+				autoIndexEnabled = _locationConfig->autoIndex;
+			else if (_serverConfig != nullptr)
+				autoIndexEnabled = _serverConfig->autoIndex;
 
-			if (!_locationConfig || _locationConfig->index.empty())
-				index_file = (_serverConfig ? _serverConfig->index : "");
-			else if (_locationConfig)
-				index_file = _locationConfig->index;
-
-			if (!index_file.empty() && !request_uri.empty() && request_uri.back() == '/')
+			// If autoindex is enabled, show directory listing
+			if (autoIndexEnabled)
 			{
-				std::string index_path = join_paths(abs_path, index_file);
-				struct stat index_stat;
-				if (stat(index_path.c_str(), &index_stat) == 0 && S_ISREG(index_stat.st_mode))
+				_inspection_result.kind = DIRECTORY;
+				_inspection_result.body_required = false;
+				_inspection_result.status = OK;
+			}
+			else
+			{
+				// autoindex off -> try to serve index file instead
+				std::string request_uri = _request.getRequestUri();
+				std::string index_file = (!_locationConfig || _locationConfig->index.empty())
+					? (_serverConfig ? _serverConfig->index : "")
+					: _locationConfig->index;
+
+				if (!index_file.empty() && !request_uri.empty())
 				{
-					// Index file exists, treat it as a file
-					_inspection_result.abs_path = index_path;
-					_inspection_result.is_file = true;
-					_inspection_result.is_directory = false;
-					_inspection_result.kind = IS_FILE;
-					_inspection_result.body_required = false;
-					_inspection_result.readable = (access(index_path.c_str(), R_OK) == 0);
-					_inspection_result.status = _inspection_result.readable ? OK : FORBIDDEN;
+					std::string index_path = join_paths(abs_path, index_file);
+					struct stat index_stat;
+					if (stat(index_path.c_str(), &index_stat) == 0 && S_ISREG(index_stat.st_mode))
+					{
+						// Index file exists, treat it as a file
+						_inspection_result.abs_path = index_path;
+						_inspection_result.is_file = true;
+						_inspection_result.is_directory = false;
+						_inspection_result.kind = IS_FILE;
+						_inspection_result.body_required = false;
+						_inspection_result.readable = (access(index_path.c_str(), R_OK) == 0);
+						_inspection_result.status = _inspection_result.readable ? OK : FORBIDDEN;
+					}
+					else
+						_inspection_result.exists = false;
 					return;
 				}
+
+				// No index file found, return FORBIDDEN
+				_inspection_result.kind = DIRECTORY;
+				_inspection_result.body_required = false;
+				_inspection_result.status = FORBIDDEN;
 			}
 
 			// No index file found, return FORBIDDEN
@@ -298,7 +319,7 @@ void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, c
 	{
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
-		
+
 		if (is_cgi_script(abs_path))
 		{
 			std::string cgiExec = getCgiExecutor(_serverConfig, _locationConfig);
@@ -376,7 +397,7 @@ void	RequestHandler::filesystemInspection(std::string& abs_path)
 		_inspection_result.has_redirect = true;
 		_inspection_result.redirect_code = _locationConfig->ret->code;
 		_inspection_result.redirect_target = _locationConfig->ret->param;
-		return ;
+		return;
 	}
 
 	if (!inspectFilesystemStats(abs_path, file_stat))
@@ -393,7 +414,7 @@ const cfg::wsLocationCtx* RequestHandler::get_location()
 	return (nullptr);
 }
 
-const cfg::vHostCfg*	RequestHandler::get_vHost(void)
+const cfg::vHostCfg* RequestHandler::get_vHost(void)
 {
 	if (_serverConfig != nullptr)
 		return _serverConfig;

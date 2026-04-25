@@ -41,7 +41,7 @@ namespace cfg
 
 	struct wsShared : public wsHttpCtx
 	{
-		std::optional<wsReturn> ret;
+		std::optional<wsReturn> ret = std::nullopt;
 	};
 
 	// corresponds to the location{} scope in the conf file
