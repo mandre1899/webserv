@@ -1,11 +1,17 @@
 #include "RequestHandler.hpp"
 
-static bool	is_cgi_script(const std::string& path)
+static bool	is_cgi_script(const std::string& path, cfg::wsLocationCtx *locationConfig)
 {
-	if (path.find(".php") != std::string::npos)
-		return true;
-	else if (path.find(".py") != std::string::npos)
-		return true;
+	if (locationConfig && !locationConfig->cgiExt.empty())
+	{
+		size_t dotPos = path.find_last_of(".");
+		if (dotPos != std::string::npos)
+		{
+			std::string fileExt = path.substr(dotPos);
+			if (locationConfig->cgiExt.find(fileExt) != std::string::npos)
+				return true;
+		}
+	}
 	return false;
 }
 
@@ -329,7 +335,7 @@ void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, c
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
 
-		if (is_cgi_script(abs_path))
+		if (is_cgi_script(abs_path, _locationConfig))
 		{
 			std::string cgiExec = getCgiExecutor(_locationConfig);
 			if (!cgiExec.empty())
