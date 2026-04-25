@@ -169,15 +169,16 @@ std::string RequestHandler::pathResolution(void)
 			else
 				_base_path = loc_root;
 		}
-	
-        if (!_locationConfig->index.empty()
+        // Only append index if autoindex is OFF
+        if (!_locationConfig->autoIndex && !_locationConfig->index.empty()
             && _request.getRequestUri() == _location_uri)
             return join_paths(_base_path, _locationConfig->index);
         std::string rest = _request.getRequestUri().substr(_location_uri.length());
 
         return join_paths(_base_path, rest);
     }
-    if (_request.getRequestUri() == "/" && !_serverConfig->index.empty())
+    // Only append index at root if autoindex is OFF
+    if (_request.getRequestUri() == "/" && !_serverConfig->autoIndex && !_serverConfig->index.empty())
         return join_paths(_base_path, _serverConfig->index);
     return join_paths(_base_path, _request.getRequestUri());
 }
@@ -254,12 +255,51 @@ void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, c
 		}
 		else
 		{
-			_inspection_result.kind = DIRECTORY;
-			_inspection_result.body_required = false;
-			if (_locationConfig != nullptr && _locationConfig->autoIndex)
+			// Determine if autoindex is enabled (location has higher priority than the server)
+			bool autoIndexEnabled = false;
+			if (_locationConfig != nullptr)
+				autoIndexEnabled = _locationConfig->autoIndex;
+			else if (_serverConfig != nullptr)
+				autoIndexEnabled = _serverConfig->autoIndex;
+			
+			// If autoindex is enabled, show directory listing
+			if (autoIndexEnabled)
+			{
+				_inspection_result.kind = DIRECTORY;
+				_inspection_result.body_required = false;
 				_inspection_result.status = OK;
+			}
 			else
+			{
+				// autoindex off -> try to serve index file instead
+				std::string request_uri = _request.getRequestUri();
+				std::string index_file = (!_locationConfig || _locationConfig->index.empty()) 
+					? (_serverConfig ? _serverConfig->index : "")
+					: _locationConfig->index;
+				
+				if (!index_file.empty() && !request_uri.empty() && request_uri.back() == '/')
+				{
+					std::string index_path = join_paths(abs_path, index_file);
+					struct stat index_stat;
+					if (stat(index_path.c_str(), &index_stat) == 0 && S_ISREG(index_stat.st_mode))
+					{
+						// Index file exists, treat it as a file
+						_inspection_result.abs_path = index_path;
+						_inspection_result.is_file = true;
+						_inspection_result.is_directory = false;
+						_inspection_result.kind = IS_FILE;
+						_inspection_result.body_required = false;
+						_inspection_result.readable = (access(index_path.c_str(), R_OK) == 0);
+						_inspection_result.status = _inspection_result.readable ? OK : FORBIDDEN;
+						return;
+					}
+				}
+				
+				// No index file found, return FORBIDDEN
+				_inspection_result.kind = DIRECTORY;
+				_inspection_result.body_required = false;
 				_inspection_result.status = FORBIDDEN;
+			}
 		}
 	}
 	else if (S_ISREG(file_stat.st_mode))
