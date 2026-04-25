@@ -239,10 +239,6 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 		os << "clientHeaderTimeout: " << ctx.clientHeaderTimeout << std::endl;
 		os << "clientMaxBodySize: " << ctx.clientMaxBodySize << std::endl;
 		os << "clientBodyTimeout: " << ctx.clientBodyTimeout << std::endl;
-		if (!ctx.cgiPath.empty())
-			os << "cgiPath: " << ctx.cgiPath << std::endl;
-		if (!ctx.cgiExt.empty())
-			os << "cgiExt: " << ctx.cgiExt << std::endl;
 		if (ctx.ret.has_value())
 		{
 			os << "return: \n";

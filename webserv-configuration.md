@@ -269,17 +269,17 @@ This `location` block configures webserv to serve **PHP files** using *CGI* with
 
 ```webserv
 location /wordpress/ {
-    cgi_path /bin/php; # custom
+    cgi_path /bin/php;
+    cgi_ext .php;
 }
 ```
 
 ### Explanation
 
 - `cgi_path /bin/php;` – Passes PHP requests to the PHP executable. 
+- `cgi_ext .php;` – Specify the file extension
 
-This setup allows webserv to process PHP files in `/wordpress/` correctly.
-
-**Context:** `http`, `server`, `location`
+**Context:** `location`
 
 ---
 
