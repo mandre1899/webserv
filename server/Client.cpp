@@ -53,8 +53,6 @@ uint32_t Client::recvData(FdContext* fdCon)
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
-		if (_msg.length() > REQUESTLINE_MAX_SIZE)
-			throw HttpParser::RequestUriTooLarge();
 		if (pos == std::string::npos)
 			break;
 		std::string line = _msg.substr(0, pos);
@@ -213,15 +211,15 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 			return (sendData(fdCon));
 		return (EPOLLHUP);
 	}
-	catch (const HttpParser::HttpParsingError& e)
-	{
-		_response.set_default_reponse(400); //send bad request with 400
-		_parsingState = state::response_sending;
-		return (EPOLLOUT);
-	}
 	catch (const HttpParser::RequestUriTooLarge& e)
 	{
 		_response.set_default_reponse(414); // send respone with code 414
+		_parsingState = state::response_sending;
+		return (EPOLLOUT);
+	}
+	catch (const HttpParser::HttpMethodNotSupported& e)
+	{
+		_response.set_default_reponse(501);
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
@@ -231,15 +229,9 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
-	catch (const HttpParser::HttpVersionNotSupported& e)
+	catch (const HttpParser::HttpParsingError& e)
 	{
-		_response.set_default_reponse(505); //send 505 HTTP Version Not Supported
-		_parsingState = state::response_sending;
-		return (EPOLLOUT);
-	}
-	catch (const HttpParser::HttpMethodNotSupported& e)
-	{
-		_response.set_default_reponse(501);
+		_response.set_default_reponse(400); //send bad request with 400
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
