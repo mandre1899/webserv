@@ -36,6 +36,7 @@ namespace cfg
 		size_t clientMaxBodySize;
 		size_t clientBodyTimeout;
 		std::string cgiPath;
+		std::string cgiExt;
 	};
 
 	struct wsShared : public wsHttpCtx

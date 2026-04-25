@@ -26,6 +26,7 @@ class RequestHandler
 
 	// Result of this class
 	ResourceInspection			_inspection_result;
+	std::string					_base_path;
 
 	// Buissness logic member functions
 	void		resolveVHost(void); // Resolves vHost assigns the _serverConfig
@@ -35,6 +36,14 @@ class RequestHandler
 	std::string	pathResolution(void); // Logically resolves the path without checking for 
 									  // ressource availablility
 	void		filesystemInspection(std::string &abs_path); // Checks given path for ressource availablility
+	
+	// Private filesystem inspection helpers
+	void		populateRequestMetadata(const std::string &abs_path);
+	void		handleNoLocationConfig(const std::string &abs_path);
+	bool		inspectFilesystemStats(const std::string &abs_path, struct stat &file_stat);
+	void		inspectResourcePermissions(const std::string &abs_path);
+	void		classifyAndConfigureResource(const std::string &abs_path, const struct stat &file_stat);
+	bool		validatePostRequest(void);
 	public:
 		RequestHandler(void) = delete;
 		RequestHandler(const HttpParser &request, HttpResponse &response, const cfg::srvCfg &config);

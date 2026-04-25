@@ -9,6 +9,22 @@ static bool	is_cgi_script(const std::string& path)
 	return false;
 }
 
+static std::string getCgiExecutor(const cfg::vHostCfg* serverConfig, const cfg::wsLocationCtx* locationConfig)
+{
+	if (locationConfig != nullptr && !locationConfig->cgiPath.empty())
+		return locationConfig->cgiPath;
+	if (serverConfig != nullptr && !serverConfig->cgiPath.empty())
+		return serverConfig->cgiPath;
+	return "";
+}
+
+static std::string getUploadStore(const cfg::wsLocationCtx* locationConfig)
+{
+	if (locationConfig != nullptr && !locationConfig->uploadStore.empty())
+		return locationConfig->uploadStore;
+	return "";
+}
+
 RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response, const cfg::srvCfg& config)
 	: _request(request), _response(response), _config(config), _serverConfig(nullptr), _locationConfig(nullptr)
 {
@@ -16,6 +32,9 @@ RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response
 	resolveLocation();
 	methodLocationValidation();
 	std::string abs_path = pathResolution();
+	populateRequestMetadata(abs_path);
+	if (validatePostRequest()) // if its a pure file upload it returns true
+		return ;
 	filesystemInspection(abs_path);
 }
 
@@ -72,16 +91,27 @@ static bool loc_uri_comp(const std::string& loc, const std::string& uri)
 	if (uri == loc)
 		return true;
 	if (uri.size() > loc.size() &&
-		uri.compare(0, loc.size(), loc) == 0 &&
-		uri[loc.size()] == '/')
+			uri.compare(0, loc.size(), loc) == 0)
 		return true;
 	return false;
 }
 
 void	RequestHandler::resolveLocation(void)
 {
-	if (_serverConfig == nullptr || _serverConfig->location.empty())
-		return;
+	if (_serverConfig == nullptr)
+		throw RequestHandler::BadRequest();
+	_base_path = _serverConfig->root;
+	if(_base_path.empty())
+		_base_path = init_root_path();
+	else
+	{
+		if (_base_path[0] == '.')
+			_base_path = join_paths(init_root_path(), _base_path.substr(1));
+		else
+			_base_path = _serverConfig->root;
+	}
+	if (_serverConfig->location.empty())
+		return ;
 	auto best_match = _serverConfig->location.end();
 	size_t best_len = 0;
 
@@ -89,6 +119,7 @@ void	RequestHandler::resolveLocation(void)
 	for (auto it = _serverConfig->location.begin(); it != _serverConfig->location.end(); ++it)
 	{
 		const std::string& location_path = it->first;
+
 
 		if (!loc_uri_comp(location_path, request_uri))
 			continue;
@@ -116,7 +147,7 @@ void	RequestHandler::methodLocationValidation(void)
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
 		(requestMethods == method_type::DELETE && !_locationConfig->allowMethods.isDelete))
 	{
-		_response.set_default_reponse(404, _locationConfig, _serverConfig);
+		_response.set_default_reponse(405, _locationConfig, _serverConfig);
 		throw RequestHandler::MethodNotAllowed();
 	}
 }
@@ -129,56 +160,33 @@ std::string RequestHandler::pathResolution(void)
     if (_locationConfig != nullptr)
     {
         std::string loc_root = _locationConfig->root;
-        bool is_abs = true;
-        if (loc_root.empty())
-            throw RequestHandler::NotFoundExcept404();
-        if (loc_root[0] == '.')
-        {
-            is_abs = false;
-            loc_root = loc_root.substr(1);
-        }
-        if (!_locationConfig->index.empty()
+		if (loc_root.empty())
+			_base_path = init_root_path();
+		else
+		{
+			if (loc_root[0] == '.')
+				_base_path = join_paths(init_root_path(), loc_root.substr(1));
+			else
+				_base_path = loc_root;
+		}
+        // Only append index if autoindex is OFF
+        if (!_locationConfig->autoIndex && !_locationConfig->index.empty()
             && _request.getRequestUri() == _location_uri)
-        {
-            if (!is_abs)
-                return join_paths(init_root_path(), loc_root, _locationConfig->index);
-            return join_paths(loc_root, _locationConfig->index);
-        }
+            return join_paths(_base_path, _locationConfig->index);
         std::string rest = _request.getRequestUri().substr(_location_uri.length());
 
-        if (!is_abs)
-            return join_paths(init_root_path(), loc_root, rest);
-        return join_paths(loc_root, rest);
+        return join_paths(_base_path, rest);
     }
-    if (_serverConfig->root.empty())
-    {
-        Logger::log<LogLevel::error>("No root configured for server");
-        throw RequestHandler::NotFoundExcept404();
-    }
-    std::string root = _serverConfig->root;
-    bool is_abs = true;
-
-    if (root[0] == '.')
-    {
-        is_abs = false;
-        root = root.substr(1);
-    }
-    if (_request.getRequestUri() == "/" && !_serverConfig->index.empty())
-    {
-        if (!is_abs)
-            return join_paths(init_root_path(), root, _serverConfig->index);
-        return join_paths(root, _serverConfig->index);
-    }
-    if (!is_abs)
-        return join_paths(init_root_path(), root, _request.getRequestUri());
-    return join_paths(root, _request.getRequestUri());
+    // Only append index at root if autoindex is OFF
+    if (_request.getRequestUri() == "/" && !_serverConfig->autoIndex && !_serverConfig->index.empty())
+        return join_paths(_base_path, _serverConfig->index);
+    return join_paths(_base_path, _request.getRequestUri());
 }
 
-void	RequestHandler::filesystemInspection(std::string& abs_path)
+void	RequestHandler::populateRequestMetadata(const std::string &abs_path)
 {
-	struct stat file_stat;
-
 	_inspection_result.abs_path = abs_path;
+	_inspection_result.base_path = _base_path;
 	_inspection_result.request_uri = _request.getRequestUri();
 	_inspection_result.request_query = _request.getRequestQuery();
 	_inspection_result.request_headers = _request.getHeadersMap();
@@ -190,26 +198,21 @@ void	RequestHandler::filesystemInspection(std::string& abs_path)
 
 	if (_serverConfig)
 		_inspection_result.currServer = _serverConfig;
+}
 
-	//No location found
-	if (_locationConfig == nullptr)
-	{
-		_inspection_result.kind = ResourceKind::IS_FILE;
+void	RequestHandler::handleNoLocationConfig(const std::string &abs_path)
+{
+	struct stat file_stat;
 
-		if (access(abs_path.c_str(), R_OK) == 0)
-			_inspection_result.exists = true;
-		else
-			_inspection_result.exists = false;
+	if (!inspectFilesystemStats(abs_path, file_stat))
 		return;
-	}
 
-	if (_locationConfig->ret.has_value())
-	{
-		_inspection_result.has_redirect = true;
-		_inspection_result.redirect_code = _locationConfig->ret->code;
-		_inspection_result.redirect_target = _locationConfig->ret->param;
-	}
+	inspectResourcePermissions(abs_path);
+	classifyAndConfigureResource(abs_path, file_stat);
+}
 
+bool	RequestHandler::inspectFilesystemStats(const std::string &abs_path, struct stat &file_stat)
+{
 	if (stat(abs_path.c_str(), &file_stat) != 0)
 	{
 		Logger::log<LogLevel::trace>("Resource not found: ", abs_path);
@@ -221,50 +224,105 @@ void	RequestHandler::filesystemInspection(std::string& abs_path)
 		_inspection_result.writable = false;
 		_inspection_result.executable = false;
 		_inspection_result.kind = NONE;
-		return;
+		return false;
 	}
-
+	
 	_inspection_result.exists = true;
+	return true;
+}
 
+void	RequestHandler::inspectResourcePermissions(const std::string &abs_path)
+{
 	_inspection_result.readable = (access(abs_path.c_str(), R_OK) == 0);
 	_inspection_result.writable = (access(abs_path.c_str(), W_OK) == 0);
 	_inspection_result.executable = (access(abs_path.c_str(), X_OK) == 0);
+}
 
+void	RequestHandler::classifyAndConfigureResource(const std::string &abs_path, const struct stat &file_stat)
+{
 	if (S_ISDIR(file_stat.st_mode))
 	{
 		_inspection_result.is_directory = true;
 		_inspection_result.is_file = false;
 
-		if (_locationConfig != nullptr && !_locationConfig->uploadStore.empty())
+		std::string uploadStore = getUploadStore(_locationConfig);
+		if (!uploadStore.empty())
 		{
 			_inspection_result.kind = UPLOAD_DIR;
 			_inspection_result.body_required = true;
-			_inspection_result.upload_path = _locationConfig->uploadStore;
+			_inspection_result.upload_path = join_paths(_base_path, uploadStore);
 			_inspection_result.status = (_inspection_result.writable) ? OK : FORBIDDEN;
 		}
 		else
 		{
-			_inspection_result.kind = DIRECTORY;
-			_inspection_result.body_required = false;
-			if (_locationConfig != nullptr && _locationConfig->autoIndex)
+			// Determine if autoindex is enabled (location has higher priority than the server)
+			bool autoIndexEnabled = false;
+			if (_locationConfig != nullptr)
+				autoIndexEnabled = _locationConfig->autoIndex;
+			else if (_serverConfig != nullptr)
+				autoIndexEnabled = _serverConfig->autoIndex;
+			
+			// If autoindex is enabled, show directory listing
+			if (autoIndexEnabled)
+			{
+				_inspection_result.kind = DIRECTORY;
+				_inspection_result.body_required = false;
 				_inspection_result.status = OK;
+			}
 			else
+			{
+				// autoindex off -> try to serve index file instead
+				std::string request_uri = _request.getRequestUri();
+				std::string index_file = (!_locationConfig || _locationConfig->index.empty()) 
+					? (_serverConfig ? _serverConfig->index : "")
+					: _locationConfig->index;
+				
+				if (!index_file.empty() && !request_uri.empty() && request_uri.back() == '/')
+				{
+					std::string index_path = join_paths(abs_path, index_file);
+					struct stat index_stat;
+					if (stat(index_path.c_str(), &index_stat) == 0 && S_ISREG(index_stat.st_mode))
+					{
+						// Index file exists, treat it as a file
+						_inspection_result.abs_path = index_path;
+						_inspection_result.is_file = true;
+						_inspection_result.is_directory = false;
+						_inspection_result.kind = IS_FILE;
+						_inspection_result.body_required = false;
+						_inspection_result.readable = (access(index_path.c_str(), R_OK) == 0);
+						_inspection_result.status = _inspection_result.readable ? OK : FORBIDDEN;
+						return;
+					}
+				}
+				
+				// No index file found, return FORBIDDEN
+				_inspection_result.kind = DIRECTORY;
+				_inspection_result.body_required = false;
 				_inspection_result.status = FORBIDDEN;
+			}
 		}
 	}
 	else if (S_ISREG(file_stat.st_mode))
 	{
 		_inspection_result.is_file = true;
 		_inspection_result.is_directory = false;
-
-
-		if (_locationConfig != nullptr && !_locationConfig->cgiPath.empty() &&
-			is_cgi_script(abs_path))
+		
+		if (is_cgi_script(abs_path))
 		{
-			_inspection_result.kind = CGI;
-			_inspection_result.cgi_path = _locationConfig->cgiPath;
-			_inspection_result.body_required = (_request.getMethod() == method_type::POST);
-			_inspection_result.status = (_inspection_result.readable && _inspection_result.executable) ? OK : FORBIDDEN;
+			std::string cgiExec = getCgiExecutor(_serverConfig, _locationConfig);
+			if (!cgiExec.empty())
+			{
+				_inspection_result.kind = CGI;
+				_inspection_result.cgi_path = join_paths(_base_path, cgiExec);
+				_inspection_result.body_required = (_request.getMethod() == method_type::POST);
+				_inspection_result.status = (_inspection_result.readable && _inspection_result.executable) ? OK : FORBIDDEN;
+			}
+			else
+			{
+				_inspection_result.kind = IS_FILE;
+				_inspection_result.body_required = false;
+				_inspection_result.status = (_inspection_result.readable) ? OK : FORBIDDEN;
+			}
 		}
 		else
 		{
@@ -282,6 +340,58 @@ void	RequestHandler::filesystemInspection(std::string& abs_path)
 		_inspection_result.status = FORBIDDEN;
 		_inspection_result.body_required = false;
 	}
+}
+
+bool	RequestHandler::validatePostRequest(void)
+{
+	if (_request.getMethod() != method_type::POST)
+		return false;
+	std::string uploadStore = getUploadStore(_locationConfig);
+	std::string cgiExec = getCgiExecutor(_serverConfig, _locationConfig);
+	// POST is only allowed if there's an upload directory or CGI
+	if (uploadStore.empty() && cgiExec.empty())
+	{
+		Logger::log<LogLevel::trace>("POST request on location without upload or CGI support");
+		_response.set_default_reponse(405, _locationConfig, _serverConfig);
+		_inspection_result.status = METHOD_NOT_ALLOWED;
+		throw RequestHandler::MethodNotAllowed();
+	}
+	_inspection_result.body_required = true;
+	if (!uploadStore.empty())
+	{
+		_inspection_result.kind = UPLOAD_DIR;
+		_inspection_result.upload_path = join_paths(_base_path, uploadStore);
+		Logger::log<LogLevel::trace>("POST request configured for file upload: ", _location_uri);
+		return true;
+	}
+	else if (!cgiExec.empty())
+		Logger::log<LogLevel::trace>("POST request allowed for CGI processing");
+	return false;
+}
+
+void	RequestHandler::filesystemInspection(std::string& abs_path)
+{
+	struct stat file_stat;
+
+	if (_locationConfig == nullptr)
+	{
+		handleNoLocationConfig(abs_path);
+		return;
+	}
+
+	if (_locationConfig->ret.has_value())
+	{
+		_inspection_result.has_redirect = true;
+		_inspection_result.redirect_code = _locationConfig->ret->code;
+		_inspection_result.redirect_target = _locationConfig->ret->param;
+		return ;
+	}
+
+	if (!inspectFilesystemStats(abs_path, file_stat))
+		return;
+
+	inspectResourcePermissions(abs_path);
+	classifyAndConfigureResource(abs_path, file_stat);
 }
 
 const cfg::wsLocationCtx* RequestHandler::get_location()

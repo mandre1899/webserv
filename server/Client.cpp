@@ -98,6 +98,13 @@ uint32_t Client::sendData(FdContext* fdCon)
 		try {
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _response, _srvCfg);
 			ResourceInspection data = _request_handler->get_result();
+			if (data.kind == ResourceKind::DIRECTORY)
+			{
+				if (data.exists == true)
+					std::cout << "It exist" << std::endl;
+				else
+					std::cout << "It exist" << std::endl;
+			}
 			if (data.has_redirect)
 			{
 				int redir_code = data.redirect_code;
@@ -107,11 +114,11 @@ uint32_t Client::sendData(FdContext* fdCon)
 					_response.set_header("Location", data.redirect_target);
 				}
 				else
-					_response.set_default_reponse(404, _request_handler->get_location(), _request_handler->get_vHost());
+					_response.set_default_reponse(data.redirect_code, _request_handler->get_location(), _request_handler->get_vHost());
 				_response.set_default_headers();
 				_parsingState = state::response_sending;
 			}
-			else if (!data.exists)
+			else if (!data.exists && data.kind != ResourceKind::UPLOAD_DIR)
 			{
 				_response.set_default_reponse(404, _request_handler->get_location(), _request_handler->get_vHost());
 				_parsingState = state::response_sending;
@@ -207,6 +214,12 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 	catch (const HttpParser::RequestUriTooLarge& e)
 	{
 		_response.set_default_reponse(414); // send respone with code 414
+		_parsingState = state::response_sending;
+		return (EPOLLOUT);
+	}
+	catch (const HttpParser::HttpMethodNotSupported &e)
+	{
+		_response.set_default_reponse(501);
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}

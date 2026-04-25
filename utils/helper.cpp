@@ -36,9 +36,8 @@ std::string buildMsg(std::string msg, const filePos& pos)
 	return (msg);
 }
 
-std::string normalizePath(const std::string& path, const filePos& pos)
+static std::string normalizeConfigPath(const std::string& path, const filePos& pos, size_t posToFind)
 {
-	size_t posToFind = 1;
 	std::string ret = path;
 
 	if (ret.find("../", 0) != std::string::npos)
@@ -64,6 +63,19 @@ std::string normalizePath(const std::string& path, const filePos& pos)
 	return (ret);
 }
 
+std::string normalizeConfigRootPath(const std::string& path, const filePos& pos)
+{
+	return (normalizeConfigPath(path, pos, 1));
+}
+
+std::string normalizeConfigSubPath(const std::string& path, const filePos& pos)
+{
+	std::string ret = normalizeConfigPath(path, pos, 0);
+	if (ret.size() > 0 && ret[0] == '/')
+		ret.erase(0, 1);
+	return (ret);
+}
+
 bool is_number(const std::string& s)
 {
 	std::string::const_iterator it = s.begin();
@@ -82,6 +94,8 @@ std::string normalize_part(const std::string& part, bool is_first)
 {
 	if (part.empty())
 		return "";
+	if (is_first && part == "/")
+		return "/";
 	size_t start = 0;
 	size_t end = part.size();
 	if (!is_first)

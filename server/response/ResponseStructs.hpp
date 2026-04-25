@@ -45,6 +45,7 @@ struct ResourceInspection
 
 	const cfg::wsLocationCtx	*currLoc = NULL;
 	const cfg::vHostCfg			*currServer = NULL;
+	std::string					base_path;
 
 	bool			exists = false;
 	bool			is_file;
