@@ -89,7 +89,7 @@ uint32_t Client::recvData(FdContext* fdCon)
 
 uint32_t Client::sendData(FdContext* fdCon)
 {
-	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(CGI_TIMEOUT_TIME);
+	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(BODY_TIMEOUT_TIME);
 	if (fdCon->kind == FdKind::CLIENT_SOCKET)
 	{
 		if (_parsingState == state::response_proccessing)

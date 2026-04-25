@@ -34,7 +34,6 @@ namespace cfg
 		size_t clientHeaderBufferSize;
 		size_t clientHeaderTimeout;
 		size_t clientMaxBodySize;
-		size_t clientBodyTimeout;
 	};
 
 	struct wsShared : public wsHttpCtx

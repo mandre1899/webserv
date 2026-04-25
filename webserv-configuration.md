@@ -170,21 +170,6 @@ client_header_timeout 30s;
 **Context:** http, server
 
 ---
-
-### ⚙️ client_body_timeout  
-Defines a timeout for reading the client request body.  
-
-**Syntax:**
-
-client_body_timeout time;
-
-**Default:**
-
-client_body_timeout 30s;
-
-**Context:** http, server, location
-
----
 ### ⚙️ client_max_body_size  
 Sets the maximum allowed size of the client request body.
 
