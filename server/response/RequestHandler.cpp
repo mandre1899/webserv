@@ -337,7 +337,7 @@ void	RequestHandler::classifyAndConfigureResource(const std::string& abs_path, c
 			if (!cgiExec.empty())
 			{
 				_inspection_result.kind = CGI;
-				_inspection_result.cgi_path = join_paths(_base_path, cgiExec);
+				_inspection_result.cgi_path = cgiExec;
 				_inspection_result.body_required = (_request.getMethod() == method_type::POST);
 				_inspection_result.status = (_inspection_result.readable && _inspection_result.executable) ? OK : FORBIDDEN;
 			}
