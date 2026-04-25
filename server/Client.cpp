@@ -99,13 +99,6 @@ uint32_t Client::sendData(FdContext* fdCon)
 			_response.set_http_version(_parsedHttp.getHttpVersion());
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _response, _srvCfg);
 			ResourceInspection data = _request_handler->get_result();
-			if (data.kind == ResourceKind::DIRECTORY)
-			{
-				if (data.exists == true)
-					std::cout << "It exist" << std::endl;
-				else
-					std::cout << "It exist" << std::endl;
-			}
 			if (data.has_redirect)
 			{
 				int redir_code = data.redirect_code;

@@ -50,6 +50,7 @@ const status_map	HttpResponse::_status_code_map =
 
 std::ostream& operator<<(std::ostream& os, HttpResponse& obj)
 {
+	os << "Version: " << obj.get_version() << std::endl;
 	os << "Status code: " << obj.get_status() << '\n';
 
 	os << "Headers:\n";
@@ -65,7 +66,7 @@ std::ostream& operator<<(std::ostream& os, HttpResponse& obj)
 	return os;
 }
 
-HttpResponse::HttpResponse(void) : _status_code(-1)
+HttpResponse::HttpResponse(void) : _status_code(-1), _http_version("HTTP/1.0")
 {
 }
 
@@ -97,6 +98,7 @@ void	HttpResponse::set_default_reponse(int status_code)
 	std::string status_text = "Unknown Error";
 
 	_status_code = status_code;
+	set_content_type("text/html");
 	status_map::const_iterator it = _status_code_map.find(status_code);
 	if (it != _status_code_map.end())
 		status_text = it->second;
@@ -130,7 +132,7 @@ void	HttpResponse::set_default_reponse(int status_code)
 
 }
 
-void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx* location, const cfg::vHostCfg *server, const std::string &base_path)
+void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx* location, const cfg::vHostCfg* server, const std::string& base_path)
 {
 	if (location)
 	{
@@ -140,6 +142,7 @@ void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx
 			std::string error_page_path = join_paths(base_path, it_err_page->second);
 			if (access(error_page_path.c_str(), R_OK) == 0)
 			{
+				set_content_type(smart_filetype_detection(error_page_path));
 				set_status(status_code);
 				read_file_to_body(error_page_path);
 				set_default_headers();
@@ -155,6 +158,7 @@ void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx
 			std::string error_page_path = join_paths(base_path, it_err_page->second);
 			if (access(error_page_path.c_str(), R_OK) == 0)
 			{
+				set_content_type(smart_filetype_detection(error_page_path));
 				set_status(status_code);
 				read_file_to_body(error_page_path);
 				set_default_headers();
@@ -168,7 +172,7 @@ void	HttpResponse::set_default_reponse(int status_code, const cfg::wsLocationCtx
 const std::string	HttpResponse::get_response_str(void) const
 {
 	std::ostringstream	tmp;
-	
+
 	std::string status_text = "Unknown Error";
 
 	status_map::const_iterator it = _status_code_map.find(_status_code);
@@ -258,6 +262,11 @@ void	HttpResponse::set_content_type(std::string type)
 int	HttpResponse::get_status(void) const
 {
 	return (_status_code);
+}
+
+std::string	HttpResponse::get_version(void) const
+{
+	return _http_version;
 }
 
 header_map	HttpResponse::get_headers(void) const
