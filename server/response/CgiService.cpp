@@ -68,14 +68,14 @@ static std::vector<std::string> build_cgi_env(ResourceInspection& data)
 	return env_storage;
 }
 
-CgiService::CgiService(ResourceInspection& data, int epfd, int socket_fd)
+CgiService::CgiService(ResourceInspection& data, int epfd, int socket_fd, size_t client_max_body)
 	: _data(data), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
 	_socket_fd(socket_fd)
 {
 	(void)_socket_fd; // todo:  '_socket_fd' is not used
 	if (data.body_expected)
 	{
-		_postContentLength = std::stoi(data.request_headers.at("content-length"));
+		_postContentLength = std::stoul(data.request_headers.at("content-length"));
 		_postWriteTrack = 0;
 	}
 	else
@@ -83,6 +83,8 @@ CgiService::CgiService(ResourceInspection& data, int epfd, int socket_fd)
 		_postContentLength = -1;
 		_postWriteTrack = -1;
 	}
+	if (client_max_body < _postContentLength)
+		throw CgiService::ExceedesClientMaxBody();
 }
 
 CgiService::~CgiService()
@@ -194,12 +196,18 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 	ssize_t written_bytes = write(_pipe_write, body_data.data(), body_data.size());
 	_postWriteTrack += written_bytes;
 	body_data.erase(0, written_bytes);
+	if (_postContentLength < _postWriteTrack)
+	{
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
+		_writeIsDel = true;
+		close(_pipe_write);
+		_pipe_write = -1;
+		throw ExceedesClientMaxBody();
+	}
 	if (written_bytes < 0)
 	{
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL); // todo: ad
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
 		_writeIsDel = true;
-		if (errno == EINTR)
-			return std::make_pair(cgi_state::RUNNING, 200);
 		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
 		close(_pipe_write);
 		_pipe_write = -1;
@@ -340,3 +348,8 @@ header_map	CgiService::get_header_map(void)
 	return _cgi_headers;
 }
 
+//Exceptions
+const char* CgiService::ExceedesClientMaxBody::what() const noexcept
+{
+	return ("exceedes client_max_body\n");
+}

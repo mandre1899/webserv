@@ -39,8 +39,8 @@ class CgiService
 	std::vector<char*>			_cgi_envs; // They get created at initialisation
 	header_map					_cgi_headers;
 	std::vector<FdContext*>		_ctxTrack;
-	unsigned int				_postWriteTrack; //tracks the bytest already written to the pipe stdin
-	unsigned int				_postContentLength;
+	size_t						_postWriteTrack; //tracks the bytest already written to the pipe stdin
+	size_t						_postContentLength;
 
 	//Test
 	bool		_writeIsDel;
@@ -49,7 +49,7 @@ class CgiService
 	void		set_epoll_event(uint32_t events, int fd, FdKind kind, Client *currClient);
 
 public:
-	CgiService(ResourceInspection& data, int epfd, int socket_fd);
+	CgiService(ResourceInspection& data, int epfd, int socket_fd, size_t client_max_body);
 	~CgiService(void);
 	CgiService(CgiService& obj) = delete;
 	CgiService	operator=(CgiService& obj) = delete;
@@ -61,6 +61,12 @@ public:
 	//GETTERS
 	std::string										get_body(void);
 	std::unordered_map<std::string, std::string>	get_header_map(void);
+
+	//Exceptions
+	class ExceedesClientMaxBody : public std::exception {
+	public:
+		const char* what() const noexcept override;
+	};
 };
 
 #endif // !CGI_H
