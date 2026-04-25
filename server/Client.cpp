@@ -115,13 +115,13 @@ uint32_t Client::sendData(FdContext* fdCon)
 					_response.set_header("Location", data.redirect_target);
 				}
 				else
-					_response.set_default_reponse(data.redirect_code, _request_handler->get_location(), _request_handler->get_vHost());
+					_response.set_default_reponse(data.redirect_code, _request_handler->get_location(), _request_handler->get_vHost(), data.base_path);
 				_response.set_default_headers();
 				_parsingState = state::response_sending;
 			}
 			else if (!data.exists && data.kind != ResourceKind::UPLOAD_DIR)
 			{
-				_response.set_default_reponse(404, _request_handler->get_location(), _request_handler->get_vHost());
+				_response.set_default_reponse(404, _request_handler->get_location(), _request_handler->get_vHost(), data.base_path);
 				_parsingState = state::response_sending;
 			}
 			else

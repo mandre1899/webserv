@@ -159,7 +159,7 @@ void	RequestHandler::methodLocationValidation(void)
 		(requestMethods == method_type::POST && !_locationConfig->allowMethods.isPost) ||
 		(requestMethods == method_type::DELETE && !_locationConfig->allowMethods.isDelete))
 	{
-		_response.set_default_reponse(405, _locationConfig, _serverConfig);
+		_response.set_default_reponse(405, _locationConfig, _serverConfig, _base_path);
 		throw RequestHandler::MethodNotAllowed();
 	}
 }
@@ -376,7 +376,7 @@ bool	RequestHandler::validatePostRequest(void)
 	if (uploadStore.empty() && cgiExec.empty())
 	{
 		Logger::log<LogLevel::trace>("POST request on location without upload or CGI support");
-		_response.set_default_reponse(405, _locationConfig, _serverConfig);
+		_response.set_default_reponse(405, _locationConfig, _serverConfig, _base_path);
 		_inspection_result.status = METHOD_NOT_ALLOWED;
 		throw RequestHandler::MethodNotAllowed();
 	}
