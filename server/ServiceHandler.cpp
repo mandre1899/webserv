@@ -21,12 +21,12 @@ state	ServiceHandler::select_service()
 			return state::response_sending;
 		}
 		else
-			_response.set_default_reponse(403, _data.currLoc, _data.currServer);
+			_response.set_default_reponse(403, _data.currLoc, _data.currServer, _data.base_path);
 	}
 	else if (_data.kind == ResourceKind::CGI)
 	{
 		_service_state = ServiceState::PROCESSING_CGI;
-		_cgiService = std::make_unique<CgiService>(_data, _epfd, _socket_fd);
+		_cgiService = std::make_unique<CgiService>(_data, _epfd, _socket_fd, _clientMaxBodySize);
 		_cgiService->execute_cgi_proc(_currClient);
 		return state::response_proccessing;
 	}
@@ -104,16 +104,25 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 		}
 		else if (ctx->kind == FdKind::CGI_STDIN_WRITE)
 		{
-			auto res = _cgiService->handle_cgi_write(msg);
-			if (res.first == cgi_state::FINISHED_KO)
+			try
 			{
-				_response.set_default_reponse(500);
-				Logger::log<LogLevel::error>("Failed to write CGI body");
+				auto res = _cgiService->handle_cgi_write(msg);
+				if (res.first == cgi_state::FINISHED_KO)
+				{
+					_response.set_default_reponse(500);
+					Logger::log<LogLevel::error>("Failed to write CGI body");
+					return state::error;
+				}
+				else if (res.first == cgi_state::FINISHED_OK)
+					return state::response_proccessing;
+				return state::response_body;
+			}
+			catch (CgiService::ExceedesClientMaxBody &e)
+			{
+				_response.set_default_reponse(413, _data.currLoc, _data.currServer, _data.base_path);
+				Logger::log<LogLevel::error>("CgiService: ", e.what());
 				return state::error;
 			}
-			else if (res.first == cgi_state::FINISHED_OK)
-				return state::response_proccessing;
-			return state::response_body;
 		}
 	}
 	else if (_service_state == ServiceState::PROCESSING_POST)
@@ -123,7 +132,7 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 			if (_uploadService->uploadBody(msg))
 			{
 				Logger::log<LogLevel::info>("Upload completed successfully");
-				_response.set_default_reponse(201, _data.currLoc, _data.currServer);
+				_response.set_default_reponse(201, _data.currLoc, _data.currServer, _data.base_path);
 				_response.set_default_headers();
 				return state::response_sending;
 			}

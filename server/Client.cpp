@@ -53,6 +53,8 @@ uint32_t Client::recvData(FdContext* fdCon)
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
+		if (_msg.length() > REQUESTLINE_MAX_SIZE)
+			throw HttpParser::RequestUriTooLarge();
 		if (pos == std::string::npos)
 			break;
 		std::string line = _msg.substr(0, pos);
@@ -96,15 +98,9 @@ uint32_t Client::sendData(FdContext* fdCon)
 	if (_parsingState == state::parsing_done)
 	{
 		try {
+			_response.set_http_version(_parsedHttp.getHttpVersion());
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _response, _srvCfg);
 			ResourceInspection data = _request_handler->get_result();
-			if (data.kind == ResourceKind::DIRECTORY)
-			{
-				if (data.exists == true)
-					std::cout << "It exist" << std::endl;
-				else
-					std::cout << "It exist" << std::endl;
-			}
 			if (data.has_redirect)
 			{
 				int redir_code = data.redirect_code;
@@ -114,13 +110,13 @@ uint32_t Client::sendData(FdContext* fdCon)
 					_response.set_header("Location", data.redirect_target);
 				}
 				else
-					_response.set_default_reponse(data.redirect_code, _request_handler->get_location(), _request_handler->get_vHost());
+					_response.set_default_reponse(data.redirect_code, _request_handler->get_location(), _request_handler->get_vHost(), data.base_path);
 				_response.set_default_headers();
 				_parsingState = state::response_sending;
 			}
 			else if (!data.exists && data.kind != ResourceKind::UPLOAD_DIR)
 			{
-				_response.set_default_reponse(404, _request_handler->get_location(), _request_handler->get_vHost());
+				_response.set_default_reponse(404, _request_handler->get_location(), _request_handler->get_vHost(), data.base_path);
 				_parsingState = state::response_sending;
 			}
 			else
