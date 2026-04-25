@@ -73,16 +73,11 @@ CgiService::CgiService(ResourceInspection& data, int epfd, int socket_fd, size_t
 	_socket_fd(socket_fd)
 {
 	(void)_socket_fd; // todo:  '_socket_fd' is not used
-	if (data.body_expected)
-	{
+	if (_data.body_expected)
 		_postContentLength = std::stoul(data.request_headers.at("content-length"));
-		_postWriteTrack = 0;
-	}
 	else
-	{
-		_postContentLength = -1;
-		_postWriteTrack = -1;
-	}
+		_postContentLength = 0;
+	_postWriteTrack = 0;
 	if (client_max_body < _postContentLength)
 		throw CgiService::ExceedesClientMaxBody();
 }

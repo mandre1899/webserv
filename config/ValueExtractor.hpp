@@ -346,9 +346,6 @@ public:
 		_dispatch["client_max_body_size"] = [this](T& confStruct, TokenStream& ts) {
 			_clientMaxBodySize(confStruct, ts);
 			};
-		_dispatch["client_body_timeout"] = [this](T& confStruct, TokenStream& ts) {
-			_clientBodyTimeout(confStruct, ts);
-			};
 		if constexpr (std::is_same_v<cfg::vHostCfg, T> || std::is_same_v<cfg::wsLocationCtx, T>)
 		{
 			_dispatch["return"] = [this](T& confStruct, TokenStream& ts) {

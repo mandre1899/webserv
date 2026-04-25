@@ -3,7 +3,7 @@
 
 #include <variant>
 
-#define CGI_TIMEOUT_TIME 30
+#define BODY_TIMEOUT_TIME 30
 
 #ifndef STATEMACHINES_CLASSDEFINE
 #define STATEMACHINES_CLASSDEFINE

@@ -20,7 +20,7 @@ Execute the binary from the root of this repository:
 $ ./webserv <config>
 ```
 ### Connect 
-You can now access the webserver with your browser at < address > < port > as specified in the config file.
+You can now access the webserver with your browser at address:port as specified in the config file.
 Alternatively you can send requests with telnet using correct HTTP syntax with the methods GET, POST, DELETE and versions HTTP/1.0 or HTTP/1.1, where HTTP/1.1 requires a host header field. Example:
 ```
 GET / HTTP/1.0
