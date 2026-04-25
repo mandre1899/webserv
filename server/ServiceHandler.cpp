@@ -12,7 +12,7 @@ ServiceHandler::~ServiceHandler(void)
 state	ServiceHandler::select_service()
 {
 	if (_data.kind == ResourceKind::DIRECTORY ||
-			_data.kind == ResourceKind::IS_FILE)
+		_data.kind == ResourceKind::IS_FILE)
 	{
 		if (_data.status == InspectStatus::OK)
 		{
@@ -124,7 +124,6 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 			{
 				Logger::log<LogLevel::info>("Upload completed successfully");
 				_response.set_default_reponse(201, _data.currLoc, _data.currServer);
-				_response.set_content_type("text/plain");
 				_response.set_default_headers();
 				return state::response_sending;
 			}

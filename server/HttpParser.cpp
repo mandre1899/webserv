@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   HttpParser.cpp                                     :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: mausperg <mausperg@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/02/23 13:48:32 by tschulle          #+#    #+#             */
-/*   Updated: 2026/04/25 10:18:27 by mausperg         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #include "HttpParser.hpp"
 
 /* Constructors & Destructors */
@@ -119,9 +107,6 @@ void HttpParser::checkHeader()
 		throw (HttpParser::HttpParsingError());
 }
 
-
-// curl -X POST http://localhost:8085/upload 
-//   -F "myfile=@./test.txt"
 const char* HttpParser::HttpParsingError::what() const noexcept
 {
 	return ("Http parsing error\n");
