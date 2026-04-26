@@ -12,9 +12,9 @@
 #define MEGA 1000000
 #define GIGA 1000000000
 
-// http:     root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, | client_header_timeout, client_header_buffer_size  |
-// server:   root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, | client_header_timeout, client_header_buffer_size, | return, | listen, server_name
-// location: root, index, autoindex, error_page, client_body_timeout, client_max_body_size, fastcgi_path, |                                                   | return, | allow_methods, upload_store
+// http:     root, index, autoindex, error_page, client_max_body_size, fastcgi_path, | client_timeout, client_header_buffer_size  |
+// server:   root, index, autoindex, error_page, client_max_body_size, fastcgi_path, | client_timeout, client_header_buffer_size, | return, | listen, server_name
+// location: root, index, autoindex, error_page, client_max_body_size, fastcgi_path, |                                                   | return, | allow_methods, upload_store
 
 template<typename T>
 class ValueExtractor {
@@ -93,18 +93,18 @@ private:
 		}
 		switch (unit)
 		{
-			case 'k':
-				value *= KILO;
-				break;
-			case 'M':
-				value *= MEGA;
-				break;
-			case 'G':
-				value *= GIGA;
-				break;
-			default:
-				throw std::runtime_error(buildMsg("This is not a valid prefix", token.pos));
-				break;
+		case 'k':
+			value *= KILO;
+			break;
+		case 'M':
+			value *= MEGA;
+			break;
+		case 'G':
+			value *= GIGA;
+			break;
+		default:
+			throw std::runtime_error(buildMsg("This is not a valid prefix", token.pos));
+			break;
 		}
 		return value;
 	}
@@ -171,21 +171,15 @@ private:
 		ts.expectToken(tType::semi);
 	}
 
-	void _clientHeaderTimeout(T& confStruct, TokenStream& ts)
+	void _clientTimeout(T& confStruct, TokenStream& ts)
 	{
-		confStruct.clientHeaderTimeout = _siUnitToValue(ts.getNextToken(), true);
+		confStruct.clientTimeout = _siUnitToValue(ts.getNextToken(), true);
 		ts.expectToken(tType::semi);
 	}
 
 	void _clientMaxBodySize(T& confStruct, TokenStream& ts)
 	{
 		confStruct.clientMaxBodySize = _siUnitToValue(ts.getNextToken(), false);
-		ts.expectToken(tType::semi);
-	}
-
-	void _clientBodyTimeout(T& confStruct, TokenStream& ts)
-	{
-		confStruct.clientBodyTimeout = _siUnitToValue(ts.getNextToken(), true);
 		ts.expectToken(tType::semi);
 	}
 
@@ -339,8 +333,8 @@ public:
 			_dispatch["client_header_buffer_size"] = [this](T& confStruct, TokenStream& ts) {
 				_clientHeaderBufferSize(confStruct, ts);
 				};
-			_dispatch["client_header_timeout"] = [this](T& confStruct, TokenStream& ts) {
-				_clientHeaderTimeout(confStruct, ts);
+			_dispatch["client_timeout"] = [this](T& confStruct, TokenStream& ts) {
+				_clientTimeout(confStruct, ts);
 				};
 		}
 		_dispatch["client_max_body_size"] = [this](T& confStruct, TokenStream& ts) {
