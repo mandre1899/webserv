@@ -1,7 +1,7 @@
 #include "ServiceHandler.hpp"
 
-ServiceHandler::ServiceHandler(ResourceInspection data, HttpResponse& response, int epfd, int socket_fd, Client* currClient, size_t clientMaxBodySize)
-	: _data(data), _response(response), _epfd(epfd), _socket_fd(socket_fd), _currClient(currClient), _clientMaxBodySize(clientMaxBodySize)
+ServiceHandler::ServiceHandler(ResourceInspection data, HttpResponse& response, int epfd, int socket_fd, Client* currClient, size_t clientMaxBodySize, struct FdContext *ctx)
+	: _data(data), _response(response), _epfd(epfd), _socket_fd(socket_fd), _currClient(currClient), _clientMaxBodySize(clientMaxBodySize), _clientCtx(ctx)
 {
 }
 
@@ -106,7 +106,7 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 		{
 			try
 			{
-				auto res = _cgiService->handle_cgi_write(msg);
+				auto res = _cgiService->handle_cgi_write(msg, _clientCtx);
 				if (res.first == cgi_state::FINISHED_KO)
 				{
 					_response.set_default_reponse(500);

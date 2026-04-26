@@ -198,40 +198,55 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 	return std::make_pair(cgi_state::RUNNING, 200);
 }
 
-std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
+void CgiService::reactivate_client(FdContext *clientCtx)
+{
+	if (_pipe_write != -1)
+	{
+		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
+		_writeIsDel = true;
+		close(_pipe_write);
+		_pipe_write = -1;
+	}
+
+	if (clientCtx && clientCtx->fd >= 0)
+	{
+		struct epoll_event ev;
+
+		ev.events = EPOLLOUT | EPOLLHUP;
+		ev.data.ptr = clientCtx;
+
+		if (epoll_ctl(_epfd, EPOLL_CTL_MOD, clientCtx->fd, &ev) == -1)
+		{
+			Logger::log<LogLevel::error>(
+				"Failed to rearm client socket for EPOLLOUT: ", errno
+			);
+		}
+	}
+}
+
+std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data, struct FdContext *clientCtx)
 {
 	ssize_t written_bytes = write(_pipe_write, body_data.data(), body_data.size());
 	if (written_bytes < 0)
 	{
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
-		_writeIsDel = true;
+		reactivate_client(clientCtx);
 		Logger::log<LogLevel::error>("Write to CGI pipe failed: ", errno);
-		close(_pipe_write);
-		_pipe_write = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}
 	Logger::log<LogLevel::info>("Written ", written_bytes, " to CGI stdin pipe");
 	_postWriteTrack += written_bytes;
-	if (written_bytes != 0)
+	if (written_bytes > 0)
 		body_data.erase(0, written_bytes);
-
 	if (_postContentLength < _postWriteTrack)
 	{
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
-		_writeIsDel = true;
-		close(_pipe_write);
-		_pipe_write = -1;
+		reactivate_client(clientCtx);
 		throw ExceedesClientMaxBody();
 	}
 	if (_postContentLength <= _postWriteTrack)
 	{
-		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL); // todo: ad
-		_writeIsDel = true;
-		close(_pipe_write);
-		_pipe_write = -1;
+		reactivate_client(clientCtx);
 		return std::make_pair(cgi_state::FINISHED_OK, 200);
 	}
-
 	return std::make_pair(cgi_state::RUNNING, 200);
 }
 

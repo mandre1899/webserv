@@ -30,9 +30,10 @@ class ServiceHandler
 	std::unique_ptr<CgiService>		_cgiService;
 	std::unique_ptr<HttpUploadService>		_uploadService;
 	size_t							_clientMaxBodySize;
+	struct FdContext						*_clientCtx;
 public:
 	ServiceHandler(void) = delete;
-	ServiceHandler(ResourceInspection data, HttpResponse& response, int epfd, int socket_fd, Client* currClient, size_t clientMaxBodySize);
+	ServiceHandler(ResourceInspection data, HttpResponse& response, int epfd, int socket_fd, Client* currClient, size_t clientMaxBodySize, FdContext *ctx);
 	ServiceHandler	operator=(const ServiceHandler& obj) = delete;
 	~ServiceHandler(void);
 

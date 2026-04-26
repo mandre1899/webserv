@@ -47,7 +47,7 @@ class CgiService
 	bool		_readIsDel;
 
 	void		set_epoll_event(uint32_t events, int fd, FdKind kind, Client* currClient);
-
+	void		reactivate_client(struct FdContext *clientCtx);
 public:
 	CgiService(ResourceInspection& data, int epfd, int socket_fd, size_t client_max_body);
 	~CgiService(void);
@@ -56,7 +56,7 @@ public:
 	bool						parse_cgi_headers(void);
 	cgi_state   				execute_cgi_proc(Client* currClient);
 	std::pair<cgi_state, int>	handle_cgi_read();
-	std::pair<cgi_state, int>	handle_cgi_write(std::string& body_data);
+	std::pair<cgi_state, int>	handle_cgi_write(std::string& body_data, struct FdContext *clientCtx);
 
 	//GETTERS
 	std::string										get_body(void);
