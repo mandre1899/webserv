@@ -210,8 +210,11 @@ std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data)
 		_pipe_write = -1;
 		return std::make_pair(cgi_state::FINISHED_KO, 500);
 	}
+	Logger::log<LogLevel::info>("Written ", written_bytes, " to CGI stdin pipe");
 	_postWriteTrack += written_bytes;
-	body_data.erase(0, written_bytes);
+	if (written_bytes != 0)
+		body_data.erase(0, written_bytes);
+
 	if (_postContentLength < _postWriteTrack)
 	{
 		epoll_ctl(_epfd, EPOLL_CTL_DEL, _pipe_write, NULL);
