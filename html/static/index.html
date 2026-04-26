@@ -13,22 +13,36 @@
 		<div class="container">
 			<h1>Webserv Test Page</h1>
 			<p>
-				Some Tests for common webserver behavior.
+				Tests provided pv us to show that the webserv behaves as it should.
 			</p>
 		</div>
 	</header>
 
 	<main class="container layout">
 		<section class="card">
-			<h2>POST Request Test</h2>
+			<h2>POST Request to CGI</h2>
 			<p>Sends form data using POST.</p>
-			<form action="/submit" method="POST" class="form-grid">
-				<label for="username">Username</label>
-				<input type="text" id="username" name="username" placeholder="mateo" required />
-
-				<label for="message">Message</label>
-				<textarea id="message" name="message" rows="4" placeholder="Testing POST body..." required></textarea>
-
+		
+			<form id="postForm" method="POST" class="form-grid" enctype="multipart/form-data">
+				<label for="target">Select script</label>
+				<select id="target" name="target">
+					<option value="/python/">Python capitalize</option>
+					<option value="/python/upload.py">Python upload</option>
+				</select>
+		
+				<!-- Text input -->
+				<div id="textField">
+					<label for="message">Body</label>
+					<textarea id="message" name="message" rows="4"
+						placeholder="Testing POST body..." required></textarea>
+				</div>
+		
+				<!-- File upload -->
+				<div id="fileField" style="display:none;">
+					<label for="file">Upload file</label>
+					<input type="file" id="file" name="file">
+				</div>
+		
 				<button type="submit">Send POST Request</button>
 			</form>
 		</section>
@@ -123,6 +137,7 @@
 			<p>Basic manual test interface for your webserver</p>
 		</div>
 	</footer>
+	<script src="script.js"></script>
 </body>
 
 </html>
