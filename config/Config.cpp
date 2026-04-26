@@ -23,7 +23,7 @@ void Config::setHttpConfDefaults()
 	_httpConf.index = "";
 	_httpConf.autoIndex = false;
 	_httpConf.clientHeaderBufferSize = 1000; // 1k
-	_httpConf.clientHeaderTimeout = 30;		 // 30s
+	_httpConf.clientTimeout = 30;		 // 30s
 	_httpConf.clientMaxBodySize = 2000000;	 // 2M
 }
 
@@ -33,7 +33,7 @@ void Config::setServerConfDefaults(cfg::vHostCfg& servConf)
 	servConf.index = _httpConf.index;
 	servConf.autoIndex = _httpConf.autoIndex;
 	servConf.clientHeaderBufferSize = _httpConf.clientHeaderBufferSize;
-	servConf.clientHeaderTimeout = _httpConf.clientHeaderTimeout;
+	servConf.clientTimeout = _httpConf.clientTimeout;
 	servConf.clientMaxBodySize = _httpConf.clientMaxBodySize;
 }
 
@@ -43,7 +43,7 @@ void Config::setLocationConfDefaults(cfg::wsLocationCtx& locConf, cfg::vHostCfg&
 	locConf.index = servConf.index;
 	locConf.autoIndex = servConf.autoIndex;
 	locConf.clientHeaderBufferSize = servConf.clientHeaderBufferSize;
-	locConf.clientHeaderTimeout = servConf.clientHeaderTimeout;
+	locConf.clientTimeout = servConf.clientTimeout;
 	locConf.clientMaxBodySize = servConf.clientMaxBodySize;
 }
 
@@ -233,7 +233,7 @@ std::ostream& operator<<(std::ostream& os, const Config& src)
 			}
 		}
 		os << "clientHeaderBufferSize: " << ctx.clientHeaderBufferSize << std::endl;
-		os << "clientHeaderTimeout: " << ctx.clientHeaderTimeout << std::endl;
+		os << "clientTimeout: " << ctx.clientTimeout << std::endl;
 		os << "clientMaxBodySize: " << ctx.clientMaxBodySize << std::endl;
 		if (ctx.ret.has_value())
 		{

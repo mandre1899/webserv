@@ -156,16 +156,17 @@ client_header_buffer_size 1k;
 **Context:** http, server
 
 ---
-### ⚙️ client_header_timeout  
-Defines a timeout for reading the client request header.
+### ⚙️ client_timeout  
+Defines the maximum duration of a client session, from request to response.
+If multiple servers are configured with the same <ipaddress>:<port> configuration, the timeout of the default server is always used.
 
 **Syntax:**
 
-client_header_timeout time;
+client_timeout time;
 
 **Default:**
 
-client_header_timeout 30s;
+client_timeout 30s;
 
 **Context:** http, server
 

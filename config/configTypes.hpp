@@ -32,7 +32,7 @@ namespace cfg
 		bool autoIndex;
 		std::unordered_map<http_code, std::string>  errorPage; // key: http code, path
 		size_t clientHeaderBufferSize;
-		size_t clientHeaderTimeout;
+		size_t clientTimeout;
 		size_t clientMaxBodySize;
 	};
 

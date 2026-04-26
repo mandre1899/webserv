@@ -73,6 +73,8 @@ CgiService::CgiService(ResourceInspection& data, int epfd, int socket_fd, size_t
 	_socket_fd(socket_fd)
 {
 	(void)_socket_fd; // todo:  '_socket_fd' is not used
+	_writeIsDel = true;
+	_readIsDel = true;
 	if (_data.body_expected)
 		_postContentLength = std::stoul(data.request_headers.at("content-length"));
 	else

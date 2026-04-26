@@ -6,7 +6,7 @@ Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCf
 	_msg = "";
 	_parsingState = state::parsing_request_line;
 	_version = std::chrono::system_clock::now();
-	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
+	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientTimeout);
 	_response.set_status(404); //todo: ma: fix READ memory access
 }
 
@@ -49,7 +49,6 @@ void Client::recvMsg()
 /* Member Functions */
 uint32_t Client::recvData(FdContext* fdCon)
 {
-	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientHeaderTimeout);
 	while (_parsingState == state::parsing_request_line || _parsingState == state::parsing_headers)
 	{
 		auto pos = _msg.find("\r\n");
@@ -89,12 +88,8 @@ uint32_t Client::recvData(FdContext* fdCon)
 
 uint32_t Client::sendData(FdContext* fdCon)
 {
-	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(BODY_TIMEOUT_TIME);
-	if (fdCon->kind == FdKind::CLIENT_SOCKET)
-	{
-		if (_parsingState == state::response_proccessing)
-			return (EPOLLOUT);
-	}
+	if (fdCon->kind == FdKind::CLIENT_SOCKET && _parsingState == state::response_proccessing)
+		return (EPOLLOUT);
 	if (_parsingState == state::parsing_done)
 	{
 		try {

@@ -3,8 +3,6 @@
 
 #include <variant>
 
-#define BODY_TIMEOUT_TIME 30
-
 #ifndef STATEMACHINES_CLASSDEFINE
 #define STATEMACHINES_CLASSDEFINE
 

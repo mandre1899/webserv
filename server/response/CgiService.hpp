@@ -42,7 +42,6 @@ class CgiService
 	size_t						_postWriteTrack; //tracks the bytest already written to the pipe stdin
 	size_t						_postContentLength;
 
-	//Test
 	bool		_writeIsDel;
 	bool		_readIsDel;
 
