@@ -76,7 +76,6 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 			if (res.first == cgi_state::FINISHED_OK)
 			{
 				_response.set_body(_cgiService->get_body());
-				_cgiService->parse_cgi_headers();
 				header_map headers = _cgiService->get_header_map();
 				int status_code = 200;
 				if (headers.find("Status") != headers.end()) {
