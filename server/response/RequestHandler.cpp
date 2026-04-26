@@ -63,22 +63,12 @@ void	RequestHandler::resolveVHost(void)
 		Logger::log<LogLevel::warn>("Request headers or virtual hosts empty");
 		throw RequestHandler::BadRequest();
 	}
-	else
-	{
-		_serverConfig = &_config.vHost[0];
-		return;
-	}
 	header_map::const_iterator matchPair;
 	if ((matchPair = headers.find("host")) == headers.end() &&
 		_request.getHttpVersion() == "HTTP/1.0")
 	{
 		_serverConfig = &_config.vHost[0];
 		return;
-	}
-	else
-	{
-		Logger::log<LogLevel::warn>("Http version 1.1 needs a request header");
-		throw RequestHandler::BadRequest();
 	}
 	std::string hostValue = matchPair->second;
 	if (hostValue.empty())
