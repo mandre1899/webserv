@@ -3,30 +3,49 @@ const target = document.getElementById("target");
 
 const textField = document.getElementById("textField");
 const fileField = document.getElementById("fileField");
+const nameField = document.getElementById("nameField");
 
-const textarea = document.getElementById("message");
-const fileInput = document.getElementById("file");
+const message = document.getElementById("message");
+const file = document.getElementById("file");
+const username = document.getElementById("username");
+
+function enable(el, state) {
+	el.disabled = !state;
+	if (!state) el.value = "";
+}
 
 function updateForm() {
-	if (target.value === "/python/upload.py") {
-		form.action = "/python/upload.py";
+	const value = target.value;
+	form.action = value;
 
+	if (value.includes("upload")) {
 		textField.style.display = "none";
 		fileField.style.display = "block";
+		nameField.style.display = "block";
 
-		textarea.required = false;
-		fileInput.required = true;
-	} else {
-		form.action = "/python/";
-
+		enable(message, false);
+		enable(file, true);
+		enable(username, true);
+	} else if (value.includes("capitalize")) {
 		textField.style.display = "block";
 		fileField.style.display = "none";
+		nameField.style.display = "none";
 
-		textarea.required = true;
-		fileInput.required = false;
+		enable(message, true);
+		enable(file, false);
+		enable(username, false);
 	}
+	else {
+		textField.style.display = "none";
+		fileField.style.display = "none";
+		nameField.style.display = "none";
+
+		enable(message, false);
+		enable(file, false);
+		enable(username, false);
+	}
+
 }
 
 target.addEventListener("change", updateForm);
 updateForm();
-

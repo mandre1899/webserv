@@ -21,32 +21,40 @@
 	<main class="container layout">
 		<section class="card">
 			<h2>POST Request to CGI</h2>
-			<p>Sends form data using POST.</p>
-		
-			<form id="postForm" method="POST" class="form-grid" enctype="multipart/form-data">
+			<p>Select a script and send text or upload a file.</p>
+
+			<form id="postForm" action="/python/" method="POST" class="form-grid" enctype="multipart/form-data">
+			
 				<label for="target">Select script</label>
 				<select id="target" name="target">
-					<option value="/python/">Python capitalize</option>
-					<option value="/python/upload.py">Python upload</option>
+					<option value="/python/capitalize.py">Python Capitalize</option>
+					<option value="/python/upload.py">Python Upload</option>
+					<option value="/php/upload.php">PHP Upload</option>
+					<option value="/php/test.php">PHP Test</option>
 				</select>
 		
-				<!-- Text input -->
 				<div id="textField">
 					<label for="message">Body</label>
-					<textarea id="message" name="message" rows="4"
-						placeholder="Testing POST body..." required></textarea>
+					<textarea
+						id="message"
+						name="message"
+						rows="4"
+						placeholder="Testing POST body..."></textarea>
 				</div>
 		
-				<!-- File upload -->
 				<div id="fileField" style="display:none;">
 					<label for="file">Upload file</label>
 					<input type="file" id="file" name="file">
 				</div>
 		
+				<div id="nameField" style="display:none;">
+					<label for="username">Name</label>
+					<input type="text" id="username" name="username" placeholder="Your name">
+				</div>
+		
 				<button type="submit">Send POST Request</button>
 			</form>
 		</section>
-
 		<section class="card">
 			<h2>File Upload Test</h2>
 			<p>Checks multipart/form-data handling.</p>
