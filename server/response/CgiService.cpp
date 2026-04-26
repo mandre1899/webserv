@@ -99,42 +99,50 @@ CgiService::~CgiService()
 		delete a;
 }
 
-bool	CgiService::parse_cgi_headers(void)
+static std::string trim(const std::string& s)
 {
-	size_t header_end = std::string::npos;
-	size_t delimiter_len = 0;
+	size_t start = 0;
+	while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start])))
+		start++;
+	size_t end = s.size();
+	while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1])))
+		end--;
+	return s.substr(start, end - start);
+}
 
-	//Evaluate differnt header endings
-	header_end = _body.find("\r\n\r\n");
-	if (header_end != std::string::npos)
-		delimiter_len = 4;
-	else
+bool CgiService::parse_cgi_headers(void)
+{
+	size_t header_end = _body.find("\r\n\r\n");
+	size_t delimiter_len = 4;
+
+	if (header_end == std::string::npos)
 	{
 		header_end = _body.find("\n\n");
-		if (header_end != std::string::npos)
-			delimiter_len = 2;
-		else
-			return false;
+		delimiter_len = 2;
 	}
+	if (header_end == std::string::npos)
+		return false;
 	std::string header_block = _body.substr(0, header_end);
 	std::string parsed_body = _body.substr(header_end + delimiter_len);
+
 	std::istringstream header_stream(header_block);
 	std::string line;
 
 	while (std::getline(header_stream, line))
 	{
-		if (!line.empty() && line[line.size() - 1] == '\r')
-			line.erase(line.size() - 1);
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
 		if (line.empty())
 			continue;
-
 		size_t sep = line.find(':');
 		if (sep == std::string::npos)
 			return false;
 
-		std::string key = line.substr(0, sep);
-		std::string value = line.substr(sep + 1);
+		std::string key = trim(line.substr(0, sep));
+		std::string value = trim(line.substr(sep + 1));
 
+		if (key.empty())
+			return false;
 		_cgi_headers[key] = value;
 	}
 
@@ -178,6 +186,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 			_cgi_pid = -1;
 			if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 			{
+				std::cout << _body << std::endl;
 				if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
 				{
 					Logger::log<LogLevel::error>("CGI didn't produce headers");
@@ -294,8 +303,6 @@ cgi_state	CgiService::execute_cgi_proc(Client* currClient)
 		}
 		close(out[0]);
 		if (dup2(out[1], STDOUT_FILENO) == -1)
-			_exit(1);
-		if (dup2(out[1], STDERR_FILENO) == -1)
 			_exit(1);
 		close(out[1]);
 
