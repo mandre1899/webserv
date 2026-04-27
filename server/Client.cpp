@@ -130,6 +130,12 @@ uint32_t Client::sendData(FdContext* fdCon)
 			_parsingState = state::response_sending;
 			return (EPOLLOUT);
 		}
+		catch (const RequestHandler::NoSecurePath &e) {
+			Logger::log<LogLevel::warn>("RequestHandler: ", e.what());
+			_response.set_default_reponse(403);
+			_parsingState = state::response_sending;
+			return (EPOLLOUT);
+		}
 		catch (const RequestHandler::PathResolutionFailed& e) {
 			Logger::log<LogLevel::error>("Path resolution failed: ", e.what());
 			_response.set_default_reponse(400);
