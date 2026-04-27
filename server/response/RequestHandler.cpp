@@ -209,8 +209,6 @@ bool	RequestHandler::check_path_secure(const std::string& abs_path)
 	}
 	auto b = base.begin();
 	auto t = target.begin();
-	std::cout << "Base: " << base << std::endl;
-	std::cout << "Target: " << target << std::endl;
 	for (; b != base.end() && t != target.end(); ++b, ++t)
 	{
 		if (*b != *t)
