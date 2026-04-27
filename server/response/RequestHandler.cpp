@@ -38,8 +38,10 @@ RequestHandler::RequestHandler(const HttpParser& request, HttpResponse& response
 	std::string abs_path = pathResolution();
 	populateRequestMetadata(abs_path);
 	if (validatePostRequest()) // if its a pure file upload it returns true
-		return;
+		return ;
 	filesystemInspection(abs_path);
+	if (!check_path_secure(abs_path))
+		throw NoSecurePath();
 	validateDeleteRequest();// Check if it is a delete request and sets the struct
 }
 
@@ -187,6 +189,34 @@ std::string RequestHandler::pathResolution(void)
 	if (_request.getRequestUri() == "/" && !_serverConfig->autoIndex && !_serverConfig->index.empty())
 		return join_paths(_base_path, _serverConfig->index);
 	return join_paths(_base_path, _request.getRequestUri());
+}
+
+bool	RequestHandler::check_path_secure(const std::string& abs_path)
+{
+	std::filesystem::path base = std::filesystem::path(_base_path);
+	std::error_code ec;
+	base = std::filesystem::weakly_canonical(base, ec);
+	if (ec)
+	{
+		Logger::log<LogLevel::error>("Base Path resolving failed: ", ec);
+		return false;
+	}
+	std::filesystem::path target = std::filesystem::weakly_canonical(abs_path, ec); // resolves sym links and ".."
+	if (ec)
+	{
+		Logger::log<LogLevel::error>("Target Path resolving failed: ", ec);
+		return false;
+	}
+	auto b = base.begin();
+	auto t = target.begin();
+	std::cout << "Base: " << base << std::endl;
+	std::cout << "Target: " << target << std::endl;
+	for (; b != base.end() && t != target.end(); ++b, ++t)
+	{
+		if (*b != *t)
+			return false;
+	}
+	return b == base.end();
 }
 
 void	RequestHandler::populateRequestMetadata(const std::string& abs_path)
@@ -479,5 +509,10 @@ const char* RequestHandler::BadRequest::what() const noexcept
 const char* RequestHandler::NotFoundExcept404::what() const noexcept
 {
 	return "No index or root configured as well as no location";
+}
+
+const char* RequestHandler::NoSecurePath::what() const noexcept
+{
+	return "Requested path tries to exit out of bounds";
 }
 

@@ -33,6 +33,7 @@ class RequestHandler
 	void		resolveLocation(void); // Resolves the requested location assigns the _locationConfig
 	void		methodLocationValidation(void); // Checks the requested method 
 												// with the allowed methods of the location
+	bool check_path_secure(const std::string& abs_path);
 	std::string	pathResolution(void); // Logically resolves the path without checking for 
 									  // ressource availablility
 	void		filesystemInspection(std::string &abs_path); // Checks given path for ressource availablility
@@ -67,7 +68,10 @@ class RequestHandler
 		public:
 			const char* what() const noexcept override;
 	};
-
+	class NoSecurePath : public std::exception {
+		public:
+			const char* what() const noexcept override;
+	};
 	class BadRequest : public std::exception {
 		public:
 			const char* what() const noexcept override;
