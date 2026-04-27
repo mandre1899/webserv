@@ -72,7 +72,7 @@ CgiService::CgiService(ResourceInspection& data, int epfd, int socket_fd, size_t
 	: _data(data), _cgi_pid(-1), _pipe_read(-1), _pipe_write(-1), _epfd(epfd), \
 	_socket_fd(socket_fd)
 {
-	(void)_socket_fd; // todo:  '_socket_fd' is not used
+	(void)_socket_fd;
 	_writeIsDel = true;
 	_readIsDel = true;
 	if (_data.body_expected)
@@ -188,7 +188,6 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 			_cgi_pid = -1;
 			if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 			{
-				std::cout << _body << std::endl;
 				if (!parse_cgi_headers()) // Parses the header from cgi to HTTP headers
 				{
 					Logger::log<LogLevel::error>("CGI didn't produce headers");
@@ -209,7 +208,7 @@ std::pair<cgi_state, int>	CgiService::handle_cgi_read()
 	return std::make_pair(cgi_state::RUNNING, 200);
 }
 
-void CgiService::reactivate_client(FdContext *clientCtx)
+void CgiService::reactivate_client(FdContext* clientCtx)
 {
 	if (_pipe_write != -1)
 	{
@@ -235,7 +234,7 @@ void CgiService::reactivate_client(FdContext *clientCtx)
 	}
 }
 
-std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data, struct FdContext *clientCtx)
+std::pair<cgi_state, int> CgiService::handle_cgi_write(std::string& body_data, struct FdContext* clientCtx)
 {
 	ssize_t written_bytes = write(_pipe_write, body_data.data(), body_data.size());
 	if (written_bytes < 0)
@@ -364,7 +363,7 @@ void		CgiService::set_epoll_event(uint32_t events, int fd, FdKind kind, Client* 
 	tmp->kind = kind;
 	tmp->socket = currClient;
 	ev.events = events;
-	ev.data.ptr = static_cast<void*>(tmp); // todo: ma: remove c style cast
+	ev.data.ptr = static_cast<void*>(tmp);
 	if (epoll_ctl(_epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
 	{
 		Logger::log<LogLevel::error>("Epoll assignment of pipe read failed");

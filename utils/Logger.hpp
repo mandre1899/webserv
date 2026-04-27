@@ -14,7 +14,7 @@ enum class LogLevel {
 	off
 };
 
-constexpr LogLevel GlobalLogLevel = LogLevel::trace;
+constexpr LogLevel GlobalLogLevel = LogLevel::info;
 
 class Logger {
 private:

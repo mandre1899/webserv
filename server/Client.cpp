@@ -7,7 +7,7 @@ Client::Client(int serverFd, int clientFd, int epollFd, const cfg::srvCfg& srvCf
 	_parsingState = state::parsing_request_line;
 	_version = std::chrono::system_clock::now();
 	_timeout = std::chrono::system_clock::now() + std::chrono::seconds(_srvCfg.vHost[0].clientTimeout);
-	_response.set_status(404); //todo: ma: fix READ memory access
+	_response.set_status(404);
 }
 
 Client::Client(Client&& src) noexcept : _srvCfg(src._srvCfg)
@@ -96,10 +96,6 @@ uint32_t Client::sendData(FdContext* fdCon)
 			_response.set_http_version(_parsedHttp.getHttpVersion());
 			_request_handler = std::make_unique<RequestHandler>(_parsedHttp, _response, _srvCfg);
 			ResourceInspection data = _request_handler->get_result();
-			if (data.delete_file)
-				std::cout << "Delete file " << std::endl;
-			if (data.kind == ResourceKind::CGI)
-				std::cout << data.cgi_path << std::endl;
 			if (data.has_redirect)
 			{
 				int redir_code = data.redirect_code;
@@ -130,7 +126,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 			_parsingState = state::response_sending;
 			return (EPOLLOUT);
 		}
-		catch (const RequestHandler::NoSecurePath &e) {
+		catch (const RequestHandler::NoSecurePath& e) {
 			Logger::log<LogLevel::warn>("RequestHandler: ", e.what());
 			_response.set_default_reponse(403);
 			_parsingState = state::response_sending;
@@ -170,7 +166,7 @@ uint32_t Client::sendData(FdContext* fdCon)
 	else if (_parsingState == state::response_proccessing ||
 		_parsingState == state::response_body)
 	{
-		_parsingState = _service_handler->run(fdCon, _msg);
+		_parsingState = _service_handler->run(fdCon, _msg, _parsingState);
 		if (_parsingState == state::response_body)
 			return (EPOLLIN);
 		return (EPOLLOUT);
@@ -224,6 +220,12 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}
+	catch (const HttpParser::HttpVersionNotSupported& e)
+	{
+		_response.set_default_reponse(505);
+		_parsingState = state::response_sending;
+		return (EPOLLOUT);
+	}
 	catch (const HttpParser::HeadersTooLarge& e)
 	{
 		_response.set_default_reponse(400); //send respone with 400
@@ -238,7 +240,7 @@ uint32_t Client::handleConnection(uint32_t event, FdContext* fdCon)
 	}
 	catch (const std::exception& e)
 	{
-		_response.set_default_reponse(500); // todo: close the connection immediately; do not send a response, as this method is also called in the event of read errors
+		_response.set_default_reponse(500);
 		_parsingState = state::response_sending;
 		return (EPOLLOUT);
 	}

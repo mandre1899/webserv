@@ -66,7 +66,7 @@ state	ServiceHandler::select_service()
 	return state::error;
 }
 
-state	ServiceHandler::run(FdContext* ctx, std::string& msg)
+state	ServiceHandler::run(FdContext* ctx, std::string& msg, state parsing_state)
 {
 	if (_service_state == ServiceState::PROCESSING_CGI && ctx->kind != FdKind::CLIENT_SOCKET)
 	{
@@ -165,6 +165,6 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 			return state::response_sending;
 		}
 	}
-	return state::error;
+	return parsing_state;
 }
 
