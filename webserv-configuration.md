@@ -49,7 +49,10 @@ server {
 
 ## / root
 
-The `root` directive defines the **root directory for requests**. It specifies the folder from which static files will be served.
+The `root` directive defines the **root directory for requests**. It specifies the folder from which files will be served.
+
+You can specify the path as either an absolute path or a relative path (./). If the path is specified as relative, it is interpreted relative to the WebServ executable.
+All other path specifications are relative to this root path. The exception is the path specified for the CGI executable (cgi_path).
 
 **Syntax:**
 ```
@@ -250,6 +253,7 @@ error_page 500 502 503 504 /50x.html;
 ## ⚡ CGI Configuration
 
 This `location` block configures webserv to serve **PHP files** using *CGI* with PHP.
+The cgi_path is always interpreted as an absolute path.
 
 **Syntax:**
 

@@ -7,7 +7,7 @@ print("\r\n\r\n")
 
 form = cgi.FieldStorage()
 
-upload_dir = "uploads"
+upload_dir = "html/upload_files"
 os.makedirs(upload_dir, exist_ok=True)
 
 print("<html><body>")

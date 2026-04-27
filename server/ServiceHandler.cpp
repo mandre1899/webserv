@@ -1,6 +1,6 @@
 #include "ServiceHandler.hpp"
 
-ServiceHandler::ServiceHandler(ResourceInspection data, HttpResponse& response, int epfd, int socket_fd, Client* currClient, size_t clientMaxBodySize, struct FdContext *ctx)
+ServiceHandler::ServiceHandler(ResourceInspection data, HttpResponse& response, int epfd, int socket_fd, Client* currClient, size_t clientMaxBodySize, struct FdContext* ctx)
 	: _data(data), _response(response), _epfd(epfd), _socket_fd(socket_fd), _currClient(currClient), _clientMaxBodySize(clientMaxBodySize), _clientCtx(ctx)
 {
 }
@@ -68,7 +68,7 @@ state	ServiceHandler::select_service()
 
 state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 {
-	if (_service_state == ServiceState::PROCESSING_CGI)
+	if (_service_state == ServiceState::PROCESSING_CGI && ctx->kind != FdKind::CLIENT_SOCKET)
 	{
 		if (ctx->kind == FdKind::CGI_STDOUT_READ)
 		{
@@ -116,7 +116,7 @@ state	ServiceHandler::run(FdContext* ctx, std::string& msg)
 					return state::response_proccessing;
 				return state::response_body;
 			}
-			catch (CgiService::ExceedesClientMaxBody &e)
+			catch (CgiService::ExceedesClientMaxBody& e)
 			{
 				_response.set_default_reponse(413, _data.currLoc, _data.currServer, _data.base_path);
 				Logger::log<LogLevel::error>("CgiService: ", e.what());

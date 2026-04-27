@@ -24,34 +24,32 @@
 			<p>Select a script and send text or upload a file.</p>
 
 			<form id="postForm" action="/python/" method="POST" class="form-grid" enctype="multipart/form-data">
-			
+
 				<label for="target">Select script</label>
 				<select id="target" name="target">
 					<option value="/python/capitalize.py">Python Capitalize</option>
 					<option value="/python/upload.py">Python Upload</option>
 					<option value="/php/upload.php">PHP Upload</option>
-					<option value="/php/test.php">PHP Test</option>
+					<option value="/php/check.php">PHP check health</option>
+					<option value="/php/session.php">PHP session check</option>
+					<option value="/php/cookie.php">PHP cookie check</option>
 				</select>
-		
+
 				<div id="textField">
 					<label for="message">Body</label>
-					<textarea
-						id="message"
-						name="message"
-						rows="4"
-						placeholder="Testing POST body..."></textarea>
+					<textarea id="message" name="message" rows="4" placeholder="Testing POST body..."></textarea>
 				</div>
-		
+
 				<div id="fileField" style="display:none;">
 					<label for="file">Upload file</label>
 					<input type="file" id="file" name="file">
 				</div>
-		
+
 				<div id="nameField" style="display:none;">
 					<label for="username">Name</label>
 					<input type="text" id="username" name="username" placeholder="Your name">
 				</div>
-		
+
 				<button type="submit">Send POST Request</button>
 			</form>
 		</section>
@@ -67,46 +65,10 @@
 		</section>
 
 		<section class="card">
-			<h2>Delete / Route Handling Test</h2>
-			<p>
-				Useful if your server supports REST-like routes through forms or custom handling.
-			</p>
-			<form action="/delete-item" method="POST" class="form-grid">
-				<input type="hidden" name="_method" value="DELETE" />
-
-				<label for="item-id">Item ID</label>
-				<input type="text" id="item-id" name="id" placeholder="123" required />
-
-				<button type="submit" class="danger">Send DELETE-like Request</button>
-			</form>
-		</section>
-
-		<section class="card">
-			<h2>CGI Test</h2>
-			<p>
-				Call your CGI script directly to check execution and environment output.
-			</p>
-			<div class="button-group">
-				<a class="button" href="/cgi-py">Run Python CGI</a>
-				<a class="button" href="/cgi-php">Run PHP CGI</a>
-			</div>
-		</section>
-
-		<section class="card">
-			<h2>Cookie / Session Test</h2>
-			<p>Use these routes to verify session creation and cookie persistence.</p>
-			<div class="button-group">
-				<a class="button" href="/set-cookie">Set Cookie</a>
-				<a class="button" href="/read-cookie">Read Cookie</a>
-				<a class="button" href="/session">Open Session</a>
-			</div>
-		</section>
-
-		<section class="card">
 			<h2>Redirect Test</h2>
 			<p>Checks whether your server returns proper redirect responses.</p>
 			<div class="button-group">
-				<a class="button" href="/redirect">Test Redirect</a>
+				<a class="button" href="/redirect-to-youtube">Test Redirect</a>
 				<a class="button" href="/redirect-loop">Test Redirect Loop</a>
 			</div>
 		</section>
@@ -116,7 +78,6 @@
 			<p>Useful for verifying custom error pages and response codes.</p>
 			<div class="button-group">
 				<a class="button" href="/200">200 OK</a>
-				<a class="button" href="/204">204 No Content</a>
 				<a class="button" href="/400">400 Bad Request</a>
 				<a class="button" href="/403">403 Forbidden</a>
 				<a class="button" href="/404">404 Not Found</a>
@@ -124,20 +85,6 @@
 			</div>
 		</section>
 
-		<section class="card">
-			<h2>Server Info Checklist</h2>
-			<ul class="checklist">
-				<li>Correct content-type headers</li>
-				<li>Static files served from correct root</li>
-				<li>Query string parsed properly</li>
-				<li>POST body parsed properly</li>
-				<li>Multipart upload works</li>
-				<li>CGI execution works</li>
-				<li>Cookies and sessions work</li>
-				<li>Redirects return valid Location headers</li>
-				<li>Error pages are handled cleanly</li>
-			</ul>
-		</section>
 	</main>
 
 	<footer class="footer">

@@ -1,10 +1,4 @@
 <?php
-echo "=== RAW \$_FILES ===\n";
-var_dump($_FILES);
-
-echo "=== RAW \$_POST ===\n";
-var_dump($_POST);
-
 // Enable full error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -49,6 +43,7 @@ if (!isset($_FILES['file'])) {
     echo "ERROR: \$_FILES['file'] is not set. Did you name the input field 'file'?\n";
     exit;
 }
+    
 
 $file = $_FILES['file'];
 
